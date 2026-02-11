@@ -50,4 +50,9 @@ declare module "cloudflare:test" {
   ): Promise<_ReturnType>;
   export function runDurableObjectAlarm(stub: unknown): Promise<boolean>;
   export function listDurableObjectIds(namespace: unknown): Promise<unknown[]>;
+  export function introspectWorkflowInstance(
+    workflow: unknown,
+    instanceId: string
+  ): Promise<never>;
+  export function introspectWorkflow(workflow: unknown): Promise<never>;
 }

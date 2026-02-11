@@ -72,9 +72,14 @@ import {
 - TypeScript worker entrypoints in `workers.main` are bundled for Miniflare runtime.
 - `test.poolOptions.workers` can be an object or function. Function mode supports:
   - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables.
+- `cloudflare:test` currently supports:
+  - `env`
+  - `SELF.fetch()` and `SELF.scheduled()`
+  - `fetchMock`
+  - `listDurableObjectIds`
+  - event/queue helpers and D1 migration helper utilities
 - Some advanced `cloudflare:test` APIs are currently stubs in Rstest mode:
   - `runInDurableObject`
   - `runDurableObjectAlarm`
-  - `listDurableObjectIds`
   - workflow introspection helpers
 

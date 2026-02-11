@@ -685,6 +685,34 @@ describe("defineWorkersConfig", () => {
     expect(resolved.include).toEqual(["test"]);
   });
 
+  test("preserves this binding for sync config function exports", () => {
+    const configFactory = defineWorkersConfig(function (this: { mode?: string }) {
+      return {
+        workers: {
+          main: "./src/index.ts",
+          miniflare: {
+            bindings: {
+              MODE: this.mode ?? "unknown"
+            }
+          }
+        }
+      };
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected sync config function");
+    }
+
+    const resolved = configFactory.call({ mode: "sync-this" });
+    if (resolved instanceof Promise) {
+      throw new Error("Expected sync config result");
+    }
+
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("sync-this");
+  });
+
   test("supports sync function-valued workers options with inject()", () => {
     process.env.RSTEST_INJECT_API_PORT = "8787";
 
@@ -1794,6 +1822,31 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("test");
     expect(String(defineValue)).toContain("project-async-forwarding.ts");
+  });
+
+  test("defineWorkersProject preserves this binding for async config function exports", async () => {
+    const configFactory = defineWorkersProject(async function (this: { mode?: string }) {
+      return {
+        workers: {
+          main: "./src/project-async-this.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_MODE: this.mode ?? "unknown"
+            }
+          }
+        }
+      };
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory.call({ mode: "async-this" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("async-this");
+    expect(String(defineValue)).toContain("project-async-this.ts");
   });
 
   test("defineWorkersProject forwards arguments when config function returns a promise", async () => {

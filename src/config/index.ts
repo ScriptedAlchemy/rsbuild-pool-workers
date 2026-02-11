@@ -249,8 +249,8 @@ export function defineWorkersConfig(
     const fn = config as (
       ...args: unknown[]
     ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
-    return ((...args: unknown[]) => {
-      const value = fn(...args);
+    return (function (this: unknown, ...args: unknown[]) {
+      const value = fn.apply(this, args);
       if (value instanceof Promise) {
         return value.then((resolved) => ensureWorkersConfigAsync(resolved));
       }

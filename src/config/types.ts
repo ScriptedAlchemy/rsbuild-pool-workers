@@ -57,8 +57,9 @@ export function mapAnyConfigExport<T extends RstestConfig, U extends RstestConfi
   config: AnyConfigExport<T>
 ): AnyConfigExport<U> {
   if (typeof config === "function") {
-    return ((...args: unknown[]) =>
-      Promise.resolve((config as ConfigFn<T>)(...args)).then(mapper)) as ConfigFn<U>;
+    return (function (this: unknown, ...args: unknown[]) {
+      return Promise.resolve((config as ConfigFn<T>).apply(this, args)).then(mapper);
+    }) as ConfigFn<U>;
   }
 
   if (config instanceof Promise) {

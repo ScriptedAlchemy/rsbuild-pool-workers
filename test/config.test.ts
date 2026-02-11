@@ -528,6 +528,44 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED;
   });
 
+  test("supports direct env fallback for promise-like nested workers function", async () => {
+    process.env.PROMISE_LIKE_NESTED_DIRECT_FALLBACK = "\"promise-like-nested-direct-fallback\"";
+
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/promise-like-nested-direct-fallback.ts",
+            miniflare: {
+              bindings: {
+                PROMISE_LIKE_NESTED_DIRECT_FALLBACK: inject<string>(
+                  "PROMISE_LIKE_NESTED_DIRECT_FALLBACK"
+                )
+              }
+            }
+          })
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-nested-direct-fallback");
+
+    delete process.env.PROMISE_LIKE_NESTED_DIRECT_FALLBACK;
+  });
+
   test("supports promise-like exports with nested async workers function", async () => {
     process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED_ASYNC = "\"promise-like-nested-async\"";
 
@@ -680,6 +718,41 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("promise-like-top-level");
 
     delete process.env.RSTEST_INJECT_PROMISE_LIKE_TOP_LEVEL;
+  });
+
+  test("supports direct env fallback for promise-like top-level workers function", async () => {
+    process.env.PROMISE_LIKE_TOP_LEVEL_DIRECT_FALLBACK =
+      "\"promise-like-top-level-direct-fallback\"";
+
+    const promiseLikeValue = {
+      workers: ({ inject }: WorkerPoolOptionsContext) => ({
+        main: "./src/promise-like-top-level-direct-fallback.ts",
+        miniflare: {
+          bindings: {
+            PROMISE_LIKE_TOP_LEVEL_DIRECT_FALLBACK: inject<string>(
+              "PROMISE_LIKE_TOP_LEVEL_DIRECT_FALLBACK"
+            )
+          }
+        }
+      })
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-top-level-direct-fallback");
+
+    delete process.env.PROMISE_LIKE_TOP_LEVEL_DIRECT_FALLBACK;
   });
 
   test("supports promise-like exports with top-level thenable workers function", async () => {
@@ -2303,6 +2376,45 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED;
   });
 
+  test("defineWorkersProject supports direct env fallback for promise-like nested workers function", async () => {
+    process.env.PROJECT_PROMISE_LIKE_NESTED_DIRECT_FALLBACK =
+      "\"project-promise-like-nested-direct-fallback\"";
+
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/project-promise-like-nested-direct-fallback-entry.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_PROMISE_LIKE_NESTED_DIRECT_FALLBACK: inject<string>(
+                  "PROJECT_PROMISE_LIKE_NESTED_DIRECT_FALLBACK"
+                )
+              }
+            }
+          })
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-like-nested-direct-fallback");
+
+    delete process.env.PROJECT_PROMISE_LIKE_NESTED_DIRECT_FALLBACK;
+  });
+
   test("defineWorkersProject supports promise-like exports with nested async workers function", async () => {
     process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED_ASYNC =
       "\"project-promise-like-nested-async\"";
@@ -2462,6 +2574,41 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-like-top-level");
 
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_TOP_LEVEL;
+  });
+
+  test("defineWorkersProject supports direct env fallback for promise-like top-level workers function", async () => {
+    process.env.PROJECT_PROMISE_LIKE_TOP_LEVEL_DIRECT_FALLBACK =
+      "\"project-promise-like-top-level-direct-fallback\"";
+
+    const promiseLikeValue = {
+      workers: ({ inject }: WorkerPoolOptionsContext) => ({
+        main: "./src/project-promise-like-top-level-direct-fallback-entry.ts",
+        miniflare: {
+          bindings: {
+            PROJECT_PROMISE_LIKE_TOP_LEVEL_DIRECT_FALLBACK: inject<string>(
+              "PROJECT_PROMISE_LIKE_TOP_LEVEL_DIRECT_FALLBACK"
+            )
+          }
+        }
+      })
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-like-top-level-direct-fallback");
+
+    delete process.env.PROJECT_PROMISE_LIKE_TOP_LEVEL_DIRECT_FALLBACK;
   });
 
   test("defineWorkersProject supports promise-like exports with top-level thenable workers function", async () => {

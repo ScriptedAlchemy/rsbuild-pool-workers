@@ -24,6 +24,7 @@ import type {
   env as envInternal,
   fetchMock as fetchMockInternal
 } from "cloudflare:test-internal";
+import { WORKERS_RSBUILD_PLUGIN_NAME } from "../src/index";
 
 type Assert<T extends true> = T;
 type IsAssignable<T, U> = [T] extends [U] ? true : false;
@@ -119,6 +120,13 @@ type _EnvInternalReadonlyContract = Assert<
   IsAssignable<
     typeof envInternal,
     Readonly<Record<string, unknown>>
+  >
+>;
+
+type _WorkersPluginNameContract = Assert<
+  IsAssignable<
+    typeof WORKERS_RSBUILD_PLUGIN_NAME,
+    string
   >
 >;
 

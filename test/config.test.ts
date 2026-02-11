@@ -355,6 +355,31 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-entry.ts");
   });
 
+  test("defineWorkersProject supports promise exports with nested test.poolOptions", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        test: {
+          include: ["test/project-nested/**/*.test.ts"],
+          poolOptions: {
+            workers: {
+              main: "./src/project-nested-entry.ts"
+            }
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-nested/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-nested-entry.ts");
+  });
+
   test("defineWorkersProject supports async config and async workers options", async () => {
     process.env.RSTEST_INJECT_PROJECT_URL = "\"http://localhost:9555\"";
 

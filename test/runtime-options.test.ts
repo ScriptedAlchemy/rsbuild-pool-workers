@@ -19,6 +19,8 @@ describe("resolveRuntimeOptions", () => {
     expect(options.miniflare.scriptPath).toBe(path.resolve(root, "./src/worker.ts"));
     expect(options.miniflare.modules).toBe(true);
     expect(options.miniflare.compatibilityDate).toBe("2024-01-01");
+    expect(options.remoteBindings).toBe(true);
+    expect(options.additionalExports).toEqual({});
   });
 
   test("preserves explicit script config", async () => {
@@ -34,6 +36,23 @@ describe("resolveRuntimeOptions", () => {
 
     expect(options.miniflare.script).toContain("fetch");
     expect(options.miniflare.scriptPath).toBeUndefined();
+  });
+
+  test("accepts additional worker export hints in options", async () => {
+    const options = await resolveRuntimeOptions({
+      additionalExports: {
+        WorkerFoo: "WorkerEntrypoint",
+        DurableBar: "DurableObject"
+      },
+      remoteBindings: false,
+      miniflare: {}
+    });
+
+    expect(options.remoteBindings).toBe(false);
+    expect(options.additionalExports).toEqual({
+      WorkerFoo: "WorkerEntrypoint",
+      DurableBar: "DurableObject"
+    });
   });
 
   test("bundles TypeScript entrypoint into in-memory script", async () => {

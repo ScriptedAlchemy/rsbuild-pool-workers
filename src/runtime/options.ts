@@ -13,6 +13,17 @@ const WorkersOptionsSchema = z.object({
   main: z.string().optional(),
   singleWorker: z.boolean().default(true),
   isolatedStorage: z.boolean().default(true),
+  remoteBindings: z.boolean().default(true),
+  additionalExports: z
+    .record(
+      z.string(),
+      z.union([
+        z.literal("WorkerEntrypoint"),
+        z.literal("DurableObject"),
+        z.literal("WorkflowEntrypoint")
+      ])
+    )
+    .default({}),
   miniflare: z.record(z.string(), z.unknown()).optional(),
   wrangler: z
     .object({

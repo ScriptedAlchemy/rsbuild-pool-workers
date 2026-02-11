@@ -12,7 +12,11 @@ describe("defineWorkersConfig", () => {
         poolOptions: {
           workers: {
             main: "./src/worker.ts",
-            isolatedStorage: false
+                isolatedStorage: false,
+                remoteBindings: false,
+                additionalExports: {
+                  DurableThing: "DurableObject"
+                }
           }
         }
       }
@@ -41,6 +45,8 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("worker.ts");
     expect(String(defineValue)).toContain("isolatedStorage");
+    expect(String(defineValue)).toContain("remoteBindings");
+    expect(String(defineValue)).toContain("DurableThing");
   });
 
   test("supports async config functions", async () => {

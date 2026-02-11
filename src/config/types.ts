@@ -13,6 +13,11 @@ export interface WorkersPoolOptions {
   main?: string;
   singleWorker?: boolean;
   isolatedStorage?: boolean;
+  remoteBindings?: boolean;
+  additionalExports?: Record<
+    string,
+    "WorkerEntrypoint" | "DurableObject" | "WorkflowEntrypoint"
+  >;
   miniflare?: Record<string, unknown>;
   wrangler?: WorkersWranglerOptions;
 }

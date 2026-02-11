@@ -255,3 +255,49 @@ type _MappedAsyncFactoryArgs = Assert<
     [boolean, number]
   >
 >;
+
+const mappedThenableFactory = mapAnyConfigExport(
+  (value) => ({
+    ...value,
+    include: [...(value.include ?? []), "mapped-thenable"]
+  }),
+  function (this: { source: string }, flag: "on" | "off") {
+    const configValue = {
+      include: [this.source, flag]
+    } satisfies RstestConfig;
+
+    return {
+      then(resolve: (config: typeof configValue) => void) {
+        resolve(configValue);
+        return Promise.resolve(configValue);
+      }
+    } as PromiseLike<typeof configValue>;
+  }
+);
+
+type _MappedThenableFactoryThis = Assert<
+  IsExact<
+    ThisParameterType<typeof mappedThenableFactory>,
+    { source: string }
+  >
+>;
+type _MappedThenableFactoryArgs = Assert<
+  IsExact<
+    Parameters<typeof mappedThenableFactory>,
+    ["on" | "off"]
+  >
+>;
+
+const mappedPromiseLikeInput = mapAnyConfigExport(
+  (value) => ({
+    ...value,
+    include: [...(value.include ?? []), "mapped-promise-like-input"]
+  }),
+  Promise.resolve({
+    include: ["base"]
+  } satisfies RstestConfig) as PromiseLike<RstestConfig>
+);
+
+type _MappedPromiseLikeInputContract = Assert<
+  Awaited<typeof mappedPromiseLikeInput> extends RstestConfig ? true : false
+>;

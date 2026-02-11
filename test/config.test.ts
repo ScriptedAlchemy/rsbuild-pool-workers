@@ -636,6 +636,34 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_VALUE;
   });
 
+  test("defineWorkersProject supports async top-level workers function in async config export", async () => {
+    process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_ASYNC = "\"project-top-level-async\"";
+
+    const configFactory = defineWorkersProject(async () => ({
+      include: ["test/project-top-level-async/**/*.test.ts"],
+      workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+        main: "./src/project-top-level-async-worker.ts",
+        miniflare: {
+          bindings: {
+            PROJECT_TOP_LEVEL_ASYNC: inject<string>("PROJECT_TOP_LEVEL_ASYNC")
+          }
+        }
+      })
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory();
+    expect(resolved.include).toEqual(["test/project-top-level-async/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-top-level-async");
+
+    delete process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_ASYNC;
+  });
+
   test("defineWorkersProject throws when async workers options are used in sync config export", () => {
     expect(() =>
       defineWorkersProject({

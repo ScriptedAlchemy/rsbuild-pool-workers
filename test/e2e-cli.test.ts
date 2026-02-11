@@ -164,6 +164,72 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports SELF.scheduled through cloudflare:test", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./scheduled.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  kvNamespaces: ["CLOCK"]
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          async scheduled(controller, env, ctx) {
+            const payload = String(controller.cron) + "|" + String(controller.scheduledTime);
+            ctx.waitUntil(env.CLOCK.put("last", payload));
+          },
+          async fetch(_request, env) {
+            return new Response((await env.CLOCK.get("last")) ?? "none");
+          }
+        };
+      `,
+      "scheduled.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("dispatches scheduled events", async () => {
+          const before = await SELF.fetch("http://localhost/");
+          expect(await before.text()).toBe("none");
+
+          await SELF.scheduled({
+            cron: "0 * * * *",
+            scheduledTime: 1700000001234
+          });
+
+          let afterText = "none";
+          for (let i = 0; i < 10; i++) {
+            const res = await SELF.fetch("http://localhost/");
+            afterText = await res.text();
+            if (afterText !== "none") {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 25));
+          }
+          expect(afterText).toBe("0 * * * *|1700000001234");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("scheduled.test.ts");
+    });
+  });
+
   test("supports fetchMock for outbound requests in fixture tests", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

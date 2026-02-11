@@ -170,13 +170,24 @@ export class WorkersRuntimeState {
     await this.setup();
     const mf = this.getMiniflare() as unknown as {
       dispatchScheduled?: (opts?: { scheduledTime?: number; cron?: string }) => Promise<void>;
+      getWorker?: () => Promise<{ scheduled?: (opts: { scheduledTime: number; cron: string }) => unknown }>;
     };
 
-    if (!mf.dispatchScheduled) {
-      throw new Error("Current Miniflare version does not support scheduled dispatch.");
+    if (mf.dispatchScheduled) {
+      await mf.dispatchScheduled(options);
+      return;
     }
 
-    await mf.dispatchScheduled(options);
+    const worker = await mf.getWorker?.();
+    if (worker && typeof worker.scheduled === "function") {
+      await worker.scheduled({
+        scheduledTime: options?.scheduledTime ?? Date.now(),
+        cron: options?.cron ?? ""
+      });
+      return;
+    }
+
+    throw new Error("Current Miniflare version does not support scheduled dispatch.");
   }
 
   async listDurableObjectIds(namespace: unknown): Promise<unknown[]> {

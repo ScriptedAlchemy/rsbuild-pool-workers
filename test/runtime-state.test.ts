@@ -424,4 +424,46 @@ describe("Workers runtime state integration", () => {
       "runDurableObjectAlarm() is not yet available in Rstest mode."
     );
   });
+
+  test("SELF.scheduled dispatches scheduled handler and persists effects", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            async scheduled(controller, env, ctx) {
+              const payload = String(controller.cron) + "|" + String(controller.scheduledTime);
+              ctx.waitUntil(env.CLOCK.put("last", payload));
+            },
+            async fetch(_request, env) {
+              return new Response((await env.CLOCK.get("last")) ?? "none");
+            }
+          };
+        `,
+        kvNamespaces: ["CLOCK"]
+      }
+    });
+
+    await runtime.setup();
+
+    const before = await SELF.fetch("http://localhost/");
+    expect(await before.text()).toBe("none");
+
+    await SELF.scheduled({
+      cron: "*/5 * * * *",
+      scheduledTime: 1_700_000_000_000
+    });
+
+    let afterText = "none";
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const after = await SELF.fetch("http://localhost/");
+      afterText = await after.text();
+      if (afterText !== "none") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    expect(afterText).toBe("*/5 * * * *|1700000000000");
+  });
 });

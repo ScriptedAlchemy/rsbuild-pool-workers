@@ -4,6 +4,7 @@ import type {
   DurableObjectStatePlaceholder,
   DurableObjectStubLike,
   ExecutionContext,
+  SELF,
   env,
   PagesEventContext,
   QueueController,
@@ -48,6 +49,15 @@ type _ExecutionContextContract = Assert<
   IsAssignable<
     CreatedExecutionContext,
     ExecutionContext
+  >
+>;
+type _SelfContract = Assert<
+  IsAssignable<
+    typeof SELF,
+    {
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+      scheduled: (options?: { scheduledTime?: number; cron?: string }) => Promise<void>;
+    }
   >
 >;
 type _EnvReadonlyContract = Assert<

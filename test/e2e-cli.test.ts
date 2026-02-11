@@ -382,6 +382,58 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports SELF.fetch Request header overrides end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./request-header-override.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(request) {
+            return new Response(request.headers.get("x-test-header") ?? "missing");
+          }
+        };
+      `,
+      "request-header-override.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("Request init headers override original headers", async () => {
+          const req = new Request("http://localhost/", {
+            headers: {
+              "x-test-header": "original-header"
+            }
+          });
+          const res = await SELF.fetch(req, {
+            headers: {
+              "x-test-header": "override-header"
+            }
+          });
+          expect(await res.text()).toBe("override-header");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("request-header-override.test.ts");
+    });
+  });
+
   test("respects isolatedStorage=false and preserves storage across tests", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

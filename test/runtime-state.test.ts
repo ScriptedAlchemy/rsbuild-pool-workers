@@ -187,6 +187,33 @@ describe("Workers runtime state integration", () => {
     expect(await response.text()).toBe("runtime-header-value");
   });
 
+  test("SELF.fetch Request init can override headers", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            fetch(request) {
+              return new Response(request.headers.get("x-test-header") ?? "missing");
+            }
+          };
+        `
+      }
+    });
+
+    const request = new Request("http://localhost/", {
+      headers: {
+        "x-test-header": "original-header"
+      }
+    });
+    const response = await SELF.fetch(request, {
+      headers: {
+        "x-test-header": "override-header"
+      }
+    });
+    expect(await response.text()).toBe("override-header");
+  });
+
   test("pushStorageSnapshot and popStorageSnapshot restore persisted KV state", async () => {
     const persistRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-kv-"));
 

@@ -153,7 +153,7 @@ import {
 - top-level `workers` supports the same object/function forms and `inject()` behavior.
 - if both top-level `workers` and `test.poolOptions.workers` are provided, top-level `workers` takes precedence (including sync/async/promise config export forms), and nested function-valued workers options are not evaluated.
 - `defineWorkersConfig()` supports object, promise, sync function, and async function config exports.
-- when using function exports (sync, async, or sync functions returning promises), config function arguments from rstest/rsbuild are forwarded unchanged.
+- when using function exports (sync, async, or sync functions returning promises), config function arguments and invocation context (`this`) from rstest/rsbuild are forwarded unchanged.
 - `cloudflare:test` currently supports:
   - `env`
   - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`; `Request` + `init` override semantics are preserved) and `SELF.scheduled()`

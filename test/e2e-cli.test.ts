@@ -2012,6 +2012,71 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("prefers top-level workers in promise config exports end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-precedence.test.ts"],
+            workers: {
+              main: "./worker-top-level.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_PRECEDENCE_VALUE: "promise-top-level-selected"
+                }
+              }
+            },
+            test: {
+              poolOptions: {
+                workers: {
+                  main: "./worker-nested.ts",
+                  miniflare: {
+                    bindings: {
+                      PROMISE_PRECEDENCE_VALUE: "promise-nested-selected"
+                    }
+                  }
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_PRECEDENCE_VALUE));
+          }
+        };
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch() {
+            return new Response("promise-nested-should-not-run");
+          }
+        };
+      `,
+      "promise-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise top-level workers value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("promise-precedence.test.ts");
+    });
+  });
+
   test("supports promise config export with nested workers function end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2379,6 +2444,71 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise.test.ts");
+    });
+  });
+
+  test("prefers top-level workers in defineWorkersProject promise export end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-precedence.test.ts"],
+            workers: {
+              main: "./worker-top-level.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_PRECEDENCE_VALUE: "project-promise-top-level-selected"
+                }
+              }
+            },
+            test: {
+              poolOptions: {
+                workers: {
+                  main: "./worker-nested.ts",
+                  miniflare: {
+                    bindings: {
+                      PROJECT_PROMISE_PRECEDENCE_VALUE: "project-promise-nested-selected"
+                    }
+                  }
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_PRECEDENCE_VALUE));
+          }
+        };
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch() {
+            return new Response("project-promise-nested-should-not-run");
+          }
+        };
+      `,
+      "project-promise-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise top-level workers value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise-precedence.test.ts");
     });
   });
 

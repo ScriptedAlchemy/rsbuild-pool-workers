@@ -162,6 +162,44 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("prefers top-level workers in promise exports when nested workers are also set", async () => {
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: {
+          main: "./src/promise-top-level-precedence.ts",
+          miniflare: {
+            bindings: {
+              PROMISE_PRECEDENCE: "promise-top-level"
+            }
+          }
+        },
+        test: {
+          poolOptions: {
+            workers: {
+              main: "./src/promise-nested-precedence.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_PRECEDENCE: "promise-nested"
+                }
+              }
+            }
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-top-level-precedence.ts");
+    expect(String(defineValue)).toContain("promise-top-level");
+    expect(String(defineValue)).not.toContain("promise-nested-precedence.ts");
+  });
+
   test("supports promise config exports with nested workers function", async () => {
     process.env.RSTEST_INJECT_PROMISE_NESTED = "\"promise-nested\"";
 
@@ -808,6 +846,44 @@ describe("defineWorkersConfig", () => {
     const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-entry.ts");
+  });
+
+  test("defineWorkersProject prefers top-level workers in promise exports", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: {
+          main: "./src/project-promise-top-level-precedence.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_PROMISE_PRECEDENCE: "project-promise-top-level"
+            }
+          }
+        },
+        test: {
+          poolOptions: {
+            workers: {
+              main: "./src/project-promise-nested-precedence.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_PRECEDENCE: "project-promise-nested"
+                }
+              }
+            }
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-top-level-precedence.ts");
+    expect(String(defineValue)).toContain("project-promise-top-level");
+    expect(String(defineValue)).not.toContain("project-promise-nested-precedence.ts");
   });
 
   test("defineWorkersProject supports promise exports with nested test.poolOptions", async () => {

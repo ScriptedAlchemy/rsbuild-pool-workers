@@ -153,6 +153,7 @@ import {
   - Promise-like return values (thenables), which are normalized like async results.
 - top-level `workers` supports the same object/function forms and `inject()` behavior.
 - direct-env fallback (`inject("KEY")` reading from `KEY`) is supported across sync/async/promise/promise-like config export forms for both nested and top-level workers functions.
+- errors thrown or rejected from workers option functions (including promise-like/thenable branches) propagate with actionable messages.
 - if both top-level `workers` and `test.poolOptions.workers` are provided, top-level `workers` takes precedence (including sync/async/promise/promise-like config export forms), and nested function-valued workers options are not evaluated.
 - `defineWorkersConfig()` supports object, promise/promise-like, sync function, and async function config exports.
 - when using function exports (sync, async, or sync functions returning promises/promise-like values), config function arguments and invocation context (`this`) from rstest/rsbuild are forwarded unchanged.

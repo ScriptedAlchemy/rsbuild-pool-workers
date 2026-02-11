@@ -2012,6 +2012,55 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports promise config export with preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            plugins: [workersRsbuildPlugin()],
+            include: ["./promise-preinstalled-plugin.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_PREINSTALLED_PLUGIN: "promise-preinstalled-plugin-ok"
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_PREINSTALLED_PLUGIN));
+          }
+        };
+      `,
+      "promise-preinstalled-plugin.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise config with preinstalled workers plugin works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-preinstalled-plugin-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("promise-preinstalled-plugin.test.ts");
+    });
+  });
+
   test("prefers top-level workers in promise config exports end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2614,6 +2663,55 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise.test.ts");
+    });
+  });
+
+  test("supports defineWorkersProject promise export with preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            plugins: [workersRsbuildPlugin()],
+            include: ["./project-promise-preinstalled-plugin.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_PREINSTALLED_PLUGIN: "project-promise-preinstalled-plugin-ok"
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_PREINSTALLED_PLUGIN));
+          }
+        };
+      `,
+      "project-promise-preinstalled-plugin.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise config with preinstalled workers plugin works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-preinstalled-plugin-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise-preinstalled-plugin.test.ts");
     });
   });
 

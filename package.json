@@ -1,0 +1,48 @@
+{
+  "name": "@cloudflare/rstest-pool-workers",
+  "version": "0.1.0",
+  "description": "Cloudflare Workers test integration for Rstest",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js"
+    },
+    "./cloudflare-test": {
+      "types": "./dist/cloudflare-test/index.d.ts",
+      "import": "./dist/cloudflare-test/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup && node scripts/copy-types.mjs",
+    "check:type": "tsc --noEmit",
+    "test": "rstest run",
+    "test:ci": "rstest run",
+    "lint": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@rstest/core": ">=0.8.0"
+  },
+  "dependencies": {
+    "miniflare": "^4.20260107.0",
+    "undici": "^7.16.0",
+    "wrangler": "^4.49.1",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@rstest/core": "^0.8.4",
+    "@types/node": "^24.3.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2"
+  }
+}

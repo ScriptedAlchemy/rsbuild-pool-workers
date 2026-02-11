@@ -1,0 +1,56 @@
+name: Preview Release (pkg.pr.new)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  publish-preview:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.fork == false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        run: |
+          npm install -g corepack@latest --force
+          corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish preview package
+        id: publish
+        run: pnpx pkg-pr-new publish --pnpm --comment=update
+
+      - name: Write preview summary
+        run: |
+          sha='${{ steps.publish.outputs.sha }}'
+          urls='${{ steps.publish.outputs.urls }}'
+          {
+            echo "## pkg.pr.new preview"
+            echo ""
+            echo "**sha**: \`${sha:-N/A}\`"
+            if [ -n "$urls" ]; then
+              echo ""
+              echo "### URLs"
+              echo ""
+              for url in $urls; do
+                echo "- <$url>"
+              done
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,11 +1,21 @@
-import { describe, expect, test } from "@rstest/core";
+import { afterEach, describe, expect, test } from "@rstest/core";
 import {
   type DurableObjectStubLike,
   introspectWorkflow,
   introspectWorkflowInstance,
+  listDurableObjectIds,
   runDurableObjectAlarm,
   runInDurableObject
 } from "../src/cloudflare-test/index";
+import { setWorkersRuntimeOptionsForTesting } from "../src/runtime/options";
+import { getWorkersRuntimeState } from "../src/runtime/state";
+
+const runtime = getWorkersRuntimeState();
+
+afterEach(async () => {
+  await runtime.teardown();
+  setWorkersRuntimeOptionsForTesting(undefined);
+});
 
 describe("unsupported cloudflare:test APIs", () => {
   test("runInDurableObject validates argument types", async () => {
@@ -34,6 +44,27 @@ describe("unsupported cloudflare:test APIs", () => {
       runDurableObjectAlarm({ fetch: async () => new Response("ok"), id: {} })
     ).rejects.toThrow(
       "runDurableObjectAlarm() is not yet available in Rstest mode."
+    );
+  });
+
+  test("listDurableObjectIds validates namespace argument type", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            fetch() {
+              return new Response("ok");
+            }
+          };
+        `
+      }
+    });
+
+    await expect(
+      listDurableObjectIds({} as never)
+    ).rejects.toThrow(
+      "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
     );
   });
 

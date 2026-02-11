@@ -2519,6 +2519,60 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports promise config export async top-level workers direct-env fallback end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-top-level-workers-fn-async-direct-env.test.ts"],
+            workers: async ({ inject }) => ({
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_DIRECT_ENV: inject("PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_DIRECT_ENV")
+                }
+              }
+            })
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_DIRECT_ENV));
+          }
+        };
+      `,
+      "promise-top-level-workers-fn-async-direct-env.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise async top-level workers direct-env fallback is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-workers-fn-async-direct-env-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-top-level-workers-fn-async-direct-env.test.ts");
+      },
+      {
+        env: {
+          PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_DIRECT_ENV:
+            "promise-top-level-workers-fn-async-direct-env-ok"
+        }
+      }
+    );
+  });
+
   test("supports promise config export top-level workers function direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2936,6 +2990,60 @@ describe("rstest CLI integration", () => {
         env: {
           RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC:
             "\"project-promise-top-level-workers-fn-async-ok\""
+        }
+      }
+    );
+  });
+
+  test("supports defineWorkersProject promise export async top-level workers direct-env fallback end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-top-level-workers-fn-async-direct-env.test.ts"],
+            workers: async ({ inject }) => ({
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_DIRECT_ENV: inject("PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_DIRECT_ENV")
+                }
+              }
+            })
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_DIRECT_ENV));
+          }
+        };
+      `,
+      "project-promise-top-level-workers-fn-async-direct-env.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise async top-level workers direct-env fallback is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-workers-fn-async-direct-env-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-top-level-workers-fn-async-direct-env.test.ts");
+      },
+      {
+        env: {
+          PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_DIRECT_ENV:
+            "project-promise-top-level-workers-fn-async-direct-env-ok"
         }
       }
     );

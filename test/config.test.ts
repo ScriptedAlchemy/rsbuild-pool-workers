@@ -265,6 +265,40 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROMISE_NESTED;
   });
 
+  test("supports promise config exports with nested async workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_NESTED_ASYNC = "\"promise-nested-async\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        test: {
+          include: ["test/promise-nested-async/**/*.test.ts"],
+          poolOptions: {
+            workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+              main: "./src/promise-nested-async.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_NESTED_ASYNC: inject<string>("PROMISE_NESTED_ASYNC")
+                }
+              }
+            })
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    expect(resolved.include).toEqual(["test/promise-nested-async/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-nested-async");
+
+    delete process.env.RSTEST_INJECT_PROMISE_NESTED_ASYNC;
+  });
+
   test("supports direct env fallback for promise nested workers function", async () => {
     process.env.PROMISE_NESTED_FALLBACK = "\"promise-nested-fallback\"";
 

@@ -63,6 +63,26 @@ describe("defineWorkersConfig", () => {
     expect(resolved.source?.define).toBeDefined();
   });
 
+  test("preserves sync config function return shape", () => {
+    const configFactory = defineWorkersConfig(() => ({
+      workers: {
+        main: "./src/index.ts"
+      },
+      include: ["test/**/*.test.ts"]
+    }));
+
+    expect(typeof configFactory).toBe("function");
+    const resolved = configFactory();
+    expect(resolved).not.toBeInstanceOf(Promise);
+
+    if (resolved instanceof Promise) {
+      throw new Error("Expected sync config result");
+    }
+
+    expect(resolved.include).toEqual(["test/**/*.test.ts"]);
+    expect(resolved.source?.define).toBeDefined();
+  });
+
   test("supports sync function-valued workers options with inject()", () => {
     process.env.RSTEST_INJECT_API_PORT = "8787";
 

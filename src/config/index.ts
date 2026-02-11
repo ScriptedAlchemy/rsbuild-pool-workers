@@ -228,7 +228,13 @@ export function defineWorkersConfig(
 ): AnyConfigExport<WorkersUserConfig<RstestConfig>> {
   if (typeof config === "function") {
     const fn = config as () => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
-    return (async () => ensureWorkersConfigAsync(await fn())) as () => Promise<WorkersUserConfig<RstestConfig>>;
+    return (() => {
+      const value = fn();
+      if (value instanceof Promise) {
+        return value.then((resolved) => ensureWorkersConfigAsync(resolved));
+      }
+      return ensureWorkersConfig(value);
+    }) as () => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
   }
 
   if (config instanceof Promise) {

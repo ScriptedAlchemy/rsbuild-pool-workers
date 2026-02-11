@@ -1054,18 +1054,21 @@ describe("rstest CLI integration", () => {
         import { test, expect } from "@rstest/core";
         import { SELF, env, listDurableObjectIds } from "cloudflare:test";
 
-        test("enumerates created object ids", async () => {
-          const created = await (await SELF.fetch("http://localhost/")).text();
+        test("enumerates created object ids in deterministic order", async () => {
+          const createdOne = await (await SELF.fetch("http://localhost/")).text();
+          const createdTwo = await (await SELF.fetch("http://localhost/")).text();
           let idStrings: string[] = [];
           for (let i = 0; i < 10; i++) {
             const ids = await listDurableObjectIds(env.COUNTER as any);
             idStrings = ids.map((id) => String(id.toString()));
-            if (idStrings.includes(created)) {
+            if (idStrings.includes(createdOne) && idStrings.includes(createdTwo)) {
               break;
             }
             await new Promise((resolve) => setTimeout(resolve, 50));
           }
-          expect(idStrings).toContain(created);
+          expect(idStrings).toContain(createdOne);
+          expect(idStrings).toContain(createdTwo);
+          expect(idStrings).toEqual([...idStrings].sort((a, b) => a.localeCompare(b)));
         });
       `
     };

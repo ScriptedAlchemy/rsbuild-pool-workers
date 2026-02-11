@@ -1001,6 +1001,44 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_SERVICE_URL;
   });
 
+  test("supports thenable workers option function in async config export", async () => {
+    process.env.RSTEST_INJECT_THENABLE_SERVICE_URL = "\"http://localhost:9010\"";
+
+    const value = defineWorkersConfig(async () => ({
+      test: {
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => {
+            const resolvedValue = {
+              main: "./src/index.ts",
+              miniflare: {
+                bindings: {
+                  THENABLE_SERVICE_URL: inject<string>("THENABLE_SERVICE_URL")
+                }
+              }
+            };
+            return {
+              then(resolve: (resolved: typeof resolvedValue) => void) {
+                resolve(resolvedValue);
+                return Promise.resolve(resolvedValue);
+              }
+            } as unknown as PromiseLike<typeof resolvedValue>;
+          }
+        }
+      }
+    }));
+
+    if (typeof value !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await value();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("http://localhost:9010");
+
+    delete process.env.RSTEST_INJECT_THENABLE_SERVICE_URL;
+  });
+
   test("supports async top-level workers function in async config export", async () => {
     process.env.RSTEST_INJECT_TOP_LEVEL_ASYNC_VALUE = "\"top-level-async\"";
 
@@ -1938,6 +1976,44 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("http://localhost:9555");
 
     delete process.env.RSTEST_INJECT_PROJECT_URL;
+  });
+
+  test("defineWorkersProject supports thenable workers option function in async config export", async () => {
+    process.env.RSTEST_INJECT_PROJECT_THENABLE_URL = "\"http://localhost:9666\"";
+
+    const configFactory = defineWorkersProject(async () => ({
+      test: {
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => {
+            const resolvedValue = {
+              main: "./src/project-worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_THENABLE_URL: inject<string>("PROJECT_THENABLE_URL")
+                }
+              }
+            };
+            return {
+              then(resolve: (resolved: typeof resolvedValue) => void) {
+                resolve(resolvedValue);
+                return Promise.resolve(resolvedValue);
+              }
+            } as unknown as PromiseLike<typeof resolvedValue>;
+          }
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("http://localhost:9666");
+
+    delete process.env.RSTEST_INJECT_PROJECT_THENABLE_URL;
   });
 
   test("defineWorkersProject forwards async config function arguments", async () => {

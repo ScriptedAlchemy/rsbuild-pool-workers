@@ -1952,6 +1952,69 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports async config with thenable workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          test: {
+            include: ["./async-thenable-workers-options.test.ts"],
+            poolOptions: {
+              workers: ({ inject }) => {
+                const value = {
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      GREETING: inject("ASYNC_THENABLE_GREETING")
+                    }
+                  }
+                };
+                return {
+                  then(resolve) {
+                    resolve(value);
+                    return Promise.resolve(value);
+                  }
+                };
+              }
+            }
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.GREETING));
+          }
+        };
+      `,
+      "async-thenable-workers-options.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("thenable workers options are resolved before runtime starts", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-from-async-thenable-inject");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("async-thenable-workers-options.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_ASYNC_THENABLE_GREETING: "\"hello-from-async-thenable-inject\""
+        }
+      }
+    );
+  });
+
   test("supports async config export with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3949,6 +4012,70 @@ describe("rstest CLI integration", () => {
       {
         env: {
           RSTEST_INJECT_PROJECT_ASYNC_VALUE: "\"project-async-ok\""
+        }
+      }
+    );
+  });
+
+  test("supports defineWorkersProject async thenable workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          test: {
+            include: ["./project-async-thenable-workers.test.ts"],
+            poolOptions: {
+              workers: ({ inject }) => {
+                const value = {
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      PROJECT_ASYNC_THENABLE_VALUE: inject("PROJECT_ASYNC_THENABLE_VALUE")
+                    }
+                  }
+                };
+                return {
+                  then(resolve) {
+                    resolve(value);
+                    return Promise.resolve(value);
+                  }
+                };
+              }
+            }
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_ASYNC_THENABLE_VALUE));
+          }
+        };
+      `,
+      "project-async-thenable-workers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("defineWorkersProject async thenable workers options wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-async-thenable-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-async-thenable-workers.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_ASYNC_THENABLE_VALUE: "\"project-async-thenable-ok\""
         }
       }
     );

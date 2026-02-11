@@ -61,6 +61,38 @@ type _WorkersAsyncConfigFactoryArgs = Assert<
   >
 >;
 
+const workersThenableConfigFactory = defineWorkersConfig(function (
+  this: { mode: string },
+  command: "build"
+) {
+  const value = {
+    include: [`${this.mode}:${command}`],
+    workers: {
+      main: "./src/thenable-index.ts"
+    }
+  };
+
+  return {
+    then(resolve: (config: typeof value) => void) {
+      resolve(value);
+      return Promise.resolve(value);
+    }
+  } as unknown as PromiseLike<typeof value>;
+});
+
+type _WorkersThenableConfigFactoryThis = Assert<
+  IsExact<
+    ThisParameterType<typeof workersThenableConfigFactory>,
+    { mode: string }
+  >
+>;
+type _WorkersThenableConfigFactoryArgs = Assert<
+  IsExact<
+    Parameters<typeof workersThenableConfigFactory>,
+    ["build"]
+  >
+>;
+
 const workersProjectFactory = defineWorkersProject(function (
   this: { mode: string },
   command: "dev"
@@ -108,6 +140,38 @@ type _WorkersProjectAsyncFactoryArgs = Assert<
   IsExact<
     Parameters<typeof workersProjectAsyncFactory>,
     ["ci"]
+  >
+>;
+
+const workersProjectThenableFactory = defineWorkersProject(function (
+  this: { mode: string },
+  command: "preview"
+) {
+  const value = {
+    include: [`${this.mode}:${command}`],
+    workers: {
+      main: "./src/project-thenable.ts"
+    }
+  };
+
+  return {
+    then(resolve: (config: typeof value) => void) {
+      resolve(value);
+      return Promise.resolve(value);
+    }
+  } as unknown as PromiseLike<typeof value>;
+});
+
+type _WorkersProjectThenableFactoryThis = Assert<
+  IsExact<
+    ThisParameterType<typeof workersProjectThenableFactory>,
+    { mode: string }
+  >
+>;
+type _WorkersProjectThenableFactoryArgs = Assert<
+  IsExact<
+    Parameters<typeof workersProjectThenableFactory>,
+    ["preview"]
   >
 >;
 

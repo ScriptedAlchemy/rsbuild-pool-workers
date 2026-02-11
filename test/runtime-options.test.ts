@@ -156,4 +156,36 @@ describe("resolveRuntimeOptions", () => {
 
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
+
+  test("bundles CTS entrypoint into in-memory script", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-options-cts-"));
+    const mainPath = path.join(tempRoot, "worker.cts");
+
+    await fs.writeFile(
+      mainPath,
+      `
+        const suffix = "cts";
+        export default {
+          fetch() {
+            return new Response("from-" + suffix);
+          }
+        };
+      `
+    );
+
+    const options = await resolveRuntimeOptions(
+      {
+        main: mainPath,
+        miniflare: {}
+      },
+      tempRoot
+    );
+
+    expect(options.miniflare.modules).toBe(true);
+    expect(typeof options.miniflare.script).toBe("string");
+    expect(String(options.miniflare.script)).toContain("from-");
+    expect(options.miniflare.scriptPath).toBeUndefined();
+
+    await fs.rm(tempRoot, { recursive: true, force: true });
+  });
 });

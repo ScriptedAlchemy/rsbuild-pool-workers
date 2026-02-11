@@ -150,7 +150,7 @@ import {
   - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables.
   - async workers functions when `defineWorkersConfig()` or `defineWorkersProject()` is used with an async config export.
 - top-level `workers` supports the same object/function forms and `inject()` behavior.
-- if both top-level `workers` and `test.poolOptions.workers` are provided, top-level `workers` takes precedence (including async/promise config export forms).
+- if both top-level `workers` and `test.poolOptions.workers` are provided, top-level `workers` takes precedence (including async/promise config export forms), and nested function-valued workers options are not evaluated.
 - `defineWorkersConfig()` supports object, promise, sync function, and async function config exports.
 - `cloudflare:test` currently supports:
   - `env`

@@ -147,3 +147,7 @@ declare module "cloudflare:test" {
   ): Promise<never>;
   export function introspectWorkflow(workflow: unknown): Promise<never>;
 }
+
+declare module "cloudflare:test-internal" {
+  export * from "cloudflare:test";
+}

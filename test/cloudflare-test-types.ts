@@ -18,11 +18,16 @@ import type {
   runInDurableObject,
   waitOnExecutionContext
 } from "cloudflare:test";
+import type {
+  createExecutionContext as createExecutionContextInternal,
+  fetchMock as fetchMockInternal
+} from "cloudflare:test-internal";
 
 type Assert<T extends true> = T;
 type IsAssignable<T, U> = [T] extends [U] ? true : false;
 
 type CreatedExecutionContext = ReturnType<typeof createExecutionContext>;
+type CreatedExecutionContextInternal = ReturnType<typeof createExecutionContextInternal>;
 type CreatedScheduledController = ReturnType<typeof createScheduledController>;
 type CreatedMessageBatch = ReturnType<typeof createMessageBatch<{ value: number }>>;
 type GetQueueResultReturn = ReturnType<typeof getQueueResult>;
@@ -39,6 +44,12 @@ type CreatedPagesEventContext = ReturnType<
 type _ExecutionContextContract = Assert<
   IsAssignable<
     CreatedExecutionContext,
+    ExecutionContext
+  >
+>;
+type _ExecutionContextInternalContract = Assert<
+  IsAssignable<
+    CreatedExecutionContextInternal,
     ExecutionContext
   >
 >;
@@ -88,6 +99,12 @@ type _PagesEventContextContract = Assert<
   IsAssignable<
     CreatedPagesEventContext,
     PagesEventContext<{ userId: string }>
+  >
+>;
+type _FetchMockInternalContract = Assert<
+  IsAssignable<
+    typeof fetchMockInternal,
+    import("undici").MockAgent
   >
 >;
 

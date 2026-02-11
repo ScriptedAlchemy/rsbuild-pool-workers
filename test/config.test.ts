@@ -953,6 +953,39 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("keeps falsey plugin entries while deduping in sync config path", () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const value = defineWorkersConfig({
+      plugins: [false as unknown as any, existingPlugin],
+      workers: {
+        main: "./src/index.ts"
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const plugins = Array.isArray(value.plugins)
+      ? value.plugins
+      : value.plugins
+        ? [value.plugins]
+        : [];
+    expect(plugins).toContain(false);
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
+  });
+
   test("does not inject duplicate workers plugin in async config path", async () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -1664,6 +1697,39 @@ describe("defineWorkersConfig", () => {
     expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
       WORKERS_RSBUILD_PLUGIN_NAME
     );
+  });
+
+  test("defineWorkersProject keeps falsey plugin entries while deduping in sync config path", () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const value = defineWorkersProject({
+      plugins: [false as unknown as any, existingPlugin],
+      workers: {
+        main: "./src/project-worker.ts"
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const plugins = Array.isArray(value.plugins)
+      ? value.plugins
+      : value.plugins
+        ? [value.plugins]
+        : [];
+    expect(plugins).toContain(false);
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
   });
 
   test("defineWorkersProject deduplicates workers plugin in async config path", async () => {

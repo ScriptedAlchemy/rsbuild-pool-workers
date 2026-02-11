@@ -134,4 +134,7 @@ type _DurableObjectStatePlaceholderContract = Assert<
   >
 >;
 
+// @ts-expect-error `env` is readonly.
+env.SHOULD_NOT_BE_ASSIGNABLE = 1;
+
 export {};

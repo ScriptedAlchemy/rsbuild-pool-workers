@@ -1472,6 +1472,57 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports top-level workers function inject() direct-env fallback end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          include: ["./inject-top-level-direct-env.test.ts"],
+          workers: ({ inject }) => ({
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                TOP_LEVEL_DIRECT_ENV: inject("TOP_LEVEL_DIRECT_ENV")
+              }
+            }
+          })
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.TOP_LEVEL_DIRECT_ENV));
+          }
+        };
+      `,
+      "inject-top-level-direct-env.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("top-level workers direct-env fallback value is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-top-level-direct-env");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("inject-top-level-direct-env.test.ts");
+      },
+      {
+        env: {
+          TOP_LEVEL_DIRECT_ENV: "hello-top-level-direct-env"
+        }
+      }
+    );
+  });
+
   test("isolates per-fixture env overrides for inject() values", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

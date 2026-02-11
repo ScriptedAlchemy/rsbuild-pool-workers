@@ -24,6 +24,15 @@ describe("unsupported cloudflare:test APIs", () => {
     ).rejects.toThrow(
       "Failed to execute 'runInDurableObject': parameter 2 is not of type 'function'."
     );
+
+    await expect(
+      runInDurableObject(
+        { fetch: async () => new Response("ok"), id: {} } as unknown as DurableObjectStubLike,
+        async () => "value"
+      )
+    ).rejects.toThrow(
+      "Failed to execute 'runInDurableObject': parameter 1 is not of type 'DurableObjectStub'."
+    );
   });
 
   test("runDurableObjectAlarm throws with explicit guidance", async () => {
@@ -32,7 +41,10 @@ describe("unsupported cloudflare:test APIs", () => {
     );
 
     await expect(
-      runDurableObjectAlarm({ fetch: async () => new Response("ok"), id: {} })
+      runDurableObjectAlarm({
+        fetch: async () => new Response("ok"),
+        id: { toString: () => "id-1" }
+      } as DurableObjectStubLike)
     ).rejects.toThrow(
       "runDurableObjectAlarm() is not yet available in Rstest mode."
     );

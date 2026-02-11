@@ -14,6 +14,24 @@ function runtime() {
   return getWorkersRuntimeState();
 }
 
+function isDurableObjectIdLike(value: unknown): value is DurableObjectIdLike {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("toString" in value) ||
+    typeof (value as { toString?: unknown }).toString !== "function"
+  ) {
+    return false;
+  }
+
+  try {
+    const rendered = String((value as { toString: () => string }).toString());
+    return rendered !== "[object Object]" && rendered.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export interface DurableObjectIdLike {
   toString(): string;
 }
@@ -42,13 +60,13 @@ export interface DurableObjectStatePlaceholder {
 }
 
 function isDurableObjectStub(value: unknown): value is DurableObjectStubLike {
+  const id = (value as { id?: unknown } | null)?.id;
   return (
     typeof value === "object" &&
     value !== null &&
     "fetch" in value &&
     typeof (value as { fetch?: unknown }).fetch === "function" &&
-    "id" in value &&
-    typeof (value as { id?: unknown }).id === "object"
+    isDurableObjectIdLike(id)
   );
 }
 

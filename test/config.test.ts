@@ -85,6 +85,35 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).not.toContain("nested-worker.ts");
   });
 
+  test("does not evaluate nested workers function when top-level workers function exists", () => {
+    const value = defineWorkersConfig({
+      workers: ({ inject }: WorkerPoolOptionsContext) => ({
+        main: "./src/top-level-function-worker.ts",
+        miniflare: {
+          bindings: {
+            TOP_LEVEL_FUNCTION_VALUE: inject<string>("TOP_LEVEL_FUNCTION_VALUE") ?? "top-level-fn"
+          }
+        }
+      }),
+      test: {
+        poolOptions: {
+          workers: () => {
+            throw new Error("nested workers function should not execute");
+          }
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("top-level-function-worker.ts");
+    expect(String(defineValue)).toContain("top-level-fn");
+  });
+
   test("supports async config functions", async () => {
     const configFactory = defineWorkersConfig(async () => ({
       workers: {
@@ -686,6 +715,36 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-top-level-worker.ts");
     expect(String(defineValue)).toContain("project-top-level");
     expect(String(defineValue)).not.toContain("project-nested-worker.ts");
+  });
+
+  test("defineWorkersProject does not evaluate nested workers function when top-level function exists", () => {
+    const value = defineWorkersProject({
+      workers: ({ inject }: WorkerPoolOptionsContext) => ({
+        main: "./src/project-top-level-function-worker.ts",
+        miniflare: {
+          bindings: {
+            PROJECT_TOP_LEVEL_FUNCTION_VALUE:
+              inject<string>("PROJECT_TOP_LEVEL_FUNCTION_VALUE") ?? "project-top-level-fn"
+          }
+        }
+      }),
+      test: {
+        poolOptions: {
+          workers: () => {
+            throw new Error("project nested workers function should not execute");
+          }
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-top-level-function-worker.ts");
+    expect(String(defineValue)).toContain("project-top-level-fn");
   });
 
   test("defineWorkersProject supports promise config exports", async () => {

@@ -62,6 +62,20 @@ export const withInjectedWorkers = defineWorkersProject({
     }
   })
 });
+
+// promise exports can also use top-level workers functions:
+export const withPromiseTopLevelWorkers = defineWorkersProject(
+  Promise.resolve({
+    workers: ({ inject }) => ({
+      main: "./src/index.ts",
+      miniflare: {
+        bindings: {
+          API_ORIGIN: inject("API_ORIGIN")
+        }
+      }
+    })
+  })
+);
 ```
 
 Then in tests:

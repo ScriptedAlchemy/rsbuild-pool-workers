@@ -77,7 +77,7 @@ import {
   - `SELF.fetch()` and `SELF.scheduled()`
   - `fetchMock`
   - `listDurableObjectIds`
-  - `runInDurableObject` for RPC-callable instance methods
+  - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`)
   - event/queue helpers and D1 migration helper utilities
 - Some advanced `cloudflare:test` APIs are currently stubs in Rstest mode:
   - Durable Object state access within `runInDurableObject` callbacks

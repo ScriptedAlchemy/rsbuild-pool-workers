@@ -1,4 +1,8 @@
 import type {
+  DurableObjectIdLike,
+  DurableObjectNamespaceLike,
+  DurableObjectStatePlaceholder,
+  DurableObjectStubLike,
   ExecutionContext,
   PagesEventContext,
   QueueController,
@@ -9,6 +13,9 @@ import type {
   createPagesEventContext,
   createScheduledController,
   getQueueResult,
+  listDurableObjectIds,
+  runDurableObjectAlarm,
+  runInDurableObject,
   waitOnExecutionContext
 } from "cloudflare:test";
 
@@ -19,6 +26,11 @@ type CreatedExecutionContext = ReturnType<typeof createExecutionContext>;
 type CreatedScheduledController = ReturnType<typeof createScheduledController>;
 type CreatedMessageBatch = ReturnType<typeof createMessageBatch<{ value: number }>>;
 type GetQueueResultReturn = ReturnType<typeof getQueueResult>;
+type ListDurableObjectIdsReturn = ReturnType<typeof listDurableObjectIds>;
+type RunDurableObjectAlarmReturn = ReturnType<typeof runDurableObjectAlarm>;
+type RunInDurableObjectReturn = ReturnType<
+  typeof runInDurableObject<{ ping: () => Promise<string> }, string>
+>;
 type WaitOnExecutionContextReturn = ReturnType<typeof waitOnExecutionContext>;
 type CreatedPagesEventContext = ReturnType<
   typeof createPagesEventContext<{ userId: string }>
@@ -48,6 +60,24 @@ type _QueueResultContract = Assert<
     Promise<QueueResult>
   >
 >;
+type _ListDurableObjectIdsContract = Assert<
+  IsAssignable<
+    ListDurableObjectIdsReturn,
+    Promise<DurableObjectIdLike[]>
+  >
+>;
+type _RunDurableObjectAlarmContract = Assert<
+  IsAssignable<
+    RunDurableObjectAlarmReturn,
+    Promise<boolean>
+  >
+>;
+type _RunInDurableObjectContract = Assert<
+  IsAssignable<
+    RunInDurableObjectReturn,
+    Promise<string>
+  >
+>;
 type _WaitOnExecutionContextContract = Assert<
   IsAssignable<
     WaitOnExecutionContextReturn,
@@ -58,6 +88,25 @@ type _PagesEventContextContract = Assert<
   IsAssignable<
     CreatedPagesEventContext,
     PagesEventContext<{ userId: string }>
+  >
+>;
+
+type _DurableObjectNamespaceLikeContract = Assert<
+  IsAssignable<
+    {
+      newUniqueId: () => DurableObjectIdLike;
+      idFromName: (_name: string) => DurableObjectIdLike;
+      idFromString: (_id: string) => DurableObjectIdLike;
+      get: (_id: DurableObjectIdLike) => DurableObjectStubLike;
+    },
+    DurableObjectNamespaceLike
+  >
+>;
+
+type _DurableObjectStatePlaceholderContract = Assert<
+  IsAssignable<
+    DurableObjectStatePlaceholder,
+    { __kind: "DurableObjectStatePlaceholder" }
   >
 >;
 

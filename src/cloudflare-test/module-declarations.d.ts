@@ -8,6 +8,33 @@ declare module "cloudflare:test" {
 
   export const fetchMock: import("undici").MockAgent;
 
+  export interface DurableObjectIdLike {
+    toString(): string;
+  }
+
+  export interface DurableObjectStubLike {
+    id: DurableObjectIdLike;
+    fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+    [method: string]: unknown;
+  }
+
+  export interface DurableObjectNamespaceLike {
+    newUniqueId(options?: { jurisdiction?: string }): DurableObjectIdLike;
+    idFromName(name: string): DurableObjectIdLike;
+    idFromString(id: string): DurableObjectIdLike;
+    get(
+      id: DurableObjectIdLike,
+      options?: {
+        locationHint?: string;
+        jurisdiction?: string;
+      }
+    ): DurableObjectStubLike;
+  }
+
+  export interface DurableObjectStatePlaceholder {
+    readonly __kind: "DurableObjectStatePlaceholder";
+  }
+
   export interface D1Migration {
     name: string;
     queries: string[];
@@ -104,11 +131,16 @@ declare module "cloudflare:test" {
   }): PagesEventContext<T>;
 
   export function runInDurableObject<_ObjectType, _ReturnType>(
-    stub: unknown,
-    callback: (_instance: _ObjectType, _state: unknown) => _ReturnType | Promise<_ReturnType>
+    stub: DurableObjectStubLike,
+    callback: (
+      _instance: _ObjectType,
+      _state: DurableObjectStatePlaceholder
+    ) => _ReturnType | Promise<_ReturnType>
   ): Promise<_ReturnType>;
-  export function runDurableObjectAlarm(stub: unknown): Promise<boolean>;
-  export function listDurableObjectIds(namespace: unknown): Promise<unknown[]>;
+  export function runDurableObjectAlarm(stub: DurableObjectStubLike): Promise<boolean>;
+  export function listDurableObjectIds(
+    namespace: DurableObjectNamespaceLike
+  ): Promise<DurableObjectIdLike[]>;
   export function introspectWorkflowInstance(
     workflow: unknown,
     instanceId: string

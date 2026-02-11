@@ -212,4 +212,78 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain("fetch-mock.test.ts");
     });
   });
+
+  test("supports runInDurableObject for RPC-callable methods", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-rpc.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async incrementAndGet() {
+            const value = Number((await this.ctx.storage.get("count")) ?? 0) + 1;
+            await this.ctx.storage.put("count", value);
+            return value;
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-rpc.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test";
+
+        test("runs RPC-callable durable object methods", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+            get(id: unknown): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const stub = namespace.get(id);
+
+          const first = await runInDurableObject<{ incrementAndGet: () => Promise<number> }, number>(
+            stub as any,
+            async (instance) => instance.incrementAndGet()
+          );
+          const second = await runInDurableObject<{ incrementAndGet: () => Promise<number> }, number>(
+            stub as any,
+            async (instance) => instance.incrementAndGet()
+          );
+
+          expect(first).toBe(1);
+          expect(second).toBe(2);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-rpc.test.ts");
+    });
+  });
 });

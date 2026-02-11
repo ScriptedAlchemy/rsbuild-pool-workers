@@ -161,4 +161,55 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain("persist.test.ts");
     });
   });
+
+  test("supports fetchMock for outbound requests in fixture tests", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./fetch-mock.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          async fetch() {
+            const response = await fetch("http://example.com/data");
+            return new Response(await response.text());
+          }
+        };
+      `,
+      "fetch-mock.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF, fetchMock } from "cloudflare:test";
+
+        test("intercepts outbound fetch", async () => {
+          fetchMock.activate();
+          fetchMock.disableNetConnect();
+          fetchMock
+            .get("http://example.com")
+            .intercept({ path: "/data", method: "GET" })
+            .reply(200, "from-mock");
+
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("from-mock");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("fetch-mock.test.ts");
+    });
+  });
 });

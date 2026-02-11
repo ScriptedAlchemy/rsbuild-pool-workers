@@ -212,6 +212,43 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("thenable");
   });
 
+  test("dedupes workers plugin when config functions return thenables", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersConfig(() => {
+      const value = {
+        plugins: [existingPlugin],
+        workers: {
+          main: "./src/index.ts"
+        }
+      };
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toHaveLength(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
   test("preserves this binding for promise-returning config function exports", async () => {
     const configFactory = defineWorkersConfig(function (this: { mode?: string }) {
       return Promise.resolve({
@@ -2453,6 +2490,43 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-thenable");
     expect(String(defineValue)).toContain("project-thenable.ts");
+  });
+
+  test("defineWorkersProject dedupes workers plugin when config functions return thenables", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersProject(() => {
+      const value = {
+        plugins: [existingPlugin],
+        workers: {
+          main: "./src/project-thenable.ts"
+        }
+      };
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toHaveLength(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
   });
 
   test("defineWorkersProject preserves this binding for promise-returning config function exports", async () => {

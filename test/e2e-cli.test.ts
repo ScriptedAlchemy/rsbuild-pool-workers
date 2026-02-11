@@ -1623,6 +1623,56 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports defineWorkersProject promise export with nested test.poolOptions", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            test: {
+              include: ["./project-promise-nested.test.ts"],
+              poolOptions: {
+                workers: {
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      PROJECT_PROMISE_NESTED_VALUE: "project-promise-nested-ok"
+                    }
+                  }
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_NESTED_VALUE));
+          }
+        };
+      `,
+      "project-promise-nested.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("defineWorkersProject promise nested workers wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-nested-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise-nested.test.ts");
+    });
+  });
+
   test("supports defineWorkersProject async workers options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

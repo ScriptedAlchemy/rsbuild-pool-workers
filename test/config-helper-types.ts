@@ -1,5 +1,6 @@
 import type { RstestConfig } from "@rstest/core";
 import { defineWorkersConfig, defineWorkersProject } from "../src/config/index";
+import type { WorkersUserConfig } from "../src/config/index";
 import { mapAnyConfigExport } from "../src/config/types";
 
 type Assert<T extends true> = T;
@@ -172,6 +173,36 @@ type _WorkersProjectThenableFactoryArgs = Assert<
   IsExact<
     Parameters<typeof workersProjectThenableFactory>,
     ["preview"]
+  >
+>;
+
+const workersPromiseLikeInput = Promise.resolve({
+  workers: {
+    main: "./src/promise-like.ts"
+  }
+} satisfies WorkersUserConfig<RstestConfig>) as PromiseLike<WorkersUserConfig<RstestConfig>>;
+
+const workersPromiseLikeExport = defineWorkersConfig(workersPromiseLikeInput);
+
+type _WorkersPromiseLikeExportContract = Assert<
+  IsExact<
+    typeof workersPromiseLikeExport,
+    Promise<WorkersUserConfig<RstestConfig>>
+  >
+>;
+
+const workersProjectPromiseLikeInput = Promise.resolve({
+  workers: {
+    main: "./src/project-promise-like.ts"
+  }
+} satisfies WorkersUserConfig<RstestConfig>) as PromiseLike<WorkersUserConfig<RstestConfig>>;
+
+const workersProjectPromiseLikeExport = defineWorkersProject(workersProjectPromiseLikeInput);
+
+type _WorkersProjectPromiseLikeExportContract = Assert<
+  IsExact<
+    typeof workersProjectPromiseLikeExport,
+    Promise<WorkersUserConfig<RstestConfig>>
   >
 >;
 

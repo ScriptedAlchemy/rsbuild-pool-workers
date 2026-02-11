@@ -50,3 +50,31 @@ test("integration", async () => {
 });
 ```
 
+## Config utilities
+
+`@cloudflare/rstest-pool-workers/config` also exports helpers aligned with the
+Cloudflare Workers test ecosystem:
+
+- `readD1Migrations(migrationsPath)` — reads and splits SQL migrations via Wrangler.
+- `buildPagesASSETSBinding(assetsPath)` — builds a Pages `ASSETS` binding for tests.
+
+Example:
+
+```ts
+import {
+  buildPagesASSETSBinding,
+  readD1Migrations
+} from "@cloudflare/rstest-pool-workers/config";
+```
+
+## Notes
+
+- TypeScript worker entrypoints in `workers.main` are bundled for Miniflare runtime.
+- `test.poolOptions.workers` can be an object or function. Function mode supports:
+  - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables.
+- Some advanced `cloudflare:test` APIs are currently stubs in Rstest mode:
+  - `runInDurableObject`
+  - `runDurableObjectAlarm`
+  - `listDurableObjectIds`
+  - workflow introspection helpers
+

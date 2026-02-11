@@ -10,7 +10,8 @@ const execFileAsync = promisify(execFile);
 describe("rstest CLI integration", () => {
   async function runFixture(
     files: Record<string, string>,
-    assertions: (result: { stdout: string; stderr: string }) => void
+    assertions: (result: { stdout: string; stderr: string }) => void,
+    options?: { env?: Record<string, string | undefined> }
   ): Promise<void> {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-e2e-"));
     const packageRoot = process.cwd();
@@ -32,7 +33,8 @@ describe("rstest CLI integration", () => {
           {
             cwd: tempRoot,
             env: {
-              ...process.env
+              ...process.env,
+              ...(options?.env ?? {})
             },
             maxBuffer: 1024 * 1024 * 5
           }
@@ -647,160 +649,166 @@ describe("rstest CLI integration", () => {
   test("supports function-valued workers options with inject() end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
-
-    process.env.RSTEST_INJECT_GREETING = "\"hello-from-inject\"";
-    try {
-      const files: Record<string, string> = {
-        "rstest.config.ts": `
-          import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
-          export default defineWorkersConfig({
-            test: {
-              include: ["./inject-workers-options.test.ts"],
-              poolOptions: {
-                workers: ({ inject }) => ({
-                  main: "./worker.ts",
-                  miniflare: {
-                    bindings: {
-                      GREETING: inject("GREETING")
-                    }
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./inject-workers-options.test.ts"],
+            poolOptions: {
+              workers: ({ inject }) => ({
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    GREETING: inject("GREETING")
                   }
-                })
-              }
+                }
+              })
             }
-          });
-        `,
-        "worker.ts": `
-          export default {
-            fetch(_request, env) {
-              return new Response(String(env.GREETING));
-            }
-          };
-        `,
-        "inject-workers-options.test.ts": `
-          import { test, expect } from "@rstest/core";
-          import { SELF } from "cloudflare:test";
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.GREETING));
+          }
+        };
+      `,
+      "inject-workers-options.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
 
-          test("inject() value is wired into worker bindings", async () => {
-            const res = await SELF.fetch("http://localhost/");
-            expect(await res.text()).toBe("hello-from-inject");
-          });
-        `
-      };
+        test("inject() value is wired into worker bindings", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-from-inject");
+        });
+      `
+    };
 
-      await runFixture(files, ({ stdout, stderr }) => {
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
         expect(stderr).toBe("");
         expect(stdout).toContain('"status": "pass"');
         expect(stdout).toContain("inject-workers-options.test.ts");
-      });
-    } finally {
-      delete process.env.RSTEST_INJECT_GREETING;
-    }
+      },
+      {
+        env: {
+          RSTEST_INJECT_GREETING: "\"hello-from-inject\""
+        }
+      }
+    );
   });
 
   test("supports inject() direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
-
-    process.env.DIRECT_GREETING = "hello-from-direct-env";
-    try {
-      const files: Record<string, string> = {
-        "rstest.config.ts": `
-          import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
-          export default defineWorkersConfig({
-            test: {
-              include: ["./inject-direct-env.test.ts"],
-              poolOptions: {
-                workers: ({ inject }) => ({
-                  main: "./worker.ts",
-                  miniflare: {
-                    bindings: {
-                      GREETING: inject("DIRECT_GREETING")
-                    }
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./inject-direct-env.test.ts"],
+            poolOptions: {
+              workers: ({ inject }) => ({
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    GREETING: inject("DIRECT_GREETING")
                   }
-                })
-              }
+                }
+              })
             }
-          });
-        `,
-        "worker.ts": `
-          export default {
-            fetch(_request, env) {
-              return new Response(String(env.GREETING));
-            }
-          };
-        `,
-        "inject-direct-env.test.ts": `
-          import { test, expect } from "@rstest/core";
-          import { SELF } from "cloudflare:test";
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.GREETING));
+          }
+        };
+      `,
+      "inject-direct-env.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
 
-          test("inject() reads from direct env fallback", async () => {
-            const res = await SELF.fetch("http://localhost/");
-            expect(await res.text()).toBe("hello-from-direct-env");
-          });
-        `
-      };
+        test("inject() reads from direct env fallback", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-from-direct-env");
+        });
+      `
+    };
 
-      await runFixture(files, ({ stdout, stderr }) => {
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
         expect(stderr).toBe("");
         expect(stdout).toContain('"status": "pass"');
         expect(stdout).toContain("inject-direct-env.test.ts");
-      });
-    } finally {
-      delete process.env.DIRECT_GREETING;
-    }
+      },
+      {
+        env: {
+          DIRECT_GREETING: "hello-from-direct-env"
+        }
+      }
+    );
   });
 
   test("supports async config with async workers options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
-
-    process.env.RSTEST_INJECT_ASYNC_GREETING = "\"hello-from-async-inject\"";
-    try {
-      const files: Record<string, string> = {
-        "rstest.config.ts": `
-          import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
-          export default defineWorkersConfig(async () => ({
-            test: {
-              include: ["./async-workers-options.test.ts"],
-              poolOptions: {
-                workers: async ({ inject }) => ({
-                  main: "./worker.ts",
-                  miniflare: {
-                    bindings: {
-                      GREETING: inject("ASYNC_GREETING")
-                    }
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          test: {
+            include: ["./async-workers-options.test.ts"],
+            poolOptions: {
+              workers: async ({ inject }) => ({
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    GREETING: inject("ASYNC_GREETING")
                   }
-                })
-              }
+                }
+              })
             }
-          }));
-        `,
-        "worker.ts": `
-          export default {
-            fetch(_request, env) {
-              return new Response(String(env.GREETING));
-            }
-          };
-        `,
-        "async-workers-options.test.ts": `
-          import { test, expect } from "@rstest/core";
-          import { SELF } from "cloudflare:test";
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.GREETING));
+          }
+        };
+      `,
+      "async-workers-options.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
 
-          test("async workers options are resolved before runtime starts", async () => {
-            const res = await SELF.fetch("http://localhost/");
-            expect(await res.text()).toBe("hello-from-async-inject");
-          });
-        `
-      };
+        test("async workers options are resolved before runtime starts", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-from-async-inject");
+        });
+      `
+    };
 
-      await runFixture(files, ({ stdout, stderr }) => {
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
         expect(stderr).toBe("");
         expect(stdout).toContain('"status": "pass"');
         expect(stdout).toContain("async-workers-options.test.ts");
-      });
-    } finally {
-      delete process.env.RSTEST_INJECT_ASYNC_GREETING;
-    }
+      },
+      {
+        env: {
+          RSTEST_INJECT_ASYNC_GREETING: "\"hello-from-async-inject\""
+        }
+      }
+    );
   });
 
   test("supports promise-based config exports end-to-end", async () => {

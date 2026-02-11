@@ -38,7 +38,8 @@ export default defineWorkersConfig({
 ```
 
 `defineWorkersProject()` is an alias of `defineWorkersConfig()` and supports the
-same options, including top-level `workers` configuration:
+same options/export shapes (object, promise, sync function, async function),
+including top-level `workers` configuration:
 
 ```ts
 import { defineWorkersProject } from "@cloudflare/rstest-pool-workers/config";

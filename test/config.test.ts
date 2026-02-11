@@ -147,6 +147,33 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_API_PORT;
   });
 
+  test("supports top-level workers function with inject()", () => {
+    process.env.RSTEST_INJECT_TOP_LEVEL_API = "\"http://localhost:7000\"";
+
+    const value = defineWorkersConfig({
+      workers: ({ inject }: WorkerPoolOptionsContext) => ({
+        main: "./src/index.ts",
+        miniflare: {
+          bindings: {
+            TOP_LEVEL_API: inject<string>("TOP_LEVEL_API")
+          }
+        }
+      }),
+      include: ["test/top-level/**/*.test.ts"]
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    expect(value.include).toEqual(["test/top-level/**/*.test.ts"]);
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("http://localhost:7000");
+
+    delete process.env.RSTEST_INJECT_TOP_LEVEL_API;
+  });
+
   test("supports direct env fallback for inject()", () => {
     process.env.API_HOST = "\"http://localhost:8787\"";
 

@@ -1421,6 +1421,57 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports top-level workers function with inject() end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          include: ["./inject-top-level-workers.test.ts"],
+          workers: ({ inject }) => ({
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                TOP_LEVEL_GREETING: inject("TOP_LEVEL_GREETING")
+              }
+            }
+          })
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.TOP_LEVEL_GREETING));
+          }
+        };
+      `,
+      "inject-top-level-workers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("top-level workers function inject value is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-top-level-inject");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("inject-top-level-workers.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_TOP_LEVEL_GREETING: "\"hello-top-level-inject\""
+        }
+      }
+    );
+  });
+
   test("isolates per-fixture env overrides for inject() values", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

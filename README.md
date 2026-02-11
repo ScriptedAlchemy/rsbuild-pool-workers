@@ -94,6 +94,7 @@ import {
 - The package exports `WORKERS_RSBUILD_PLUGIN_NAME` for plugin detection/deduplication scenarios.
 - `test.poolOptions.workers` can be an object or function. Function mode supports:
   - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables.
+  - async workers functions when `defineWorkersConfig()` is used with an async config export.
 - `cloudflare:test` currently supports:
   - `env`
   - `SELF.fetch()` and `SELF.scheduled()`

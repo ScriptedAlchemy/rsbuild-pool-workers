@@ -1911,6 +1911,56 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("does not evaluate nested workers function in async config export when top-level async function is set end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          include: ["./async-function-precedence.test.ts"],
+          workers: async () => ({
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                ASYNC_FUNCTION_PRECEDENCE: "async-top-level-function-selected"
+              }
+            }
+          }),
+          test: {
+            poolOptions: {
+              workers: () => {
+                throw new Error("nested async workers function should not execute");
+              }
+            }
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.ASYNC_FUNCTION_PRECEDENCE));
+          }
+        };
+      `,
+      "async-function-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("async top-level workers function value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("async-top-level-function-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("async-function-precedence.test.ts");
+    });
+  });
+
   test("supports async top-level workers function direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3541,6 +3591,57 @@ describe("rstest CLI integration", () => {
         }
       }
     );
+  });
+
+  test("does not evaluate nested workers function in defineWorkersProject async config export when top-level async function is set end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          include: ["./project-async-function-precedence.test.ts"],
+          workers: async () => ({
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_ASYNC_FUNCTION_PRECEDENCE: "project-async-top-level-function-selected"
+              }
+            }
+          }),
+          test: {
+            poolOptions: {
+              workers: () => {
+                throw new Error("project nested async workers function should not execute");
+              }
+            }
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_ASYNC_FUNCTION_PRECEDENCE));
+          }
+        };
+      `,
+      "project-async-function-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project async top-level workers function value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-async-top-level-function-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-async-function-precedence.test.ts");
+    });
   });
 
   test("supports defineWorkersProject async top-level workers direct-env fallback end-to-end", async () => {

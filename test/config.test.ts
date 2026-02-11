@@ -809,6 +809,36 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_TOP_LEVEL_ASYNC_VALUE;
   });
 
+  test("does not evaluate nested workers function in async config export when top-level async function exists", async () => {
+    const value = defineWorkersConfig(async () => ({
+      workers: async () => ({
+        main: "./src/async-top-level-function-precedence.ts",
+        miniflare: {
+          bindings: {
+            ASYNC_TOP_LEVEL_FUNCTION_PRECEDENCE: "async-top-level-function"
+          }
+        }
+      }),
+      test: {
+        poolOptions: {
+          workers: () => {
+            throw new Error("nested async-config workers function should not execute");
+          }
+        }
+      }
+    }));
+
+    if (typeof value !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await value();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("async-top-level-function-precedence.ts");
+    expect(String(defineValue)).toContain("async-top-level-function");
+  });
+
   test("supports direct env fallback for async top-level workers function", async () => {
     process.env.TOP_LEVEL_ASYNC_FALLBACK_VALUE = "\"top-level-async-fallback\"";
 
@@ -1741,6 +1771,36 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-top-level-async");
 
     delete process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_ASYNC;
+  });
+
+  test("defineWorkersProject does not evaluate nested workers function in async config export when top-level async function exists", async () => {
+    const configFactory = defineWorkersProject(async () => ({
+      workers: async () => ({
+        main: "./src/project-async-top-level-function-precedence.ts",
+        miniflare: {
+          bindings: {
+            PROJECT_ASYNC_TOP_LEVEL_FUNCTION_PRECEDENCE: "project-async-top-level-function"
+          }
+        }
+      }),
+      test: {
+        poolOptions: {
+          workers: () => {
+            throw new Error("project nested async-config workers function should not execute");
+          }
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-async-top-level-function-precedence.ts");
+    expect(String(defineValue)).toContain("project-async-top-level-function");
   });
 
   test("defineWorkersProject supports direct env fallback for async top-level workers function", async () => {

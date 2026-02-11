@@ -983,6 +983,40 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("keeps falsey plugin entries while deduping in async config path", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersConfig(async () => ({
+      plugins: [false as unknown as any, existingPlugin],
+      workers: {
+        main: "./src/index.ts"
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toContain(false);
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
+  });
+
   test("does not inject duplicate workers plugin when plugins is a single value", () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -1630,6 +1664,40 @@ describe("defineWorkersConfig", () => {
     expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
       WORKERS_RSBUILD_PLUGIN_NAME
     );
+  });
+
+  test("defineWorkersProject keeps falsey plugin entries while deduping in async config path", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersProject(async () => ({
+      plugins: [false as unknown as any, existingPlugin],
+      workers: {
+        main: "./src/project-worker.ts"
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toContain(false);
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
   });
 
   test("defineWorkersProject deduplicates workers plugin when plugins is single value", () => {

@@ -621,6 +621,59 @@ describe("rstest CLI integration", () => {
     }
   });
 
+  test("supports inject() direct-env fallback end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    process.env.DIRECT_GREETING = "hello-from-direct-env";
+    try {
+      const files: Record<string, string> = {
+        "rstest.config.ts": `
+          import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+          export default defineWorkersConfig({
+            test: {
+              include: ["./inject-direct-env.test.ts"],
+              poolOptions: {
+                workers: ({ inject }) => ({
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      GREETING: inject("DIRECT_GREETING")
+                    }
+                  }
+                })
+              }
+            }
+          });
+        `,
+        "worker.ts": `
+          export default {
+            fetch(_request, env) {
+              return new Response(String(env.GREETING));
+            }
+          };
+        `,
+        "inject-direct-env.test.ts": `
+          import { test, expect } from "@rstest/core";
+          import { SELF } from "cloudflare:test";
+
+          test("inject() reads from direct env fallback", async () => {
+            const res = await SELF.fetch("http://localhost/");
+            expect(await res.text()).toBe("hello-from-direct-env");
+          });
+        `
+      };
+
+      await runFixture(files, ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("inject-direct-env.test.ts");
+      });
+    } finally {
+      delete process.env.DIRECT_GREETING;
+    }
+  });
+
   test("supports async config with async workers options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

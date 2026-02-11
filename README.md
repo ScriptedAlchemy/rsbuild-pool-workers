@@ -37,6 +37,20 @@ export default defineWorkersConfig({
 });
 ```
 
+`defineWorkersProject()` is an alias of `defineWorkersConfig()` and supports the
+same options, including top-level `workers` configuration:
+
+```ts
+import { defineWorkersProject } from "@cloudflare/rstest-pool-workers/config";
+
+export default defineWorkersProject({
+  include: ["./test/**/*.test.ts"],
+  workers: {
+    main: "./src/index.ts"
+  }
+});
+```
+
 Then in tests:
 
 ```ts

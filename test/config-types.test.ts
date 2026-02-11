@@ -106,4 +106,26 @@ describe("mapAnyConfigExport", () => {
     const resolved = await mapped({ mode: "serve" }, "watch");
     expect(resolved.include).toEqual(["serve-watch", "mapped-async-function.test.ts"]);
   });
+
+  test("preserves this and arguments for promise-returning mapped config functions", async () => {
+    const mapped = mapAnyConfigExport(
+      (value) => ({
+        ...value,
+        include: [...(value.include ?? []), "mapped-promise-function.test.ts"]
+      }),
+      function (this: { mode?: string }, ...args: unknown[]) {
+        const suffix = typeof args[0] === "string" ? args[0] : "none";
+        return Promise.resolve({
+          include: [`${this.mode ?? "unknown"}-${suffix}`]
+        } satisfies RstestConfig);
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped promise-returning function export");
+    }
+
+    const resolved = await mapped.call({ mode: "ctx" }, "arg");
+    expect(resolved.include).toEqual(["ctx-arg", "mapped-promise-function.test.ts"]);
+  });
 });

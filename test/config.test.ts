@@ -193,6 +193,48 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("keeps non-workers plugins while deduping in promise config exports", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+    const otherPlugin = {
+      name: "other-plugin",
+      setup() {}
+    };
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        plugins: [otherPlugin, existingPlugin],
+        workers: {
+          main: "./src/index.ts"
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+
+    expect(names).toContain(WORKERS_RSBUILD_PLUGIN_NAME);
+    expect(names).toContain("other-plugin");
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
+  });
+
   test("prefers top-level workers in promise exports when nested workers are also set", async () => {
     const configPromise = defineWorkersConfig(
       Promise.resolve({
@@ -1039,6 +1081,48 @@ describe("defineWorkersConfig", () => {
     expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
       WORKERS_RSBUILD_PLUGIN_NAME
     );
+  });
+
+  test("defineWorkersProject keeps non-workers plugins while deduping in promise exports", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+    const otherPlugin = {
+      name: "project-other-plugin",
+      setup() {}
+    };
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        plugins: [otherPlugin, existingPlugin],
+        workers: {
+          main: "./src/project-entry.ts"
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+
+    expect(names).toContain(WORKERS_RSBUILD_PLUGIN_NAME);
+    expect(names).toContain("project-other-plugin");
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
   });
 
   test("defineWorkersProject prefers top-level workers in promise exports", async () => {

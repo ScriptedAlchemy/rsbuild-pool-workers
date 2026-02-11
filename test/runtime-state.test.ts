@@ -466,4 +466,46 @@ describe("Workers runtime state integration", () => {
 
     expect(afterText).toBe("*/5 * * * *|1700000000000");
   });
+
+  test("SELF.scheduled applies default cron/time when options are omitted", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            async scheduled(controller, env, ctx) {
+              const payload = JSON.stringify({
+                cron: String(controller.cron),
+                scheduledTime: Number(controller.scheduledTime)
+              });
+              ctx.waitUntil(env.CLOCK.put("meta", payload));
+            },
+            async fetch(_request, env) {
+              return new Response((await env.CLOCK.get("meta")) ?? "none");
+            }
+          };
+        `,
+        kvNamespaces: ["CLOCK"]
+      }
+    });
+
+    await runtime.setup();
+    await SELF.scheduled();
+
+    let afterText = "none";
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const after = await SELF.fetch("http://localhost/");
+      afterText = await after.text();
+      if (afterText !== "none") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    expect(afterText).not.toBe("none");
+    const parsed = JSON.parse(afterText) as { cron: string; scheduledTime: number };
+    expect(parsed.cron).toBe("");
+    expect(Number.isFinite(parsed.scheduledTime)).toBe(true);
+    expect(parsed.scheduledTime).toBeGreaterThan(0);
+  });
 });

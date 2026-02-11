@@ -230,6 +230,77 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports SELF.scheduled defaults when options are omitted", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./scheduled-defaults.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  kvNamespaces: ["CLOCK"]
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          async scheduled(controller, env, ctx) {
+            const payload = JSON.stringify({
+              cron: String(controller.cron),
+              scheduledTime: Number(controller.scheduledTime)
+            });
+            ctx.waitUntil(env.CLOCK.put("meta", payload));
+          },
+          async fetch(_request, env) {
+            return new Response((await env.CLOCK.get("meta")) ?? "none");
+          }
+        };
+      `,
+      "scheduled-defaults.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("dispatches with default schedule options", async () => {
+          await SELF.scheduled();
+
+          let afterText = "none";
+          for (let i = 0; i < 10; i++) {
+            const res = await SELF.fetch("http://localhost/");
+            afterText = await res.text();
+            if (afterText !== "none") {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 25));
+          }
+
+          expect(afterText).not.toBe("none");
+          const parsed = JSON.parse(afterText) as {
+            cron: string;
+            scheduledTime: number;
+          };
+          expect(parsed.cron).toBe("");
+          expect(Number.isFinite(parsed.scheduledTime)).toBe(true);
+          expect(parsed.scheduledTime).toBeGreaterThan(0);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("scheduled-defaults.test.ts");
+    });
+  });
+
   test("supports fetchMock for outbound requests in fixture tests", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

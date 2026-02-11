@@ -1900,6 +1900,59 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports promise config export with top-level workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-top-level-workers-fn.test.ts"],
+            workers: ({ inject }) => ({
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_TOP_LEVEL_WORKERS_FN: inject("PROMISE_TOP_LEVEL_WORKERS_FN")
+                }
+              }
+            })
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_TOP_LEVEL_WORKERS_FN));
+          }
+        };
+      `,
+      "promise-top-level-workers-fn.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise top-level workers function is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-workers-fn-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-top-level-workers-fn.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_TOP_LEVEL_WORKERS_FN: "\"promise-top-level-workers-fn-ok\""
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject alias end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -1992,6 +2045,60 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise.test.ts");
     });
+  });
+
+  test("supports defineWorkersProject promise export with top-level workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-top-level-workers-fn.test.ts"],
+            workers: ({ inject }) => ({
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN: inject("PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN")
+                }
+              }
+            })
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN));
+          }
+        };
+      `,
+      "project-promise-top-level-workers-fn.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise top-level workers function is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-workers-fn-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-top-level-workers-fn.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN:
+            "\"project-promise-top-level-workers-fn-ok\""
+        }
+      }
+    );
   });
 
   test("supports defineWorkersProject promise export with nested test.poolOptions", async () => {

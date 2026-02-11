@@ -91,6 +91,7 @@ import {
 - TypeScript worker entrypoints in `workers.main` are bundled for Miniflare runtime.
 - `cloudflare:test-internal` is also aliased to the same runtime helpers for compatibility.
 - `env` bindings exposed by `cloudflare:test` are read-only.
+- The package exports `WORKERS_RSBUILD_PLUGIN_NAME` for plugin detection/deduplication scenarios.
 - `test.poolOptions.workers` can be an object or function. Function mode supports:
   - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables.
 - `cloudflare:test` currently supports:

@@ -672,6 +672,29 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED;
   });
 
+  test("propagates rejection from promise-like nested workers function", async () => {
+    const errorMessage = "promise-like nested workers rejection";
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: () => Promise.reject(new Error(errorMessage))
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(errorMessage);
+  });
+
   test("supports direct env fallback for promise-like nested workers function", async () => {
     process.env.PROMISE_LIKE_NESTED_DIRECT_FALLBACK = "\"promise-like-nested-direct-fallback\"";
 
@@ -1030,6 +1053,25 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("promise-like-top-level");
 
     delete process.env.RSTEST_INJECT_PROMISE_LIKE_TOP_LEVEL;
+  });
+
+  test("propagates rejection from promise-like top-level workers function", async () => {
+    const errorMessage = "promise-like top-level workers rejection";
+    const promiseLikeValue = {
+      workers: () => Promise.reject(new Error(errorMessage))
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(errorMessage);
   });
 
   test("supports direct env fallback for promise-like top-level workers function", async () => {
@@ -2766,6 +2808,29 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED;
   });
 
+  test("defineWorkersProject propagates rejection from promise-like nested workers function", async () => {
+    const errorMessage = "project promise-like nested workers rejection";
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: () => Promise.reject(new Error(errorMessage))
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
   test("defineWorkersProject supports direct env fallback for promise-like nested workers function", async () => {
     process.env.PROJECT_PROMISE_LIKE_NESTED_DIRECT_FALLBACK =
       "\"project-promise-like-nested-direct-fallback\"";
@@ -3136,6 +3201,25 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-like-top-level");
 
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_TOP_LEVEL;
+  });
+
+  test("defineWorkersProject propagates rejection from promise-like top-level workers function", async () => {
+    const errorMessage = "project promise-like top-level workers rejection";
+    const promiseLikeValue = {
+      workers: () => Promise.reject(new Error(errorMessage))
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
   });
 
   test("defineWorkersProject supports direct env fallback for promise-like top-level workers function", async () => {

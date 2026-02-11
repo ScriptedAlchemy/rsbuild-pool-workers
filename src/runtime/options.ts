@@ -4,6 +4,8 @@ import { z } from "zod";
 
 declare const __RSTEST_POOL_WORKERS_OPTIONS_JSON__: string;
 
+let workersOptionsOverrideForTesting: RawWorkersRuntimeOptions | undefined;
+
 const WorkersOptionsSchema = z.object({
   main: z.string().optional(),
   singleWorker: z.boolean().default(true),
@@ -31,6 +33,10 @@ function readDefineJson(): string {
 }
 
 export function readRawWorkersOptionsFromDefine(): RawWorkersRuntimeOptions {
+  if (workersOptionsOverrideForTesting) {
+    return workersOptionsOverrideForTesting;
+  }
+
   const json = readDefineJson();
   if (!json) {
     return {};
@@ -38,6 +44,16 @@ export function readRawWorkersOptionsFromDefine(): RawWorkersRuntimeOptions {
 
   const parsed = JSON.parse(json) as RawWorkersRuntimeOptions;
   return parsed;
+}
+
+/**
+ * Testing helper to bypass compile-time define values.
+ * Do not use in production runtime code.
+ */
+export function setWorkersRuntimeOptionsForTesting(
+  options: RawWorkersRuntimeOptions | undefined
+): void {
+  workersOptionsOverrideForTesting = options;
 }
 
 function resolvePathMaybe(root: string, maybePath: string | undefined): string | undefined {

@@ -36,6 +36,20 @@ export class WorkersRuntimeState {
   private readonly originalDispatcher = getGlobalDispatcher();
   private mockAgent: MockAgent = new MockAgent({ agent: new Agent() });
 
+  private async closeMockAgent(): Promise<void> {
+    try {
+      await this.mockAgent.close();
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        (error.name !== "ClientDestroyedError" &&
+          !error.message.includes("client is destroyed"))
+      ) {
+        throw error;
+      }
+    }
+  }
+
   async setup(): Promise<void> {
     if (this.setupReady) {
       return;
@@ -52,7 +66,7 @@ export class WorkersRuntimeState {
   }
 
   async teardown(): Promise<void> {
-    await this.mockAgent.close();
+    await this.closeMockAgent();
     setGlobalDispatcher(this.originalDispatcher);
 
     const mf = this.miniflare;
@@ -72,7 +86,7 @@ export class WorkersRuntimeState {
   }
 
   async resetFetchMock(): Promise<void> {
-    await this.mockAgent.close();
+    await this.closeMockAgent();
     this.mockAgent = new MockAgent({ agent: new Agent() });
     this.mockAgent.enableNetConnect();
     setGlobalDispatcher(this.mockAgent);

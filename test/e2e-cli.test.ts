@@ -453,4 +453,72 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain("do-state-access.test.ts");
     });
   });
+
+  test("lists Durable Object IDs via cloudflare:test helper", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-list-ids.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  },
+                  durableObjectsPersist: "./.mf/do"
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          async fetch(_request, env) {
+            const id = env.COUNTER.newUniqueId();
+            await env.COUNTER.get(id).fetch("http://localhost/");
+            return new Response(id.toString());
+          }
+        };
+      `,
+      "do-list-ids.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF, env, listDurableObjectIds } from "cloudflare:test";
+
+        test("enumerates created object ids", async () => {
+          const created = await (await SELF.fetch("http://localhost/")).text();
+          let idStrings: string[] = [];
+          for (let i = 0; i < 10; i++) {
+            const ids = await listDurableObjectIds(env.COUNTER as any);
+            idStrings = ids.map((id) => String(id.toString()));
+            if (idStrings.includes(created)) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+          expect(idStrings).toContain(created);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-list-ids.test.ts");
+    });
+  });
 });

@@ -236,24 +236,36 @@ export class WorkersRuntimeState {
       );
     }
 
-    const namespaceKey =
-      unsafeUniqueKey ??
-      `${scriptName ?? miniflareOptions?.name ?? "worker"}-${className}`;
+    const namespaceKeys = unsafeUniqueKey
+      ? [unsafeUniqueKey]
+      : Array.from(
+          new Set(
+            [scriptName, miniflareOptions?.name, "", "worker"]
+              .filter((name): name is string => typeof name === "string")
+              .map((name) => `${name}-${className}`)
+          )
+        );
 
-    const namespacePath = path.join(durablePersistPath, namespaceKey);
-    let files: string[] = [];
-    try {
-      files = await fs.readdir(namespacePath);
-    } catch {
-      return [];
+    const ids = new Set<string>();
+    for (const namespaceKey of namespaceKeys) {
+      const namespacePath = path.join(durablePersistPath, namespaceKey);
+      let files: string[] = [];
+      try {
+        files = await fs.readdir(namespacePath);
+      } catch {
+        continue;
+      }
+
+      for (const name of files) {
+        if (!name.endsWith(".sqlite")) {
+          continue;
+        }
+        ids.add(name.slice(0, -".sqlite".length));
+      }
     }
 
-    const ids = files
-      .filter((name) => name.endsWith(".sqlite"))
-      .map((name) => name.slice(0, -".sqlite".length));
-
     const idFromString = (namespace as { idFromString: (id: string) => unknown }).idFromString;
-    return ids.map((id) => idFromString(id));
+    return Array.from(ids).map((id) => idFromString(id));
   }
 
   private getPersistPaths(): string[] {

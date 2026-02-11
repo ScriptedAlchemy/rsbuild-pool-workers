@@ -416,6 +416,31 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("resolves relative wrangler.configPath for async top-level workers function", async () => {
+    const value = defineWorkersConfig(async () => ({
+      workers: async () => ({
+        main: "./src/index.ts",
+        wrangler: {
+          configPath: "./fixtures/async-wrangler.jsonc"
+        }
+      })
+    }));
+
+    if (typeof value !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await value();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    const parsed = JSON.parse(JSON.parse(String(defineValue))) as {
+      wrangler?: { configPath?: string };
+    };
+    expect(parsed.wrangler?.configPath).toBe(
+      path.resolve(process.cwd(), "test", "fixtures", "async-wrangler.jsonc")
+    );
+  });
+
   test("supports direct env fallback for inject()", () => {
     process.env.API_HOST = "\"http://localhost:8787\"";
 
@@ -1177,6 +1202,33 @@ describe("defineWorkersConfig", () => {
     };
     expect(parsed.wrangler?.configPath).toBe(
       path.resolve(process.cwd(), "test", "fixtures", "project-wrangler.jsonc")
+    );
+  });
+
+  test("defineWorkersProject resolves relative wrangler.configPath in promise top-level workers function", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () => ({
+          main: "./src/project-promise-worker.ts",
+          wrangler: {
+            configPath: "./fixtures/project-promise-wrangler.jsonc"
+          }
+        })
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    const parsed = JSON.parse(JSON.parse(String(defineValue))) as {
+      wrangler?: { configPath?: string };
+    };
+    expect(parsed.wrangler?.configPath).toBe(
+      path.resolve(process.cwd(), "test", "fixtures", "project-promise-wrangler.jsonc")
     );
   });
 

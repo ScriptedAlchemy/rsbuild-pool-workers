@@ -797,6 +797,49 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE;
   });
 
+  test("supports direct env fallback for promise-like top-level thenable workers function", async () => {
+    process.env.PROMISE_LIKE_TOP_LEVEL_THENABLE_DIRECT_FALLBACK =
+      "\"promise-like-top-level-thenable-direct-fallback\"";
+
+    const promiseLikeValue = {
+      workers: ({ inject }: WorkerPoolOptionsContext) => {
+        const workersValue = {
+          main: "./src/promise-like-top-level-thenable-direct-fallback.ts",
+          miniflare: {
+            bindings: {
+              PROMISE_LIKE_TOP_LEVEL_THENABLE_DIRECT_FALLBACK: inject<string>(
+                "PROMISE_LIKE_TOP_LEVEL_THENABLE_DIRECT_FALLBACK"
+              )
+            }
+          }
+        };
+        return {
+          then(resolve: (value: typeof workersValue) => void) {
+            resolve(workersValue);
+            return Promise.resolve(workersValue);
+          }
+        } as unknown as PromiseLike<typeof workersValue>;
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-top-level-thenable-direct-fallback");
+
+    delete process.env.PROMISE_LIKE_TOP_LEVEL_THENABLE_DIRECT_FALLBACK;
+  });
+
   test("dedupes workers plugin for promise config exports when plugins is single value", async () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -2654,6 +2697,51 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-like-top-level-thenable");
 
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE;
+  });
+
+  test("defineWorkersProject supports direct env fallback for promise-like top-level thenable workers function", async () => {
+    process.env.PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE_DIRECT_FALLBACK =
+      "\"project-promise-like-top-level-thenable-direct-fallback\"";
+
+    const promiseLikeValue = {
+      workers: ({ inject }: WorkerPoolOptionsContext) => {
+        const workersValue = {
+          main: "./src/project-promise-like-top-level-thenable-direct-fallback-entry.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE_DIRECT_FALLBACK: inject<string>(
+                "PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE_DIRECT_FALLBACK"
+              )
+            }
+          }
+        };
+        return {
+          then(resolve: (value: typeof workersValue) => void) {
+            resolve(workersValue);
+            return Promise.resolve(workersValue);
+          }
+        } as unknown as PromiseLike<typeof workersValue>;
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain(
+      "project-promise-like-top-level-thenable-direct-fallback"
+    );
+
+    delete process.env.PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE_DIRECT_FALLBACK;
   });
 
   test("defineWorkersProject dedupes workers plugin for promise config exports", async () => {

@@ -61,6 +61,29 @@ describe("Workers runtime state integration", () => {
     }).toThrow("Cannot redefine properties on cloudflare:test env.");
   });
 
+  test("SELF.fetch supports Request inputs with method/body semantics", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            async fetch(request) {
+              const body = await request.text();
+              return new Response(request.method + ":" + body);
+            }
+          };
+        `
+      }
+    });
+
+    const request = new Request("http://localhost/", {
+      method: "POST",
+      body: "payload"
+    });
+    const response = await SELF.fetch(request);
+    expect(await response.text()).toBe("POST:payload");
+  });
+
   test("pushStorageSnapshot and popStorageSnapshot restore persisted KV state", async () => {
     const persistRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-kv-"));
 

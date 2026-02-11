@@ -28,6 +28,26 @@ async function pathExists(filePath: string): Promise<boolean> {
   }
 }
 
+async function requestToDispatchArgs(request: Request): Promise<{
+  url: string;
+  init: RequestInit;
+}> {
+  const normalizedMethod = request.method.toUpperCase();
+  const canIncludeBody = normalizedMethod !== "GET" && normalizedMethod !== "HEAD";
+  const body = canIncludeBody && request.body !== null
+    ? Buffer.from(await request.arrayBuffer())
+    : undefined;
+
+  return {
+    url: request.url,
+    init: {
+      method: request.method,
+      headers: request.headers,
+      body
+    }
+  };
+}
+
 export class WorkersRuntimeState {
   private miniflare: Miniflare | undefined;
   private envCache: Record<string, unknown> | undefined;
@@ -153,7 +173,12 @@ export class WorkersRuntimeState {
     const mf = this.getMiniflare();
 
     if (input instanceof Request) {
-      return (await mf.dispatchFetch(input as never, init as never)) as unknown as Response;
+      const request = new Request(input, init);
+      const dispatchArgs = await requestToDispatchArgs(request);
+      return (await mf.dispatchFetch(
+        dispatchArgs.url as never,
+        dispatchArgs.init as never
+      )) as unknown as Response;
     }
 
     if (input instanceof URL) {

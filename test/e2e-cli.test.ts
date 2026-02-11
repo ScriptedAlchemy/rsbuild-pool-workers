@@ -106,6 +106,54 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports SELF.fetch Request inputs end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./request-input.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          async fetch(request) {
+            const body = await request.text();
+            return new Response(request.method + ":" + body);
+          }
+        };
+      `,
+      "request-input.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("Request input keeps method/body", async () => {
+          const req = new Request("http://localhost/", {
+            method: "POST",
+            body: "fixture-payload"
+          });
+          const res = await SELF.fetch(req);
+          expect(await res.text()).toBe("POST:fixture-payload");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("request-input.test.ts");
+    });
+  });
+
   test("respects isolatedStorage=false and preserves storage across tests", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

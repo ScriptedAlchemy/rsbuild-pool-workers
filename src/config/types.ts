@@ -24,7 +24,7 @@ export interface WorkersPoolOptions {
 
 export type WorkersPoolOptionsInput =
   | WorkersPoolOptions
-  | ((ctx: WorkerPoolOptionsContext) => WorkersPoolOptions | Promise<WorkersPoolOptions>);
+  | ((ctx: WorkerPoolOptionsContext) => WorkersPoolOptions | PromiseLike<WorkersPoolOptions>);
 
 export type WorkersTestConfig = Partial<RstestConfig> & {
   poolOptions?: {
@@ -41,12 +41,12 @@ export type ConfigFn<
   T extends RstestConfig,
   TArgs extends unknown[] = unknown[],
   TThis = unknown
-> = (this: TThis, ...args: TArgs) => T | Promise<T>;
+> = (this: TThis, ...args: TArgs) => T | PromiseLike<T>;
 export type AnyConfigExport<
   T extends RstestConfig,
   TArgs extends unknown[] = unknown[],
   TThis = unknown
-> = T | Promise<T> | ConfigFn<T, TArgs, TThis>;
+> = T | PromiseLike<T> | ConfigFn<T, TArgs, TThis>;
 
 export function mapAnyConfigExport<T extends RstestConfig, U extends RstestConfig>(
   mapper: (value: T) => U,
@@ -54,7 +54,7 @@ export function mapAnyConfigExport<T extends RstestConfig, U extends RstestConfi
 ): U;
 export function mapAnyConfigExport<T extends RstestConfig, U extends RstestConfig>(
   mapper: (value: T) => U,
-  config: Promise<T>
+  config: PromiseLike<T>
 ): Promise<U>;
 export function mapAnyConfigExport<T extends RstestConfig, U extends RstestConfig>(
   mapper: (value: T) => U,
@@ -84,9 +84,14 @@ export function mapAnyConfigExport<
     }) as ConfigFn<U, TArgs, TThis>;
   }
 
-  if (config instanceof Promise) {
-    return config.then(mapper);
+  if (
+    (typeof config === "object" || typeof config === "function") &&
+    config !== null &&
+    "then" in config &&
+    typeof (config as { then?: unknown }).then === "function"
+  ) {
+    return Promise.resolve(config as PromiseLike<T>).then(mapper);
   }
 
-  return mapper(config);
+  return mapper(config as T);
 }

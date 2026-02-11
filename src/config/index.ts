@@ -146,6 +146,15 @@ function createInject() {
   };
 }
 
+function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+  return (
+    (typeof value === "object" || typeof value === "function") &&
+    value !== null &&
+    "then" in value &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
+}
+
 function extractWorkersOptions(
   config: WorkersUserConfig,
   allowAsyncWorkersFunction: boolean,
@@ -173,7 +182,7 @@ function extractWorkersOptions(
   }
 
   const resolved = rawWorkersOptions({ inject: createInject() });
-  if (resolved instanceof Promise) {
+  if (isPromiseLike<WorkersPoolOptions>(resolved)) {
     if (!allowAsyncWorkersFunction) {
       throw new TypeError(
         "Async function-valued workers options require an async config export. " +
@@ -233,7 +242,7 @@ export function defineWorkersConfig(
   config: WorkersUserConfig<RstestConfig>
 ): WorkersUserConfig<RstestConfig>;
 export function defineWorkersConfig(
-  config: Promise<WorkersUserConfig<RstestConfig>>
+  config: PromiseLike<WorkersUserConfig<RstestConfig>>
 ): Promise<WorkersUserConfig<RstestConfig>>;
 export function defineWorkersConfig<
   TArgs extends unknown[],
@@ -242,7 +251,9 @@ export function defineWorkersConfig<
   config: (
     this: TThis,
     ...args: TArgs
-  ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>
+  ) =>
+    | WorkersUserConfig<RstestConfig>
+    | PromiseLike<WorkersUserConfig<RstestConfig>>
 ): (
   this: TThis,
   ...args: TArgs
@@ -257,11 +268,13 @@ export function defineWorkersConfig<
     const fn = config as (
       this: TThis,
       ...args: TArgs
-    ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
+    ) =>
+      | WorkersUserConfig<RstestConfig>
+      | PromiseLike<WorkersUserConfig<RstestConfig>>;
     return (function (this: TThis, ...args: TArgs) {
       const value = fn.apply(this, args);
-      if (value instanceof Promise) {
-        return value.then((resolved) =>
+      if (isPromiseLike<WorkersUserConfig<RstestConfig>>(value)) {
+        return Promise.resolve(value).then((resolved) =>
           ensureWorkersConfigAsync(resolved as WorkersUserConfig<RstestConfig>)
         );
       }
@@ -272,8 +285,8 @@ export function defineWorkersConfig<
     ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
   }
 
-  if (config instanceof Promise) {
-    return config.then((value) =>
+  if (isPromiseLike<WorkersUserConfig<RstestConfig>>(config)) {
+    return Promise.resolve(config).then((value) =>
       ensureWorkersConfigAsync(value as WorkersUserConfig<RstestConfig>)
     );
   }

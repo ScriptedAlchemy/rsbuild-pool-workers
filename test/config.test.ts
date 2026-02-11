@@ -178,6 +178,40 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("serve");
   });
 
+  test("supports config functions returning thenables", async () => {
+    const configFactory = defineWorkersConfig((...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      const value = {
+        workers: {
+          main: "./src/index.ts",
+          miniflare: {
+            bindings: {
+              MODE: context?.mode ?? "unknown"
+            }
+          }
+        }
+      };
+
+      const thenable = {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+
+      return thenable;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory({ mode: "thenable" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("thenable");
+  });
+
   test("preserves this binding for promise-returning config function exports", async () => {
     const configFactory = defineWorkersConfig(function (this: { mode?: string }) {
       return Promise.resolve({
@@ -1073,6 +1107,37 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("throws when thenable workers options are used in sync config export", () => {
+    expect(() =>
+      defineWorkersConfig({
+        test: {
+          poolOptions: {
+            workers: ({ inject }: WorkerPoolOptionsContext) => {
+              const value = {
+                main: "./src/index.ts",
+                miniflare: {
+                  bindings: {
+                    VALUE: inject<string>("VALUE")
+                  }
+                }
+              };
+              const thenable = {
+                then(resolve: (resolved: typeof value) => void) {
+                  resolve(value);
+                  return Promise.resolve(value);
+                }
+              } as unknown as PromiseLike<typeof value>;
+              return thenable;
+            }
+          }
+        }
+      })
+    ).toThrow(
+      "Async function-valued workers options require an async config export. " +
+      "Wrap your exported workers config in an async function."
+    );
+  });
+
   test("does not inject duplicate workers plugin when already present", () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -1950,6 +2015,41 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("serve");
     expect(String(defineValue)).toContain("project-promise-forwarding.ts");
+  });
+
+  test("defineWorkersProject supports config functions returning thenables", async () => {
+    const configFactory = defineWorkersProject((...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      const value = {
+        workers: {
+          main: "./src/project-thenable.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_MODE: context?.mode ?? "unknown"
+            }
+          }
+        }
+      };
+
+      const thenable = {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+
+      return thenable;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory({ mode: "project-thenable" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-thenable");
+    expect(String(defineValue)).toContain("project-thenable.ts");
   });
 
   test("defineWorkersProject preserves this binding for promise-returning config function exports", async () => {

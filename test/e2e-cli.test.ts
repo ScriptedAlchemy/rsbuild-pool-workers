@@ -336,6 +336,79 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports cloudflare:test-internal for durable object helpers", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-do-helper.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async incrementAndGet() {
+            const value = Number((await this.ctx.storage.get("value")) ?? 0) + 1;
+            await this.ctx.storage.put("value", value);
+            return value;
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "internal-do-helper.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test-internal";
+
+        test("internal alias exposes runInDurableObject", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+            get(id: unknown): unknown;
+          };
+          const stub = namespace.get(namespace.idFromName("singleton"));
+
+          const one = await runInDurableObject<{ incrementAndGet: () => Promise<number> }, number>(
+            stub as any,
+            (instance) => instance.incrementAndGet()
+          );
+          const two = await runInDurableObject<{ incrementAndGet: () => Promise<number> }, number>(
+            stub as any,
+            (instance) => instance.incrementAndGet()
+          );
+
+          expect(one).toBe(1);
+          expect(two).toBe(2);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-do-helper.test.ts");
+    });
+  });
+
   test("keeps cloudflare:test env bindings read-only", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

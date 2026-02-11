@@ -2158,6 +2158,65 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports async config with top-level thenable workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          include: ["./async-top-level-thenable-workers.test.ts"],
+          workers: ({ inject }) => {
+            const value = {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  TOP_LEVEL_THENABLE_GREETING: inject("TOP_LEVEL_THENABLE_GREETING")
+                }
+              }
+            };
+            return {
+              then(resolve) {
+                resolve(value);
+                return Promise.resolve(value);
+              }
+            };
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.TOP_LEVEL_THENABLE_GREETING));
+          }
+        };
+      `,
+      "async-top-level-thenable-workers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("top-level thenable workers function is resolved", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-from-top-level-thenable");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("async-top-level-thenable-workers.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_TOP_LEVEL_THENABLE_GREETING: "\"hello-from-top-level-thenable\""
+        }
+      }
+    );
+  });
+
   test("supports config function exports returning thenables end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -4386,6 +4445,67 @@ describe("rstest CLI integration", () => {
       {
         env: {
           RSTEST_INJECT_PROJECT_TOP_LEVEL_ASYNC_FN_VALUE: "\"project-top-level-async-workers-fn-ok\""
+        }
+      }
+    );
+  });
+
+  test("supports defineWorkersProject async config with top-level thenable workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          include: ["./project-top-level-thenable-workers-fn.test.ts"],
+          workers: ({ inject }) => {
+            const value = {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_TOP_LEVEL_THENABLE_FN_VALUE: inject("PROJECT_TOP_LEVEL_THENABLE_FN_VALUE")
+                }
+              }
+            };
+            return {
+              then(resolve) {
+                resolve(value);
+                return Promise.resolve(value);
+              }
+            };
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_TOP_LEVEL_THENABLE_FN_VALUE));
+          }
+        };
+      `,
+      "project-top-level-thenable-workers-fn.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project top-level thenable workers function inject value is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-top-level-thenable-workers-fn-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-top-level-thenable-workers-fn.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_TOP_LEVEL_THENABLE_FN_VALUE:
+            "\"project-top-level-thenable-workers-fn-ok\""
         }
       }
     );

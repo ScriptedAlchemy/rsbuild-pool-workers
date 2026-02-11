@@ -1067,6 +1067,42 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_TOP_LEVEL_ASYNC_VALUE;
   });
 
+  test("supports async top-level thenable workers function in async config export", async () => {
+    process.env.RSTEST_INJECT_TOP_LEVEL_THENABLE_VALUE = "\"top-level-thenable\"";
+
+    const value = defineWorkersConfig(async () => ({
+      workers: ({ inject }: WorkerPoolOptionsContext) => {
+        const resolvedValue = {
+          main: "./src/index.ts",
+          miniflare: {
+            bindings: {
+              TOP_LEVEL_THENABLE_VALUE: inject<string>("TOP_LEVEL_THENABLE_VALUE")
+            }
+          }
+        };
+        return {
+          then(resolve: (resolved: typeof resolvedValue) => void) {
+            resolve(resolvedValue);
+            return Promise.resolve(resolvedValue);
+          }
+        } as unknown as PromiseLike<typeof resolvedValue>;
+      },
+      include: ["test/top-level-thenable/**/*.test.ts"]
+    }));
+
+    if (typeof value !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await value();
+    expect(resolved.include).toEqual(["test/top-level-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("top-level-thenable");
+
+    delete process.env.RSTEST_INJECT_TOP_LEVEL_THENABLE_VALUE;
+  });
+
   test("does not evaluate nested workers function in async config export when top-level async function exists", async () => {
     const value = defineWorkersConfig(async () => ({
       workers: async () => ({
@@ -2519,6 +2555,42 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-top-level-async");
 
     delete process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_ASYNC;
+  });
+
+  test("defineWorkersProject supports async top-level thenable workers function in async config export", async () => {
+    process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_THENABLE = "\"project-top-level-thenable\"";
+
+    const value = defineWorkersProject(async () => ({
+      include: ["test/project/top-level-thenable/**/*.test.ts"],
+      workers: ({ inject }: WorkerPoolOptionsContext) => {
+        const resolvedValue = {
+          main: "./src/project-worker.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_TOP_LEVEL_THENABLE: inject<string>("PROJECT_TOP_LEVEL_THENABLE")
+            }
+          }
+        };
+        return {
+          then(resolve: (resolved: typeof resolvedValue) => void) {
+            resolve(resolvedValue);
+            return Promise.resolve(resolvedValue);
+          }
+        } as unknown as PromiseLike<typeof resolvedValue>;
+      }
+    }));
+
+    if (typeof value !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await value();
+    expect(resolved.include).toEqual(["test/project/top-level-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-top-level-thenable");
+
+    delete process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_THENABLE;
   });
 
   test("defineWorkersProject does not evaluate nested workers function in async config export when top-level async function exists", async () => {

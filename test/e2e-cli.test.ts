@@ -451,6 +451,9 @@ describe("rstest CLI integration", () => {
           expect(() => {
             delete (env as Record<string, unknown>).TOKEN;
           }).toThrow("Cannot delete properties from cloudflare:test env.");
+          expect(() => {
+            Object.defineProperty(env, "TOKEN", { value: "override" });
+          }).toThrow("Cannot redefine properties on cloudflare:test env.");
         });
       `
     };

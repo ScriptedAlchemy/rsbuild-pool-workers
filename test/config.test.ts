@@ -113,6 +113,35 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_API_PORT;
   });
 
+  test("supports direct env fallback for inject()", () => {
+    process.env.API_HOST = "\"http://localhost:8787\"";
+
+    const value = defineWorkersConfig({
+      test: {
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/index.ts",
+            miniflare: {
+              bindings: {
+                API_HOST: inject<string>("API_HOST")
+              }
+            }
+          })
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("http://localhost:8787");
+
+    delete process.env.API_HOST;
+  });
+
   test("supports async workers option function in async config export", async () => {
     process.env.RSTEST_INJECT_SERVICE_URL = "\"http://localhost:9000\"";
 

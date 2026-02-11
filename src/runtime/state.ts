@@ -65,6 +65,12 @@ export class WorkersRuntimeState {
     };
   }
 
+  private async recreateFetchMock(): Promise<void> {
+    await this.closeMockAgent();
+    this.mockAgent = createFetchMock();
+    this.mockAgent.enableNetConnect();
+  }
+
   async setup(): Promise<void> {
     if (this.setupReady) {
       return;
@@ -74,6 +80,8 @@ export class WorkersRuntimeState {
     const options = await resolveRuntimeOptions(rawOptions);
     this.resolvedOptions = options;
     this.isolatedStorage = options.isolatedStorage;
+
+    await this.recreateFetchMock();
     this.miniflare = new Miniflare(
       this.createMiniflareOptionsWithMockAgent(options.miniflare)
     );
@@ -104,9 +112,7 @@ export class WorkersRuntimeState {
   }
 
   async resetFetchMock(): Promise<void> {
-    await this.closeMockAgent();
-    this.mockAgent = createFetchMock();
-    this.mockAgent.enableNetConnect();
+    await this.recreateFetchMock();
 
     if (this.miniflare && this.resolvedOptions) {
       await this.miniflare.setOptions(

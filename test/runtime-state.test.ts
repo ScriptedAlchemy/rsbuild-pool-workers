@@ -139,14 +139,15 @@ describe("Workers runtime state integration", () => {
     await fs.rm(persistRoot, { recursive: true, force: true });
   });
 
-  test("fetchMock resets interceptor state between tests", async () => {
+  test("fetchMock intercepts outbound fetch and resets interceptor state", async () => {
     setWorkersRuntimeOptionsForTesting({
       miniflare: {
         modules: true,
         script: `
           export default {
             async fetch() {
-              return new Response("ok");
+              const response = await fetch("http://example.com/data");
+              return new Response(await response.text());
             }
           };
         `
@@ -157,11 +158,13 @@ describe("Workers runtime state integration", () => {
     fetchMock.activate();
     fetchMock.disableNetConnect();
     fetchMock
-      .get("https://example.com")
+      .get("http://example.com")
       .intercept({ path: "/data", method: "GET" })
       .reply(200, "mocked-1");
 
-    expect(fetchMock.pendingInterceptors().length).toBe(1);
+    const response1 = await SELF.fetch("http://localhost/");
+    expect(await response1.text()).toBe("mocked-1");
+    expect(fetchMock.pendingInterceptors().length).toBe(0);
 
     await runtime.resetFetchMock();
     fetchMock.activate();
@@ -169,9 +172,12 @@ describe("Workers runtime state integration", () => {
 
     fetchMock.disableNetConnect();
     fetchMock
-      .get("https://example.com")
+      .get("http://example.com")
       .intercept({ path: "/data", method: "GET" })
       .reply(200, "mocked-2");
-    expect(fetchMock.pendingInterceptors().length).toBe(1);
+
+    const response2 = await SELF.fetch("http://localhost/");
+    expect(await response2.text()).toBe("mocked-2");
+    expect(fetchMock.pendingInterceptors().length).toBe(0);
   });
 });

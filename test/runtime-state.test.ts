@@ -120,6 +120,24 @@ describe("Workers runtime state integration", () => {
     expect(await response.text()).toBe("/relative-input");
   });
 
+  test("SELF.fetch normalizes bare path string inputs", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            fetch(request) {
+              return new Response(new URL(request.url).pathname);
+            }
+          };
+        `
+      }
+    });
+
+    const response = await SELF.fetch("bare-input");
+    expect(await response.text()).toBe("/bare-input");
+  });
+
   test("SELF.fetch Request inputs honor init overrides", async () => {
     setWorkersRuntimeOptionsForTesting({
       miniflare: {

@@ -521,4 +521,50 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain("do-list-ids.test.ts");
     });
   });
+
+  test("reports clear error for invalid listDurableObjectIds namespace", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-list-invalid.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-list-invalid.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { listDurableObjectIds } from "cloudflare:test";
+
+        test("throws type error", async () => {
+          await expect(
+            listDurableObjectIds({} as any)
+          ).rejects.toThrow(
+            "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-list-invalid.test.ts");
+    });
+  });
 });

@@ -212,6 +212,36 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("thenable");
   });
 
+  test("propagates rejection for thenable-returning config function exports", async () => {
+    const errorMessage = "thenable config function rejection";
+    const configFactory = defineWorkersConfig(() => {
+      const value = {
+        workers: {
+          main: "./src/thenable-config-rejection.ts"
+        } satisfies WorkersPoolOptions
+      };
+      return {
+        then(
+          onfulfilled?:
+            | ((resolved: typeof value) => unknown)
+            | null,
+          onrejected?: ((reason: unknown) => unknown) | null
+        ) {
+          return Promise.reject(new Error(errorMessage)).then(
+            onfulfilled as ((value: never) => unknown) | undefined,
+            onrejected as ((reason: unknown) => unknown) | undefined
+          );
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(errorMessage);
+  });
+
   test("forwards arguments for thenable-returning config function exports", async () => {
     const configFactory = defineWorkersConfig((...args: unknown[]) => {
       const context = args[0] as { mode?: string } | undefined;
@@ -4133,6 +4163,36 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-thenable");
     expect(String(defineValue)).toContain("project-thenable.ts");
+  });
+
+  test("defineWorkersProject propagates rejection for thenable-returning config function exports", async () => {
+    const errorMessage = "project thenable config function rejection";
+    const configFactory = defineWorkersProject(() => {
+      const value = {
+        workers: {
+          main: "./src/project-thenable-config-rejection.ts"
+        } satisfies WorkersPoolOptions
+      };
+      return {
+        then(
+          onfulfilled?:
+            | ((resolved: typeof value) => unknown)
+            | null,
+          onrejected?: ((reason: unknown) => unknown) | null
+        ) {
+          return Promise.reject(new Error(errorMessage)).then(
+            onfulfilled as ((value: never) => unknown) | undefined,
+            onrejected as ((reason: unknown) => unknown) | undefined
+          );
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(errorMessage);
   });
 
   test("defineWorkersProject forwards arguments for thenable-returning config function exports", async () => {

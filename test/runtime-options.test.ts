@@ -88,4 +88,38 @@ describe("resolveRuntimeOptions", () => {
 
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
+
+  test("bundles TSX entrypoint into in-memory script", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-options-tsx-"));
+    const mainPath = path.join(tempRoot, "worker.tsx");
+    const depPath = path.join(tempRoot, "dep.ts");
+
+    await fs.writeFile(depPath, `export const suffix = "tsx";\n`);
+    await fs.writeFile(
+      mainPath,
+      `
+        import { suffix } from "./dep";
+        export default {
+          fetch() {
+            return new Response("from-" + suffix);
+          }
+        };
+      `
+    );
+
+    const options = await resolveRuntimeOptions(
+      {
+        main: mainPath,
+        miniflare: {}
+      },
+      tempRoot
+    );
+
+    expect(options.miniflare.modules).toBe(true);
+    expect(typeof options.miniflare.script).toBe("string");
+    expect(String(options.miniflare.script)).toContain("from-");
+    expect(options.miniflare.scriptPath).toBeUndefined();
+
+    await fs.rm(tempRoot, { recursive: true, force: true });
+  });
 });

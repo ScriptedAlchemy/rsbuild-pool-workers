@@ -197,6 +197,49 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports SELF.fetch relative string inputs end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./relative-input.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(request) {
+            return new Response(new URL(request.url).pathname);
+          }
+        };
+      `,
+      "relative-input.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("relative string input is normalized", async () => {
+          const res = await SELF.fetch("/e2e-relative-input");
+          expect(await res.text()).toBe("/e2e-relative-input");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("relative-input.test.ts");
+    });
+  });
+
   test("supports SELF.fetch Request init overrides end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

@@ -102,6 +102,24 @@ describe("Workers runtime state integration", () => {
     expect(await response.text()).toBe("/url-input");
   });
 
+  test("SELF.fetch supports relative string inputs", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            fetch(request) {
+              return new Response(new URL(request.url).pathname);
+            }
+          };
+        `
+      }
+    });
+
+    const response = await SELF.fetch("/relative-input");
+    expect(await response.text()).toBe("/relative-input");
+  });
+
   test("SELF.fetch Request inputs honor init overrides", async () => {
     setWorkersRuntimeOptionsForTesting({
       miniflare: {

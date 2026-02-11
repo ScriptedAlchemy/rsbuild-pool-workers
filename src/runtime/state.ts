@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { Miniflare } from "miniflare";
 import { Agent, MockAgent, getGlobalDispatcher, setGlobalDispatcher } from "undici";
+import type { WorkersRuntimeOptions } from "./options";
 import { readRawWorkersOptionsFromDefine, resolveRuntimeOptions } from "./options";
 
 type SnapshotEntry = {
@@ -32,6 +33,7 @@ export class WorkersRuntimeState {
   private envCache: Record<string, unknown> | undefined;
   private setupReady = false;
   private isolatedStorage = true;
+  private resolvedOptions: WorkersRuntimeOptions | undefined;
   private snapshotRootPath: string | undefined;
   private snapshots: SnapshotEntry[] = [];
   private readonly originalDispatcher = getGlobalDispatcher();
@@ -58,6 +60,7 @@ export class WorkersRuntimeState {
 
     const rawOptions = readRawWorkersOptionsFromDefine();
     const options = await resolveRuntimeOptions(rawOptions);
+    this.resolvedOptions = options;
     this.isolatedStorage = options.isolatedStorage;
     this.miniflare = new Miniflare(options.miniflare);
     await this.miniflare.ready;
@@ -76,6 +79,7 @@ export class WorkersRuntimeState {
     this.envCache = undefined;
     this.setupReady = false;
     this.isolatedStorage = true;
+    this.resolvedOptions = undefined;
 
     if (mf) {
       await mf.dispose();
@@ -152,6 +156,83 @@ export class WorkersRuntimeState {
     await mf.dispatchScheduled(options);
   }
 
+  async listDurableObjectIds(namespace: unknown): Promise<unknown[]> {
+    await this.setup();
+
+    const hasIdFromString =
+      typeof namespace === "object" &&
+      namespace !== null &&
+      "idFromString" in namespace &&
+      typeof (namespace as { idFromString?: unknown }).idFromString === "function";
+    if (!hasIdFromString) {
+      throw new TypeError(
+        "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+      );
+    }
+
+    const bindings = this.getEnvSync();
+    const bindingName = Object.entries(bindings).find(([, value]) => value === namespace)?.[0];
+    if (!bindingName) {
+      throw new Error("Could not resolve Durable Object binding name for provided namespace.");
+    }
+
+    const durablePersistPath = (this.getMiniflare() as unknown as {
+      unsafeGetPersistPaths?: () => Map<string, string>;
+    }).unsafeGetPersistPaths?.()?.get("do");
+
+    if (!durablePersistPath) {
+      return [];
+    }
+
+    const miniflareOptions = this.resolvedOptions?.miniflare as
+      | { durableObjects?: Record<string, unknown>; name?: string }
+      | undefined;
+    const designator = miniflareOptions?.durableObjects?.[bindingName];
+
+    let className: string | undefined;
+    let scriptName: string | undefined;
+    let unsafeUniqueKey: string | undefined;
+
+    if (typeof designator === "string") {
+      className = designator;
+    } else if (designator && typeof designator === "object") {
+      className = String((designator as { className?: unknown }).className ?? "");
+      const maybeScript = (designator as { scriptName?: unknown }).scriptName;
+      if (typeof maybeScript === "string") {
+        scriptName = maybeScript;
+      }
+      const maybeUnsafeUniqueKey = (designator as { unsafeUniqueKey?: unknown }).unsafeUniqueKey;
+      if (typeof maybeUnsafeUniqueKey === "string") {
+        unsafeUniqueKey = maybeUnsafeUniqueKey;
+      }
+    }
+
+    if (!className) {
+      throw new Error(
+        `Could not infer Durable Object class for binding "${bindingName}".`
+      );
+    }
+
+    const namespaceKey =
+      unsafeUniqueKey ??
+      `${scriptName ?? miniflareOptions?.name ?? "worker"}-${className}`;
+
+    const namespacePath = path.join(durablePersistPath, namespaceKey);
+    let files: string[] = [];
+    try {
+      files = await fs.readdir(namespacePath);
+    } catch {
+      return [];
+    }
+
+    const ids = files
+      .filter((name) => name.endsWith(".sqlite"))
+      .map((name) => name.slice(0, -".sqlite".length));
+
+    const idFromString = (namespace as { idFromString: (id: string) => unknown }).idFromString;
+    return ids.map((id) => idFromString(id));
+  }
+
   private getPersistPaths(): string[] {
     const mf = this.getMiniflare() as unknown as {
       unsafeGetPersistPaths?: () => Map<string, string>;
@@ -219,6 +300,7 @@ export class WorkersRuntimeState {
 
     const rawOptions = readRawWorkersOptionsFromDefine();
     const options = await resolveRuntimeOptions(rawOptions);
+    this.resolvedOptions = options;
     this.miniflare = new Miniflare(options.miniflare);
     await this.miniflare.ready;
     this.envCache = (await this.miniflare.getBindings()) as Record<string, unknown>;

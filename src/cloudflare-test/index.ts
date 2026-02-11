@@ -82,9 +82,7 @@ export async function runDurableObjectAlarm(_stub: unknown): Promise<boolean> {
 }
 
 export async function listDurableObjectIds(_namespace: unknown): Promise<unknown[]> {
-  throw new Error(
-    "listDurableObjectIds() is not yet available in Rstest mode."
-  );
+  return runtime().listDurableObjectIds(_namespace);
 }
 
 export async function introspectWorkflowInstance(

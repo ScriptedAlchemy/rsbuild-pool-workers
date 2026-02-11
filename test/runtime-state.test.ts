@@ -2,7 +2,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test } from "@rstest/core";
-import { SELF, env as workersEnv } from "../src/cloudflare-test/index";
+import {
+  SELF,
+  env as workersEnv,
+  listDurableObjectIds
+} from "../src/cloudflare-test/index";
 import {
   setWorkersRuntimeOptionsForTesting
 } from "../src/runtime/options";
@@ -80,6 +84,56 @@ describe("Workers runtime state integration", () => {
 
     const afterRestore = await runtime.dispatchFetch("http://localhost/");
     expect(await afterRestore.text()).toBe("2");
+
+    await fs.rm(persistRoot, { recursive: true, force: true });
+  });
+
+  test("listDurableObjectIds enumerates created Durable Object IDs", async () => {
+    const persistRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-"));
+
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        name: "worker",
+        modules: true,
+        script: `
+          export class Counter {
+            constructor(state) {
+              this.state = state;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          export default {
+            async fetch(request, env) {
+              if (request.url.endsWith("/create")) {
+                const id = env.COUNTER.newUniqueId();
+                await env.COUNTER.get(id).fetch("http://localhost/");
+                return new Response(id.toString());
+              }
+              return new Response("noop");
+            }
+          };
+        `,
+        durableObjects: {
+          COUNTER: "Counter"
+        },
+        durableObjectsPersist: path.join(persistRoot, "do")
+      }
+    });
+
+    await runtime.setup();
+    const response = await runtime.dispatchFetch("http://localhost/create");
+    const createdId = await response.text();
+
+    const ids = await listDurableObjectIds(workersEnv.COUNTER);
+    const idStrings = ids.map((id) =>
+      typeof id === "object" && id !== null && "toString" in id
+        ? String((id as { toString: () => string }).toString())
+        : String(id)
+    );
+    expect(idStrings).toContain(createdId);
 
     await fs.rm(persistRoot, { recursive: true, force: true });
   });

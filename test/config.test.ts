@@ -153,6 +153,31 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("test");
   });
 
+  test("forwards config function arguments when function returns a promise", async () => {
+    const configFactory = defineWorkersConfig((...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      return Promise.resolve({
+        workers: {
+          main: "./src/index.ts",
+          miniflare: {
+            bindings: {
+              MODE: context?.mode ?? "unknown"
+            }
+          }
+        }
+      });
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory({ mode: "serve" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("serve");
+  });
+
   test("supports promise config exports and dedupes workers plugin", async () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -1769,6 +1794,32 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("test");
     expect(String(defineValue)).toContain("project-async-forwarding.ts");
+  });
+
+  test("defineWorkersProject forwards arguments when config function returns a promise", async () => {
+    const configFactory = defineWorkersProject((...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      return Promise.resolve({
+        workers: {
+          main: "./src/project-promise-forwarding.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_MODE: context?.mode ?? "unknown"
+            }
+          }
+        }
+      });
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory({ mode: "serve" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("serve");
+    expect(String(defineValue)).toContain("project-promise-forwarding.ts");
   });
 
   test("defineWorkersProject deduplicates existing workers plugin", () => {

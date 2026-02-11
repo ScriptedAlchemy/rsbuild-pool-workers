@@ -48,6 +48,8 @@ describe("Workers runtime state integration", () => {
     expect(workersEnv.ANSWER).toBe(42);
     expect("ANSWER" in workersEnv).toBe(true);
     expect(Object.keys(workersEnv)).toContain("ANSWER");
+    expect(Object.getOwnPropertyDescriptor(workersEnv, "ANSWER")).toBeDefined();
+    expect(Object.getOwnPropertyDescriptor(workersEnv, "MISSING")).toBeUndefined();
     expect(() => {
       (workersEnv as Record<string, unknown>).ANSWER = 7;
     }).toThrow("Cannot assign to read only property on cloudflare:test env.");

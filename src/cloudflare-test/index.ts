@@ -87,15 +87,7 @@ export const env: Readonly<Record<string, unknown>> = new Proxy(
     getOwnPropertyDescriptor(_target, property) {
       const bindings = runtime().getEnvSync();
       const descriptor = Object.getOwnPropertyDescriptor(bindings, property);
-      if (descriptor) {
-        return descriptor;
-      }
-      return {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value: undefined
-      };
+      return descriptor;
     },
     set() {
       throw new TypeError("Cannot assign to read only property on cloudflare:test env.");

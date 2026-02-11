@@ -701,6 +701,78 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("isolates per-fixture env overrides for inject() values", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./scoped-inject.test.ts"],
+            poolOptions: {
+              workers: ({ inject }) => ({
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    SCOPED_VALUE: inject("SCOPED_VALUE")
+                  }
+                }
+              })
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.SCOPED_VALUE));
+          }
+        };
+      `,
+      "scoped-inject.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("inject value is fixture-scoped", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe(process.env.EXPECTED_VALUE);
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("scoped-inject.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_SCOPED_VALUE: "\"scoped-one\"",
+          EXPECTED_VALUE: "scoped-one"
+        }
+      }
+    );
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("scoped-inject.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_SCOPED_VALUE: "\"scoped-two\"",
+          EXPECTED_VALUE: "scoped-two"
+        }
+      }
+    );
+  });
+
   test("supports inject() direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

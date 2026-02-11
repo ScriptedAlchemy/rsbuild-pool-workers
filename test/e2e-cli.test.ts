@@ -980,4 +980,48 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain("project-alias.test.ts");
     });
   });
+
+  test("supports defineWorkersProject top-level workers option end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          include: ["./project-top-level.test.ts"],
+          workers: {
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                TOP_LEVEL_ALIAS_VALUE: "project-top-level-ok"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.TOP_LEVEL_ALIAS_VALUE));
+          }
+        };
+      `,
+      "project-top-level.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("defineWorkersProject top-level workers wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-top-level-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-top-level.test.ts");
+    });
+  });
 });

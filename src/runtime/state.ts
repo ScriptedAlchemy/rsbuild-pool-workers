@@ -31,6 +31,7 @@ export class WorkersRuntimeState {
   private miniflare: Miniflare | undefined;
   private envCache: Record<string, unknown> | undefined;
   private setupReady = false;
+  private isolatedStorage = true;
   private snapshotRootPath: string | undefined;
   private snapshots: SnapshotEntry[] = [];
   private readonly originalDispatcher = getGlobalDispatcher();
@@ -57,6 +58,7 @@ export class WorkersRuntimeState {
 
     const rawOptions = readRawWorkersOptionsFromDefine();
     const options = await resolveRuntimeOptions(rawOptions);
+    this.isolatedStorage = options.isolatedStorage;
     this.miniflare = new Miniflare(options.miniflare);
     await this.miniflare.ready;
     this.envCache = (await this.miniflare.getBindings()) as Record<string, unknown>;
@@ -73,6 +75,7 @@ export class WorkersRuntimeState {
     this.miniflare = undefined;
     this.envCache = undefined;
     this.setupReady = false;
+    this.isolatedStorage = true;
 
     if (mf) {
       await mf.dispose();
@@ -94,6 +97,10 @@ export class WorkersRuntimeState {
 
   getFetchMock(): MockAgent {
     return this.mockAgent;
+  }
+
+  isIsolatedStorageEnabled(): boolean {
+    return this.isolatedStorage;
   }
 
   getEnvSync(): Record<string, unknown> {
@@ -158,6 +165,9 @@ export class WorkersRuntimeState {
 
   async pushStorageSnapshot(): Promise<void> {
     await this.setup();
+    if (!this.isolatedStorage) {
+      return;
+    }
 
     const persistPaths = this.getPersistPaths();
     if (persistPaths.length === 0) {
@@ -184,6 +194,10 @@ export class WorkersRuntimeState {
   }
 
   async popStorageSnapshot(): Promise<void> {
+    if (!this.isolatedStorage) {
+      return;
+    }
+
     const snapshot = this.snapshots.pop();
     if (!snapshot) {
       return;

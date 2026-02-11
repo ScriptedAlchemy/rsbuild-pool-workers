@@ -19,11 +19,15 @@ async function installSetup(): Promise<void> {
 
   beforeEach(async () => {
     await runtime.resetFetchMock();
-    await runtime.pushStorageSnapshot();
+    if (runtime.isIsolatedStorageEnabled()) {
+      await runtime.pushStorageSnapshot();
+    }
   });
 
   afterEach(async () => {
-    await runtime.popStorageSnapshot();
+    if (runtime.isIsolatedStorageEnabled()) {
+      await runtime.popStorageSnapshot();
+    }
   });
 
   process.once("beforeExit", () => {

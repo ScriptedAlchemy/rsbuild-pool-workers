@@ -567,4 +567,57 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain("do-list-invalid.test.ts");
     });
   });
+
+  test("supports function-valued workers options with inject() end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    process.env.RSTEST_INJECT_GREETING = "\"hello-from-inject\"";
+    try {
+      const files: Record<string, string> = {
+        "rstest.config.ts": `
+          import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+          export default defineWorkersConfig({
+            test: {
+              include: ["./inject-workers-options.test.ts"],
+              poolOptions: {
+                workers: ({ inject }) => ({
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      GREETING: inject("GREETING")
+                    }
+                  }
+                })
+              }
+            }
+          });
+        `,
+        "worker.ts": `
+          export default {
+            fetch(_request, env) {
+              return new Response(String(env.GREETING));
+            }
+          };
+        `,
+        "inject-workers-options.test.ts": `
+          import { test, expect } from "@rstest/core";
+          import { SELF } from "cloudflare:test";
+
+          test("inject() value is wired into worker bindings", async () => {
+            const res = await SELF.fetch("http://localhost/");
+            expect(await res.text()).toBe("hello-from-inject");
+          });
+        `
+      };
+
+      await runFixture(files, ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("inject-workers-options.test.ts");
+      });
+    } finally {
+      delete process.env.RSTEST_INJECT_GREETING;
+    }
+  });
 });

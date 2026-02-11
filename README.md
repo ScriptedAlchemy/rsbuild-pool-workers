@@ -146,7 +146,7 @@ import {
 - `env` bindings exposed by `cloudflare:test` are read-only.
 - `fetchMock` state is reset before each test case via runtime setup hooks.
 - The package exports `WORKERS_RSBUILD_PLUGIN_NAME` for plugin detection/deduplication scenarios.
-- if you preinstall `workersRsbuildPlugin()` yourself, config helpers dedupe it (including promise/async export paths).
+- if you preinstall `workersRsbuildPlugin()` yourself, config helpers dedupe it across sync/async/promise exports, including `plugins` as a single value or mixed arrays (for example with falsey entries).
 - `test.poolOptions.workers` can be an object or function. Function mode supports:
   - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables.
   - async workers functions when `defineWorkersConfig()` or `defineWorkersProject()` is used with an async config export.

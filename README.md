@@ -125,7 +125,7 @@ import {
 - `defineWorkersConfig()` supports object, promise, sync function, and async function config exports.
 - `cloudflare:test` currently supports:
   - `env`
-  - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`) and `SELF.scheduled()`
+  - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`; `Request` + `init` override semantics are preserved) and `SELF.scheduled()`
   - `fetchMock`
   - `listDurableObjectIds` (deterministic lexicographic ordering)
   - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`)

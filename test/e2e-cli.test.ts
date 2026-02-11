@@ -2575,6 +2575,59 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports promise-like config exports with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersConfig({
+          then(resolve) {
+            const value = {
+              plugins: [false as any, workersRsbuildPlugin()],
+              include: ["./promise-like-falsey-preinstalled.test.ts"],
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROMISE_LIKE_FALSEY_PREINSTALLED_VALUE: "promise-like-falsey-preinstalled-ok"
+                  }
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_LIKE_FALSEY_PREINSTALLED_VALUE));
+          }
+        };
+      `,
+      "promise-like-falsey-preinstalled.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise-like falsey preinstalled config export resolves workers wiring", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-like-falsey-preinstalled-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("promise-like-falsey-preinstalled.test.ts");
+    });
+  });
+
   test("supports promise config export with preinstalled workers plugin end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3628,6 +3681,59 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise-like-single-preinstalled.test.ts");
+    });
+  });
+
+  test("supports defineWorkersProject promise-like export with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersProject({
+          then(resolve) {
+            const value = {
+              plugins: [false as any, workersRsbuildPlugin()],
+              include: ["./project-promise-like-falsey-preinstalled.test.ts"],
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_PROMISE_LIKE_FALSEY_PREINSTALLED_VALUE: "project-promise-like-falsey-preinstalled-ok"
+                  }
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_LIKE_FALSEY_PREINSTALLED_VALUE));
+          }
+        };
+      `,
+      "project-promise-like-falsey-preinstalled.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("defineWorkersProject promise-like falsey preinstalled export wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-like-falsey-preinstalled-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise-like-falsey-preinstalled.test.ts");
     });
   });
 

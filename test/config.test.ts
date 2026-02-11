@@ -98,6 +98,36 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("supports promise config exports with top-level workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL = "\"promise-top-level\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => ({
+          main: "./src/promise-top-level.ts",
+          miniflare: {
+            bindings: {
+              PROMISE_TOP_LEVEL: inject<string>("PROMISE_TOP_LEVEL")
+            }
+          }
+        }),
+        include: ["test/promise-top-level/**/*.test.ts"]
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    expect(resolved.include).toEqual(["test/promise-top-level/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-top-level");
+
+    delete process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL;
+  });
+
   test("preserves sync config function return shape", () => {
     const configFactory = defineWorkersConfig(() => ({
       workers: {
@@ -484,6 +514,36 @@ describe("defineWorkersConfig", () => {
     const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-nested-entry.ts");
+  });
+
+  test("defineWorkersProject supports promise exports with top-level workers function", async () => {
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL = "\"project-promise-top-level\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => ({
+          main: "./src/project-promise-top-level-entry.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_PROMISE_TOP_LEVEL: inject<string>("PROJECT_PROMISE_TOP_LEVEL")
+            }
+          }
+        }),
+        include: ["test/project-promise-top-level/**/*.test.ts"]
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-promise-top-level/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-top-level");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL;
   });
 
   test("defineWorkersProject supports async config and async workers options", async () => {

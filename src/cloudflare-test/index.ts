@@ -14,10 +14,34 @@ function runtime() {
   return getWorkersRuntimeState();
 }
 
-function isDurableObjectStub(value: unknown): value is {
-  fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-  id: { toString: () => string };
-} {
+export interface DurableObjectIdLike {
+  toString(): string;
+}
+
+export interface DurableObjectStubLike {
+  id: DurableObjectIdLike;
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+  [method: string]: unknown;
+}
+
+export interface DurableObjectNamespaceLike {
+  newUniqueId(options?: { jurisdiction?: string }): DurableObjectIdLike;
+  idFromName(name: string): DurableObjectIdLike;
+  idFromString(id: string): DurableObjectIdLike;
+  get(
+    id: DurableObjectIdLike,
+    options?: {
+      locationHint?: string;
+      jurisdiction?: string;
+    }
+  ): DurableObjectStubLike;
+}
+
+export interface DurableObjectStatePlaceholder {
+  readonly __kind: "DurableObjectStatePlaceholder";
+}
+
+function isDurableObjectStub(value: unknown): value is DurableObjectStubLike {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -93,8 +117,11 @@ export const fetchMock = new Proxy(
 ) as MockAgent;
 
 export async function runInDurableObject<_ObjectType, _ReturnType>(
-  stub: unknown,
-  callback: (_instance: _ObjectType, _state: unknown) => _ReturnType | Promise<_ReturnType>
+  stub: DurableObjectStubLike,
+  callback: (
+    _instance: _ObjectType,
+    _state: DurableObjectStatePlaceholder
+  ) => _ReturnType | Promise<_ReturnType>
 ): Promise<_ReturnType> {
   if (!isDurableObjectStub(stub)) {
     throw new TypeError(
@@ -111,7 +138,7 @@ export async function runInDurableObject<_ObjectType, _ReturnType>(
   // but do not yet have access to the underlying DurableObjectState object.
   // Provide a throw-on-use placeholder so callbacks that only need `instance`
   // can run today, while stateful callbacks fail with actionable guidance.
-  const statePlaceholder = new Proxy(
+  const statePlaceholder = new Proxy<DurableObjectStatePlaceholder>(
     {
       __kind: "DurableObjectStatePlaceholder"
     },
@@ -131,7 +158,7 @@ export async function runInDurableObject<_ObjectType, _ReturnType>(
   return callback(stub as _ObjectType, statePlaceholder);
 }
 
-export async function runDurableObjectAlarm(stub: unknown): Promise<boolean> {
+export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promise<boolean> {
   if (!isDurableObjectStub(stub)) {
     throw new TypeError(
       "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
@@ -142,8 +169,10 @@ export async function runDurableObjectAlarm(stub: unknown): Promise<boolean> {
   );
 }
 
-export async function listDurableObjectIds(_namespace: unknown): Promise<unknown[]> {
-  return runtime().listDurableObjectIds(_namespace);
+export async function listDurableObjectIds(
+  namespace: DurableObjectNamespaceLike
+): Promise<DurableObjectIdLike[]> {
+  return runtime().listDurableObjectIds(namespace) as Promise<DurableObjectIdLike[]>;
 }
 
 export async function introspectWorkflowInstance(

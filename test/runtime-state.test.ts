@@ -4,6 +4,9 @@ import path from "node:path";
 import { afterEach, describe, expect, test } from "@rstest/core";
 import {
   SELF,
+  type DurableObjectNamespaceLike,
+  type DurableObjectStatePlaceholder,
+  type DurableObjectStubLike,
   env as workersEnv,
   fetchMock,
   listDurableObjectIds,
@@ -140,7 +143,9 @@ describe("Workers runtime state integration", () => {
     const response = await runtime.dispatchFetch("http://localhost/create");
     const createdId = await response.text();
 
-    const ids = await listDurableObjectIds(workersEnv.COUNTER);
+    const ids = await listDurableObjectIds(
+      workersEnv.COUNTER as unknown as DurableObjectNamespaceLike
+    );
     const idStrings = ids.map((id) =>
       typeof id === "object" && id !== null && "toString" in id
         ? String((id as { toString: () => string }).toString())
@@ -263,10 +268,7 @@ describe("Workers runtime state integration", () => {
 
     await runtime.setup();
 
-    const namespace = workersEnv.COUNTER as {
-      idFromName: (name: string) => unknown;
-      get: (id: unknown) => unknown;
-    };
+    const namespace = workersEnv.COUNTER as unknown as DurableObjectNamespaceLike;
     const id = namespace.idFromName("singleton");
     const stub = namespace.get(id);
 
@@ -311,18 +313,15 @@ describe("Workers runtime state integration", () => {
 
     await runtime.setup();
 
-    const namespace = workersEnv.COUNTER as {
-      idFromName: (name: string) => unknown;
-      get: (id: unknown) => unknown;
-    };
+    const namespace = workersEnv.COUNTER as unknown as DurableObjectNamespaceLike;
     const stub = namespace.get(namespace.idFromName("singleton"));
     const seenStateKinds: string[] = [];
 
     await expect(
-      runInDurableObject(stub, async (_instance, state: unknown) => {
-        const kind = (state as { __kind?: string }).__kind;
-        seenStateKinds.push(String(kind));
-        const storage = (state as { storage: unknown }).storage;
+      runInDurableObject(stub as DurableObjectStubLike, async (_instance, state) => {
+        const kind = (state as DurableObjectStatePlaceholder).__kind;
+        seenStateKinds.push(kind);
+        const storage = (state as unknown as { storage: unknown }).storage;
         void storage;
         return "value";
       })

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "@rstest/core";
 import {
+  type DurableObjectStubLike,
   introspectWorkflow,
   introspectWorkflowInstance,
   runDurableObjectAlarm,
@@ -9,14 +10,14 @@ import {
 describe("unsupported cloudflare:test APIs", () => {
   test("runInDurableObject validates argument types", async () => {
     await expect(
-      runInDurableObject({}, async () => "value")
+      runInDurableObject({} as unknown as DurableObjectStubLike, async () => "value")
     ).rejects.toThrow(
       "Failed to execute 'runInDurableObject': parameter 1 is not of type 'DurableObjectStub'."
     );
 
     await expect(
       runInDurableObject(
-        { fetch: async () => new Response("ok"), id: { toString: () => "id" } },
+        { fetch: async () => new Response("ok"), id: { toString: () => "id" } } as DurableObjectStubLike,
         "not-a-function" as unknown as (_instance: unknown, _state: unknown) => unknown
       )
     ).rejects.toThrow(
@@ -25,7 +26,7 @@ describe("unsupported cloudflare:test APIs", () => {
   });
 
   test("runDurableObjectAlarm throws with explicit guidance", async () => {
-    await expect(runDurableObjectAlarm({})).rejects.toThrow(
+    await expect(runDurableObjectAlarm({} as unknown as DurableObjectStubLike)).rejects.toThrow(
       "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
     );
 

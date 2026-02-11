@@ -212,6 +212,71 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("thenable");
   });
 
+  test("forwards arguments for thenable-returning config function exports", async () => {
+    const configFactory = defineWorkersConfig((...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      const value = {
+        workers: {
+          main: "./src/thenable-forwarding.ts",
+          miniflare: {
+            bindings: {
+              MODE: context?.mode ?? "unknown"
+            }
+          }
+        }
+      };
+
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory({ mode: "thenable-forwarding" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("thenable-forwarding");
+    expect(String(defineValue)).toContain("thenable-forwarding.ts");
+  });
+
+  test("preserves this binding for thenable-returning config function exports", async () => {
+    const configFactory = defineWorkersConfig(function (this: { mode?: string }) {
+      const value = {
+        workers: {
+          main: "./src/thenable-this.ts",
+          miniflare: {
+            bindings: {
+              MODE: this.mode ?? "unknown"
+            }
+          }
+        }
+      };
+
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory.call({ mode: "thenable-this" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("thenable-this");
+    expect(String(defineValue)).toContain("thenable-this.ts");
+  });
+
   test("dedupes workers plugin when config functions return thenables", async () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -3677,6 +3742,71 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-thenable");
     expect(String(defineValue)).toContain("project-thenable.ts");
+  });
+
+  test("defineWorkersProject forwards arguments for thenable-returning config function exports", async () => {
+    const configFactory = defineWorkersProject((...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      const value = {
+        workers: {
+          main: "./src/project-thenable-forwarding.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_MODE: context?.mode ?? "unknown"
+            }
+          }
+        }
+      };
+
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory({ mode: "project-thenable-forwarding" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-thenable-forwarding");
+    expect(String(defineValue)).toContain("project-thenable-forwarding.ts");
+  });
+
+  test("defineWorkersProject preserves this binding for thenable-returning config function exports", async () => {
+    const configFactory = defineWorkersProject(function (this: { mode?: string }) {
+      const value = {
+        workers: {
+          main: "./src/project-thenable-this.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_MODE: this.mode ?? "unknown"
+            }
+          }
+        }
+      };
+
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory.call({ mode: "project-thenable-this" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-thenable-this");
+    expect(String(defineValue)).toContain("project-thenable-this.ts");
   });
 
   test("defineWorkersProject dedupes workers plugin when config functions return thenables", async () => {

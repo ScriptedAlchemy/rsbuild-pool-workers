@@ -1,7 +1,11 @@
 import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
 import { defineWorkersConfig, defineWorkersProject } from "../src/config/index";
-import type { WorkerPoolOptionsContext, WorkersPoolOptions } from "../src/config/index";
+import type {
+  WorkerPoolOptionsContext,
+  WorkersPoolOptions,
+  WorkersUserConfig
+} from "../src/config/index";
 import { WORKERS_RSBUILD_PLUGIN_NAME } from "../src/plugin/workers-plugin";
 
 describe("defineWorkersConfig", () => {
@@ -511,6 +515,28 @@ describe("defineWorkersConfig", () => {
     expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
       WORKERS_RSBUILD_PLUGIN_NAME
     );
+  });
+
+  test("propagates rejection from promise-like config exports", async () => {
+    const errorMessage = "promise-like config export rejection";
+    const configPromiseLike = defineWorkersConfig({
+      then(
+        _onfulfilled?: ((value: WorkersUserConfig) => unknown) | null,
+        onrejected?: ((reason: unknown) => unknown) | null
+      ) {
+        const error = new Error(errorMessage);
+        if (typeof onrejected === "function") {
+          onrejected(error);
+        }
+        return Promise.reject(error);
+      }
+    } as unknown as PromiseLike<WorkersUserConfig>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(errorMessage);
   });
 
   test("dedupes workers plugin for promise-like config exports", async () => {
@@ -2712,6 +2738,28 @@ describe("defineWorkersConfig", () => {
     const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-promise-like-entry.ts");
+  });
+
+  test("defineWorkersProject propagates rejection from promise-like config exports", async () => {
+    const errorMessage = "project promise-like config export rejection";
+    const value = defineWorkersProject({
+      then(
+        _onfulfilled?: ((resolved: WorkersUserConfig) => unknown) | null,
+        onrejected?: ((reason: unknown) => unknown) | null
+      ) {
+        const error = new Error(errorMessage);
+        if (typeof onrejected === "function") {
+          onrejected(error);
+        }
+        return Promise.reject(error);
+      }
+    } as unknown as PromiseLike<WorkersUserConfig>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
   });
 
   test("defineWorkersProject dedupes workers plugin for promise-like config exports", async () => {

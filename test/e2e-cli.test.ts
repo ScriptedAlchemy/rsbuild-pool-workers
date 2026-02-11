@@ -1900,6 +1900,64 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports promise config export with nested workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            test: {
+              include: ["./promise-nested-workers-fn.test.ts"],
+              poolOptions: {
+                workers: ({ inject }) => ({
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      PROMISE_NESTED_WORKERS_FN: inject("PROMISE_NESTED_WORKERS_FN")
+                    }
+                  }
+                })
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_NESTED_WORKERS_FN));
+          }
+        };
+      `,
+      "promise-nested-workers-fn.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise nested workers function wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-nested-workers-fn-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-nested-workers-fn.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_NESTED_WORKERS_FN: "\"promise-nested-workers-fn-ok\""
+        }
+      }
+    );
+  });
+
   test("supports promise config export with top-level workers function end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2364,6 +2422,65 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise-nested.test.ts");
     });
+  });
+
+  test("supports defineWorkersProject promise export with nested async workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            test: {
+              include: ["./project-promise-nested-async-workers-fn.test.ts"],
+              poolOptions: {
+                workers: async ({ inject }) => ({
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      PROJECT_PROMISE_NESTED_ASYNC_WORKERS_FN: inject("PROJECT_PROMISE_NESTED_ASYNC_WORKERS_FN")
+                    }
+                  }
+                })
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_NESTED_ASYNC_WORKERS_FN));
+          }
+        };
+      `,
+      "project-promise-nested-async-workers-fn.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise nested async workers function wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-nested-async-workers-fn-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-nested-async-workers-fn.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_NESTED_ASYNC_WORKERS_FN:
+            "\"project-promise-nested-async-workers-fn-ok\""
+        }
+      }
+    );
   });
 
   test("supports defineWorkersProject async workers options end-to-end", async () => {

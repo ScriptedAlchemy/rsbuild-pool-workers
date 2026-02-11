@@ -98,6 +98,40 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("supports promise config exports with nested workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_NESTED = "\"promise-nested\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        test: {
+          include: ["test/promise-nested/**/*.test.ts"],
+          poolOptions: {
+            workers: ({ inject }: WorkerPoolOptionsContext) => ({
+              main: "./src/promise-nested.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_NESTED: inject<string>("PROMISE_NESTED")
+                }
+              }
+            })
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    expect(resolved.include).toEqual(["test/promise-nested/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-nested");
+
+    delete process.env.RSTEST_INJECT_PROMISE_NESTED;
+  });
+
   test("supports promise config exports with top-level workers function", async () => {
     process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL = "\"promise-top-level\"";
 
@@ -572,6 +606,42 @@ describe("defineWorkersConfig", () => {
     const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-nested-entry.ts");
+  });
+
+  test("defineWorkersProject supports promise exports with nested async workers function", async () => {
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_NESTED_ASYNC = "\"project-promise-nested-async\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        test: {
+          include: ["test/project-promise-nested-async/**/*.test.ts"],
+          poolOptions: {
+            workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+              main: "./src/project-promise-nested-async-entry.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_NESTED_ASYNC: inject<string>(
+                    "PROJECT_PROMISE_NESTED_ASYNC"
+                  )
+                }
+              }
+            })
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-promise-nested-async/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-nested-async");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_NESTED_ASYNC;
   });
 
   test("defineWorkersProject supports promise exports with top-level workers function", async () => {

@@ -23,7 +23,8 @@ import type {
 import type {
   createExecutionContext as createExecutionContextInternal,
   env as envInternal,
-  fetchMock as fetchMockInternal
+  fetchMock as fetchMockInternal,
+  SELF as SELFInternal
 } from "cloudflare:test-internal";
 import { WORKERS_RSBUILD_PLUGIN_NAME } from "../src/index";
 
@@ -124,6 +125,15 @@ type _FetchMockInternalContract = Assert<
   IsAssignable<
     typeof fetchMockInternal,
     import("undici").MockAgent
+  >
+>;
+type _SelfInternalContract = Assert<
+  IsAssignable<
+    typeof SELFInternal,
+    {
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+      scheduled: (options?: { scheduledTime?: number; cron?: string }) => Promise<void>;
+    }
   >
 >;
 type _EnvInternalReadonlyContract = Assert<

@@ -141,4 +141,26 @@ describe("defineWorkersConfig", () => {
 
     delete process.env.RSTEST_INJECT_SERVICE_URL;
   });
+
+  test("throws when async workers options are used in sync config export", () => {
+    expect(() =>
+      defineWorkersConfig({
+        test: {
+          poolOptions: {
+            workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+              main: "./src/index.ts",
+              miniflare: {
+                bindings: {
+                  VALUE: inject<string>("VALUE")
+                }
+              }
+            })
+          }
+        }
+      })
+    ).toThrow(
+      "Async function-valued workers options require an async config export. " +
+      "Wrap your `defineWorkersConfig(...)` call in an async config function."
+    );
+  });
 });

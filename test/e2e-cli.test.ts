@@ -1515,6 +1515,52 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports sync config export with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersConfig({
+          plugins: [false as any, workersRsbuildPlugin()],
+          include: ["./sync-falsey-plugin.test.ts"],
+          workers: {
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                SYNC_FALSEY_PLUGIN_VALUE: "sync-falsey-plugin-ok"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.SYNC_FALSEY_PLUGIN_VALUE));
+          }
+        };
+      `,
+      "sync-falsey-plugin.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("sync config with falsey + preinstalled workers plugin works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("sync-falsey-plugin-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("sync-falsey-plugin.test.ts");
+    });
+  });
+
   test("prefers defineWorkersConfig top-level workers over nested workers end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2865,6 +2911,53 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-alias.test.ts");
+    });
+  });
+
+  test("supports defineWorkersProject sync export with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersProject({
+          plugins: [false as any, workersRsbuildPlugin()],
+          include: ["./project-sync-falsey-plugin.test.ts"],
+          workers: {
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_SYNC_FALSEY_PLUGIN_VALUE: "project-sync-falsey-plugin-ok"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_SYNC_FALSEY_PLUGIN_VALUE));
+          }
+        };
+      `,
+      "project-sync-falsey-plugin.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project sync config with falsey + preinstalled workers plugin works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-sync-falsey-plugin-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-sync-falsey-plugin.test.ts");
     });
   });
 

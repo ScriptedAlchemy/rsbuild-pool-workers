@@ -490,6 +490,82 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).not.toContain("promise-like-nested-precedence.ts");
   });
 
+  test("supports promise-like exports with nested workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED = "\"promise-like-nested\"";
+
+    const promiseLikeValue = {
+      test: {
+        include: ["test/promise-like-nested/**/*.test.ts"],
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/promise-like-nested.ts",
+            miniflare: {
+              bindings: {
+                PROMISE_LIKE_NESTED: inject<string>("PROMISE_LIKE_NESTED")
+              }
+            }
+          })
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    expect(resolved.include).toEqual(["test/promise-like-nested/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-nested");
+
+    delete process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED;
+  });
+
+  test("supports promise-like exports with nested async workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED_ASYNC = "\"promise-like-nested-async\"";
+
+    const promiseLikeValue = {
+      test: {
+        include: ["test/promise-like-nested-async/**/*.test.ts"],
+        poolOptions: {
+          workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/promise-like-nested-async.ts",
+            miniflare: {
+              bindings: {
+                PROMISE_LIKE_NESTED_ASYNC: inject<string>("PROMISE_LIKE_NESTED_ASYNC")
+              }
+            }
+          })
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    expect(resolved.include).toEqual(["test/promise-like-nested-async/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-nested-async");
+
+    delete process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED_ASYNC;
+  });
+
   test("does not evaluate nested workers function in promise-like export when top-level function exists", async () => {
     const promiseLikeValue = {
       workers: () => ({
@@ -2099,6 +2175,85 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-promise-like-top-level-precedence.ts");
     expect(String(defineValue)).not.toContain("project-promise-like-nested-precedence.ts");
+  });
+
+  test("defineWorkersProject supports promise-like exports with nested workers function", async () => {
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED = "\"project-promise-like-nested\"";
+
+    const promiseLikeValue = {
+      test: {
+        include: ["test/project-promise-like-nested/**/*.test.ts"],
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/project-promise-like-nested-entry.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_PROMISE_LIKE_NESTED: inject<string>("PROJECT_PROMISE_LIKE_NESTED")
+              }
+            }
+          })
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-promise-like-nested/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-like-nested");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED;
+  });
+
+  test("defineWorkersProject supports promise-like exports with nested async workers function", async () => {
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED_ASYNC =
+      "\"project-promise-like-nested-async\"";
+
+    const promiseLikeValue = {
+      test: {
+        include: ["test/project-promise-like-nested-async/**/*.test.ts"],
+        poolOptions: {
+          workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/project-promise-like-nested-async-entry.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_PROMISE_LIKE_NESTED_ASYNC: inject<string>(
+                  "PROJECT_PROMISE_LIKE_NESTED_ASYNC"
+                )
+              }
+            }
+          })
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-promise-like-nested-async/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-like-nested-async");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED_ASYNC;
   });
 
   test("defineWorkersProject does not evaluate nested workers function in promise-like export when top-level function exists", async () => {

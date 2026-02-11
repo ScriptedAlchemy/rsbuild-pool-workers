@@ -180,4 +180,44 @@ describe("Workers runtime state integration", () => {
     expect(await response2.text()).toBe("mocked-2");
     expect(fetchMock.pendingInterceptors().length).toBe(0);
   });
+
+  test("fetchMock remains usable after teardown followed by setup", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            async fetch() {
+              const response = await fetch("http://example.com/data");
+              return new Response(await response.text());
+            }
+          };
+        `
+      }
+    });
+
+    await runtime.setup();
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+    fetchMock
+      .get("http://example.com")
+      .intercept({ path: "/data", method: "GET" })
+      .reply(200, "first-run");
+
+    const first = await SELF.fetch("http://localhost/");
+    expect(await first.text()).toBe("first-run");
+
+    await runtime.teardown();
+    await runtime.setup();
+
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+    fetchMock
+      .get("http://example.com")
+      .intercept({ path: "/data", method: "GET" })
+      .reply(200, "second-run");
+
+    const second = await SELF.fetch("http://localhost/");
+    expect(await second.text()).toBe("second-run");
+  });
 });

@@ -916,6 +916,43 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("promise-like-top-level-function");
   });
 
+  test("does not evaluate nested workers function in promise-like export when top-level async function exists", async () => {
+    const promiseLikeValue = {
+      workers: async () => ({
+        main: "./src/promise-like-top-level-async-function-precedence.ts",
+        miniflare: {
+          bindings: {
+            PROMISE_LIKE_TOP_LEVEL_ASYNC_FUNCTION_PRECEDENCE:
+              "promise-like-top-level-async-function"
+          }
+        }
+      }),
+      test: {
+        poolOptions: {
+          workers: () => {
+            throw new Error("nested promise-like workers function should not execute");
+          }
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-top-level-async-function-precedence.ts");
+    expect(String(defineValue)).toContain("promise-like-top-level-async-function");
+  });
+
   test("supports promise-like exports with top-level workers function", async () => {
     process.env.RSTEST_INJECT_PROMISE_LIKE_TOP_LEVEL = "\"promise-like-top-level\"";
 
@@ -2934,6 +2971,45 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-promise-like-top-level-function-precedence.ts");
     expect(String(defineValue)).toContain("project-promise-like-top-level-function");
+  });
+
+  test("defineWorkersProject does not evaluate nested workers function in promise-like export when top-level async function exists", async () => {
+    const promiseLikeValue = {
+      workers: async () => ({
+        main: "./src/project-promise-like-top-level-async-function-precedence.ts",
+        miniflare: {
+          bindings: {
+            PROJECT_PROMISE_LIKE_TOP_LEVEL_ASYNC_FUNCTION_PRECEDENCE:
+              "project-promise-like-top-level-async-function"
+          }
+        }
+      }),
+      test: {
+        poolOptions: {
+          workers: () => {
+            throw new Error("project nested promise-like workers function should not execute");
+          }
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain(
+      "project-promise-like-top-level-async-function-precedence.ts"
+    );
+    expect(String(defineValue)).toContain("project-promise-like-top-level-async-function");
   });
 
   test("defineWorkersProject supports promise-like exports with top-level workers function", async () => {

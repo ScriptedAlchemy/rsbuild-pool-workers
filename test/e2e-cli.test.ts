@@ -1515,6 +1515,68 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("prefers defineWorkersConfig top-level workers over nested workers end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          include: ["./workers-precedence.test.ts"],
+          workers: {
+            main: "./worker-top-level.ts",
+            miniflare: {
+              bindings: {
+                WORKERS_PRECEDENCE: "top-level-selected"
+              }
+            }
+          },
+          test: {
+            poolOptions: {
+              workers: {
+                main: "./worker-nested.ts",
+                miniflare: {
+                  bindings: {
+                    WORKERS_PRECEDENCE: "nested-selected"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.WORKERS_PRECEDENCE));
+          }
+        };
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch() {
+            return new Response("nested-should-not-run");
+          }
+        };
+      `,
+      "workers-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("top-level workers value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("top-level-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("workers-precedence.test.ts");
+    });
+  });
+
   test("supports top-level workers function inject() direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2965,6 +3027,69 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-top-level.test.ts");
+    });
+  });
+
+  test("prefers defineWorkersProject top-level workers over nested workers end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          include: ["./project-workers-precedence.test.ts"],
+          workers: {
+            main: "./worker-top-level.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_WORKERS_PRECEDENCE: "project-top-level-selected"
+              }
+            }
+          },
+          test: {
+            poolOptions: {
+              workers: {
+                main: "./worker-nested.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_WORKERS_PRECEDENCE: "project-nested-selected"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_WORKERS_PRECEDENCE));
+          }
+        };
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch() {
+            return new Response("project-nested-should-not-run");
+          }
+        };
+      `,
+      "project-workers-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project top-level workers value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-top-level-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-workers-precedence.test.ts");
     });
   });
 });

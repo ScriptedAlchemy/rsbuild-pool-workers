@@ -50,6 +50,41 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("DurableThing");
   });
 
+  test("prefers top-level workers over test.poolOptions.workers when both are set", () => {
+    const value = defineWorkersConfig({
+      workers: {
+        main: "./src/top-level-worker.ts",
+        miniflare: {
+          bindings: {
+            SELECTED_WORKER: "top-level"
+          }
+        }
+      },
+      test: {
+        poolOptions: {
+          workers: {
+            main: "./src/nested-worker.ts",
+            miniflare: {
+              bindings: {
+                SELECTED_WORKER: "nested"
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("top-level-worker.ts");
+    expect(String(defineValue)).toContain("top-level");
+    expect(String(defineValue)).not.toContain("nested-worker.ts");
+  });
+
   test("supports async config functions", async () => {
     const configFactory = defineWorkersConfig(async () => ({
       workers: {
@@ -592,6 +627,41 @@ describe("defineWorkersConfig", () => {
     const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("index.ts");
+  });
+
+  test("defineWorkersProject prefers top-level workers over test.poolOptions.workers", () => {
+    const value = defineWorkersProject({
+      workers: {
+        main: "./src/project-top-level-worker.ts",
+        miniflare: {
+          bindings: {
+            PROJECT_SELECTED_WORKER: "project-top-level"
+          }
+        }
+      },
+      test: {
+        poolOptions: {
+          workers: {
+            main: "./src/project-nested-worker.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_SELECTED_WORKER: "project-nested"
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-top-level-worker.ts");
+    expect(String(defineValue)).toContain("project-top-level");
+    expect(String(defineValue)).not.toContain("project-nested-worker.ts");
   });
 
   test("defineWorkersProject supports promise config exports", async () => {

@@ -412,4 +412,61 @@ describe("defineWorkersConfig", () => {
       WORKERS_RSBUILD_PLUGIN_NAME
     );
   });
+
+  test("defineWorkersProject deduplicates workers plugin in async config path", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersProject(async () => ({
+      plugins: [existingPlugin],
+      workers: {
+        main: "./src/project-worker.ts"
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
+  test("defineWorkersProject deduplicates workers plugin when plugins is single value", () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const value = defineWorkersProject({
+      plugins: existingPlugin as unknown as any,
+      workers: {
+        main: "./src/project-worker.ts"
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const plugins = Array.isArray(value.plugins)
+      ? value.plugins
+      : value.plugins
+        ? [value.plugins]
+        : [];
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
 });

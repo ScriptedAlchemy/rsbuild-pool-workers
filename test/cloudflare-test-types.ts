@@ -21,6 +21,7 @@ import type {
 } from "cloudflare:test";
 import type {
   createExecutionContext as createExecutionContextInternal,
+  env as envInternal,
   fetchMock as fetchMockInternal
 } from "cloudflare:test-internal";
 
@@ -112,6 +113,12 @@ type _FetchMockInternalContract = Assert<
   IsAssignable<
     typeof fetchMockInternal,
     import("undici").MockAgent
+  >
+>;
+type _EnvInternalReadonlyContract = Assert<
+  IsAssignable<
+    typeof envInternal,
+    Readonly<Record<string, unknown>>
   >
 >;
 

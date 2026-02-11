@@ -177,7 +177,7 @@ function extractWorkersOptions(
     if (!allowAsyncWorkersFunction) {
       throw new TypeError(
         "Async function-valued workers options require an async config export. " +
-          "Wrap your `defineWorkersConfig(...)` call in an async config function."
+          "Wrap your exported workers config in an async function."
       );
     }
     throw new TypeError(

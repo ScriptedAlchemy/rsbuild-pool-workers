@@ -920,7 +920,7 @@ describe("defineWorkersConfig", () => {
       })
     ).toThrow(
       "Async function-valued workers options require an async config export. " +
-      "Wrap your `defineWorkersConfig(...)` call in an async config function."
+      "Wrap your exported workers config in an async function."
     );
   });
 
@@ -1921,7 +1921,7 @@ describe("defineWorkersConfig", () => {
       })
     ).toThrow(
       "Async function-valued workers options require an async config export. " +
-      "Wrap your `defineWorkersConfig(...)` call in an async config function."
+      "Wrap your exported workers config in an async function."
     );
   });
 });

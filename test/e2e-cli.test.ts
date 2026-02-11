@@ -335,4 +335,57 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain("internal-module.test.ts");
     });
   });
+
+  test("keeps cloudflare:test env bindings read-only", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./env-readonly.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    TOKEN: "abc123"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.TOKEN));
+          }
+        };
+      `,
+      "env-readonly.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env } from "cloudflare:test";
+
+        test("env is immutable", () => {
+          expect(env.TOKEN).toBe("abc123");
+          expect(() => {
+            (env as Record<string, unknown>).TOKEN = "override";
+          }).toThrow("Cannot assign to read only property on cloudflare:test env.");
+          expect(() => {
+            delete (env as Record<string, unknown>).TOKEN;
+          }).toThrow("Cannot delete properties from cloudflare:test env.");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("env-readonly.test.ts");
+    });
+  });
 });

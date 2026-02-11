@@ -1010,6 +1010,37 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("defineWorkersProject dedupes workers plugin for promise exports when plugins is single value", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        plugins: existingPlugin as unknown as any,
+        workers: {
+          main: "./src/project-entry.ts"
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
   test("defineWorkersProject prefers top-level workers in promise exports", async () => {
     const value = defineWorkersProject(
       Promise.resolve({

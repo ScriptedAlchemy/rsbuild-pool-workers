@@ -1654,6 +1654,57 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports async config with top-level async workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          include: ["./async-top-level-workers.test.ts"],
+          workers: async ({ inject }) => ({
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                TOP_LEVEL_ASYNC_GREETING: inject("TOP_LEVEL_ASYNC_GREETING")
+              }
+            }
+          })
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.TOP_LEVEL_ASYNC_GREETING));
+          }
+        };
+      `,
+      "async-top-level-workers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("top-level async workers function is resolved", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-from-top-level-async");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("async-top-level-workers.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_TOP_LEVEL_ASYNC_GREETING: "\"hello-from-top-level-async\""
+        }
+      }
+    );
+  });
+
   test("supports promise-based config exports end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

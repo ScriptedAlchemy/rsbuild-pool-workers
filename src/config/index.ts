@@ -236,20 +236,28 @@ export function defineWorkersConfig(
   config: Promise<WorkersUserConfig<RstestConfig>>
 ): Promise<WorkersUserConfig<RstestConfig>>;
 export function defineWorkersConfig(
-  config: () => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>
-): () => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
+  config: (
+    ...args: unknown[]
+  ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>
+): (
+  ...args: unknown[]
+) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
 export function defineWorkersConfig(
   config: AnyConfigExport<WorkersUserConfig<RstestConfig>>
 ): AnyConfigExport<WorkersUserConfig<RstestConfig>> {
   if (typeof config === "function") {
-    const fn = config as () => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
-    return (() => {
-      const value = fn();
+    const fn = config as (
+      ...args: unknown[]
+    ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
+    return ((...args: unknown[]) => {
+      const value = fn(...args);
       if (value instanceof Promise) {
         return value.then((resolved) => ensureWorkersConfigAsync(resolved));
       }
       return ensureWorkersConfig(value);
-    }) as () => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
+    }) as (
+      ...args: unknown[]
+    ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
   }
 
   if (config instanceof Promise) {

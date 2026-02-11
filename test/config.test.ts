@@ -128,6 +128,31 @@ describe("defineWorkersConfig", () => {
     expect(resolved.source?.define).toBeDefined();
   });
 
+  test("forwards async config function arguments", async () => {
+    const configFactory = defineWorkersConfig(async (...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      return {
+      workers: {
+        main: "./src/index.ts",
+        miniflare: {
+          bindings: {
+            MODE: context?.mode ?? "unknown"
+          }
+        }
+      }
+      };
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    const resolved = await configFactory({ mode: "test" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("test");
+  });
+
   test("supports promise config exports and dedupes workers plugin", async () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -610,6 +635,29 @@ describe("defineWorkersConfig", () => {
 
     expect(resolved.include).toEqual(["test/**/*.test.ts"]);
     expect(resolved.source?.define).toBeDefined();
+  });
+
+  test("forwards sync config function arguments", () => {
+    const configFactory = defineWorkersConfig((...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      return {
+      include: [context?.mode ?? "unknown"],
+      workers: {
+        main: "./src/index.ts"
+      }
+      };
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected sync config function");
+    }
+
+    const resolved = configFactory({ mode: "test" });
+    if (resolved instanceof Promise) {
+      throw new Error("Expected sync config result");
+    }
+
+    expect(resolved.include).toEqual(["test"]);
   });
 
   test("supports sync function-valued workers options with inject()", () => {
@@ -1124,6 +1172,32 @@ describe("defineWorkersConfig", () => {
     const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("index.ts");
+  });
+
+  test("defineWorkersProject forwards sync config function arguments", () => {
+    const value = defineWorkersProject((...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      return {
+      include: [context?.mode ?? "unknown"],
+      workers: {
+        main: "./src/project-sync-forwarding.ts"
+      }
+      };
+    });
+
+    if (typeof value !== "function") {
+      throw new Error("Expected sync config function export");
+    }
+
+    const resolved = value({ mode: "test" });
+    if (resolved instanceof Promise) {
+      throw new Error("Expected sync config result");
+    }
+
+    expect(resolved.include).toEqual(["test"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-sync-forwarding.ts");
   });
 
   test("defineWorkersProject prefers top-level workers over test.poolOptions.workers", () => {
@@ -1669,6 +1743,32 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("http://localhost:9555");
 
     delete process.env.RSTEST_INJECT_PROJECT_URL;
+  });
+
+  test("defineWorkersProject forwards async config function arguments", async () => {
+    const configFactory = defineWorkersProject(async (...args: unknown[]) => {
+      const context = args[0] as { mode?: string } | undefined;
+      return {
+      workers: {
+        main: "./src/project-async-forwarding.ts",
+        miniflare: {
+          bindings: {
+            PROJECT_MODE: context?.mode ?? "unknown"
+          }
+        }
+      }
+      };
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory({ mode: "test" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("test");
+    expect(String(defineValue)).toContain("project-async-forwarding.ts");
   });
 
   test("defineWorkersProject deduplicates existing workers plugin", () => {

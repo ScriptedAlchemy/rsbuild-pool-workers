@@ -566,6 +566,52 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED_ASYNC;
   });
 
+  test("supports promise-like exports with nested thenable workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED_THENABLE = "\"promise-like-nested-thenable\"";
+
+    const promiseLikeValue = {
+      test: {
+        include: ["test/promise-like-nested-thenable/**/*.test.ts"],
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => {
+            const workersValue = {
+              main: "./src/promise-like-nested-thenable.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_LIKE_NESTED_THENABLE: inject<string>("PROMISE_LIKE_NESTED_THENABLE")
+                }
+              }
+            };
+            return {
+              then(resolve: (value: typeof workersValue) => void) {
+                resolve(workersValue);
+                return Promise.resolve(workersValue);
+              }
+            } as unknown as PromiseLike<typeof workersValue>;
+          }
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    expect(resolved.include).toEqual(["test/promise-like-nested-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-nested-thenable");
+
+    delete process.env.RSTEST_INJECT_PROMISE_LIKE_NESTED_THENABLE;
+  });
+
   test("does not evaluate nested workers function in promise-like export when top-level function exists", async () => {
     const promiseLikeValue = {
       workers: () => ({
@@ -634,6 +680,48 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("promise-like-top-level");
 
     delete process.env.RSTEST_INJECT_PROMISE_LIKE_TOP_LEVEL;
+  });
+
+  test("supports promise-like exports with top-level thenable workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE = "\"promise-like-top-level-thenable\"";
+
+    const promiseLikeValue = {
+      workers: ({ inject }: WorkerPoolOptionsContext) => {
+        const workersValue = {
+          main: "./src/promise-like-top-level-thenable.ts",
+          miniflare: {
+            bindings: {
+              PROMISE_LIKE_TOP_LEVEL_THENABLE: inject<string>("PROMISE_LIKE_TOP_LEVEL_THENABLE")
+            }
+          }
+        };
+        return {
+          then(resolve: (value: typeof workersValue) => void) {
+            resolve(workersValue);
+            return Promise.resolve(workersValue);
+          }
+        } as unknown as PromiseLike<typeof workersValue>;
+      },
+      include: ["test/promise-like-top-level-thenable/**/*.test.ts"]
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    expect(resolved.include).toEqual(["test/promise-like-top-level-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-top-level-thenable");
+
+    delete process.env.RSTEST_INJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE;
   });
 
   test("dedupes workers plugin for promise config exports when plugins is single value", async () => {
@@ -2256,6 +2344,55 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED_ASYNC;
   });
 
+  test("defineWorkersProject supports promise-like exports with nested thenable workers function", async () => {
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED_THENABLE =
+      "\"project-promise-like-nested-thenable\"";
+
+    const promiseLikeValue = {
+      test: {
+        include: ["test/project-promise-like-nested-thenable/**/*.test.ts"],
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => {
+            const workersValue = {
+              main: "./src/project-promise-like-nested-thenable-entry.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_LIKE_NESTED_THENABLE: inject<string>(
+                    "PROJECT_PROMISE_LIKE_NESTED_THENABLE"
+                  )
+                }
+              }
+            };
+            return {
+              then(resolve: (value: typeof workersValue) => void) {
+                resolve(workersValue);
+                return Promise.resolve(workersValue);
+              }
+            } as unknown as PromiseLike<typeof workersValue>;
+          }
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-promise-like-nested-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-like-nested-thenable");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED_THENABLE;
+  });
+
   test("defineWorkersProject does not evaluate nested workers function in promise-like export when top-level function exists", async () => {
     const promiseLikeValue = {
       workers: () => ({
@@ -2325,6 +2462,51 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-like-top-level");
 
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_TOP_LEVEL;
+  });
+
+  test("defineWorkersProject supports promise-like exports with top-level thenable workers function", async () => {
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE =
+      "\"project-promise-like-top-level-thenable\"";
+
+    const promiseLikeValue = {
+      workers: ({ inject }: WorkerPoolOptionsContext) => {
+        const workersValue = {
+          main: "./src/project-promise-like-top-level-thenable-entry.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE: inject<string>(
+                "PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE"
+              )
+            }
+          }
+        };
+        return {
+          then(resolve: (value: typeof workersValue) => void) {
+            resolve(workersValue);
+            return Promise.resolve(workersValue);
+          }
+        } as unknown as PromiseLike<typeof workersValue>;
+      },
+      include: ["test/project-promise-like-top-level-thenable/**/*.test.ts"]
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-promise-like-top-level-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-like-top-level-thenable");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_LIKE_TOP_LEVEL_THENABLE;
   });
 
   test("defineWorkersProject dedupes workers plugin for promise config exports", async () => {

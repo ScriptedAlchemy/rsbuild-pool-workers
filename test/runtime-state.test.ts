@@ -102,6 +102,32 @@ describe("Workers runtime state integration", () => {
     expect(await response.text()).toBe("/url-input");
   });
 
+  test("SELF.fetch Request inputs honor init overrides", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            async fetch(request) {
+              const body = await request.text();
+              return new Response(request.method + ":" + body);
+            }
+          };
+        `
+      }
+    });
+
+    const original = new Request("http://localhost/", {
+      method: "POST",
+      body: "original"
+    });
+    const response = await SELF.fetch(original, {
+      method: "PUT",
+      body: "override"
+    });
+    expect(await response.text()).toBe("PUT:override");
+  });
+
   test("pushStorageSnapshot and popStorageSnapshot restore persisted KV state", async () => {
     const persistRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-kv-"));
 

@@ -2319,6 +2319,36 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces thenable config function export rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          then(_resolve, reject) {
+            const error = new Error("thenable config function rejection e2e");
+            if (typeof reject === "function") {
+              reject(error);
+            }
+            return Promise.reject(error);
+          }
+        }) as PromiseLike<any>);
+      `,
+      "thenable-config-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("thenable config function rejection e2e");
+    });
+  });
+
   test("supports config function thenable exports with preinstalled workers plugin end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -6028,6 +6058,36 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-config-function-thenable.test.ts");
+    });
+  });
+
+  test("surfaces defineWorkersProject thenable config function export rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          then(_resolve, reject) {
+            const error = new Error("project thenable config function rejection e2e");
+            if (typeof reject === "function") {
+              reject(error);
+            }
+            return Promise.reject(error);
+          }
+        }) as PromiseLike<any>);
+      `,
+      "project-thenable-config-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("project thenable config function rejection e2e");
     });
   });
 

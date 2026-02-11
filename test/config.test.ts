@@ -270,6 +270,38 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("supports promise-like config exports", async () => {
+    const promiseLikeValue = {
+      include: ["test/promise-like/**/*.test.ts"],
+      workers: {
+        main: "./src/index.ts"
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    expect(resolved.include).toEqual(["test/promise-like/**/*.test.ts"]);
+
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
   test("dedupes workers plugin for promise config exports when plugins is single value", async () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -1553,6 +1585,31 @@ describe("defineWorkersConfig", () => {
     const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-entry.ts");
+  });
+
+  test("defineWorkersProject supports promise-like config exports", async () => {
+    const promiseLikeValue = {
+      workers: {
+        main: "./src/project-promise-like-entry.ts"
+      },
+      include: ["test/project/promise-like/**/*.test.ts"]
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project/promise-like/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-like-entry.ts");
   });
 
   test("defineWorkersProject dedupes workers plugin for promise config exports", async () => {

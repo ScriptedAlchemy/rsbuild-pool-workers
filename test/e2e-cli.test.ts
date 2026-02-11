@@ -2419,6 +2419,56 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports promise-like config exports end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          then(resolve) {
+            const value = {
+              include: ["./promise-like-config.test.ts"],
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROMISE_LIKE_VALUE: "promise-like-config-ok"
+                  }
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_LIKE_VALUE));
+          }
+        };
+      `,
+      "promise-like-config.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise-like config export resolves workers wiring", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-like-config-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("promise-like-config.test.ts");
+    });
+  });
+
   test("supports promise config export with preinstalled workers plugin end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3316,6 +3366,56 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise.test.ts");
+    });
+  });
+
+  test("supports defineWorkersProject promise-like export end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          then(resolve) {
+            const value = {
+              include: ["./project-promise-like.test.ts"],
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_PROMISE_LIKE_VALUE: "project-promise-like-ok"
+                  }
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_LIKE_VALUE));
+          }
+        };
+      `,
+      "project-promise-like.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("defineWorkersProject promise-like export wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-like-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise-like.test.ts");
     });
   });
 

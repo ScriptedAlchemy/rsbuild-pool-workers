@@ -188,4 +188,23 @@ describe("resolveRuntimeOptions", () => {
 
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
+
+  test("falls back to scriptPath when TypeScript entrypoint file is missing", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-options-missing-"));
+    const missingMainPath = path.join(tempRoot, "worker.ts");
+
+    const options = await resolveRuntimeOptions(
+      {
+        main: missingMainPath,
+        miniflare: {}
+      },
+      tempRoot
+    );
+
+    expect(options.miniflare.modules).toBe(true);
+    expect(options.miniflare.script).toBeUndefined();
+    expect(options.miniflare.scriptPath).toBe(missingMainPath);
+
+    await fs.rm(tempRoot, { recursive: true, force: true });
+  });
 });

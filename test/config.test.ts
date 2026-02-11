@@ -2,6 +2,7 @@ import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
 import { defineWorkersConfig } from "../src/config/index";
 import type { WorkerPoolOptionsContext } from "../src/config/index";
+import { WORKERS_RSBUILD_PLUGIN_NAME } from "../src/plugin/workers-plugin";
 
 describe("defineWorkersConfig", () => {
   test("flattens vitest-like `test` config and injects workers wiring", async () => {
@@ -161,6 +162,35 @@ describe("defineWorkersConfig", () => {
     ).toThrow(
       "Async function-valued workers options require an async config export. " +
       "Wrap your `defineWorkersConfig(...)` call in an async config function."
+    );
+  });
+
+  test("does not inject duplicate workers plugin when already present", () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const value = defineWorkersConfig({
+      plugins: [existingPlugin],
+      workers: {
+        main: "./src/index.ts"
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const plugins = Array.isArray(value.plugins)
+      ? value.plugins
+      : value.plugins
+        ? [value.plugins]
+        : [];
+
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
     );
   });
 });

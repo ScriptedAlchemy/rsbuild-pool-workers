@@ -11,6 +11,7 @@ const cloudflareTestTsPath = path.resolve(__dirname, "../cloudflare-test/index.t
 const CLOUDFLARE_TEST_MODULE_PATH = fs.existsSync(cloudflareTestJsPath)
   ? cloudflareTestJsPath
   : cloudflareTestTsPath;
+export const WORKERS_RSBUILD_PLUGIN_NAME = "@cloudflare/rstest-pool-workers:config";
 
 function ensureArrayIncludes<T>(array: T[], items: T[]): void {
   for (const item of items) {
@@ -31,7 +32,7 @@ function ensureArrayExcludes<T>(array: T[], items: T[]): void {
 
 export function workersRsbuildPlugin(): RsbuildPlugin {
   return {
-    name: "@cloudflare/rstest-pool-workers:config",
+    name: WORKERS_RSBUILD_PLUGIN_NAME,
     setup(api) {
       api.resolve(({ resolveData }) => {
         if (resolveData.request === "cloudflare:test") {

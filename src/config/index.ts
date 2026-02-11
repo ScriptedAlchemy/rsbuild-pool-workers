@@ -4,7 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { RstestConfig } from "@rstest/core";
-import { workersRsbuildPlugin } from "../plugin/workers-plugin";
+import {
+  WORKERS_RSBUILD_PLUGIN_NAME,
+  workersRsbuildPlugin
+} from "../plugin/workers-plugin";
 import {
   type AnyConfigExport,
   type WorkersPoolOptions,
@@ -25,6 +28,21 @@ function ensureArrayIncludes<T>(array: T[], items: T[]): void {
       array.push(item);
     }
   }
+}
+
+function ensureWorkersPluginInstalled(plugins: unknown[]): void {
+  if (
+    plugins.some(
+      (plugin) =>
+        typeof plugin === "object" &&
+        plugin !== null &&
+        "name" in plugin &&
+        (plugin as { name?: unknown }).name === WORKERS_RSBUILD_PLUGIN_NAME
+    )
+  ) {
+    return;
+  }
+  plugins.push(workersRsbuildPlugin());
 }
 
 function getCallerConfigDirectory(): string {
@@ -148,8 +166,13 @@ function ensureWorkersConfig<T extends RstestConfig>(rawConfig: WorkersUserConfi
     configDirectory
   );
 
-  flattenedConfig.plugins ??= [];
-  flattenedConfig.plugins.push(workersRsbuildPlugin());
+  const plugins = Array.isArray(flattenedConfig.plugins)
+    ? [...flattenedConfig.plugins]
+    : flattenedConfig.plugins
+      ? [flattenedConfig.plugins]
+      : [];
+  ensureWorkersPluginInstalled(plugins);
+  flattenedConfig.plugins = plugins;
 
   flattenedConfig.setupFiles = [
     ...(Array.isArray(flattenedConfig.setupFiles)
@@ -193,8 +216,13 @@ async function ensureWorkersConfigAsync<T extends RstestConfig>(
     workersOptions = normalizeWorkersPaths(rawWorkersOptions, configDirectory);
   }
 
-  flattenedConfig.plugins ??= [];
-  flattenedConfig.plugins.push(workersRsbuildPlugin());
+  const plugins = Array.isArray(flattenedConfig.plugins)
+    ? [...flattenedConfig.plugins]
+    : flattenedConfig.plugins
+      ? [flattenedConfig.plugins]
+      : [];
+  ensureWorkersPluginInstalled(plugins);
+  flattenedConfig.plugins = plugins;
 
   flattenedConfig.setupFiles = [
     ...(Array.isArray(flattenedConfig.setupFiles)

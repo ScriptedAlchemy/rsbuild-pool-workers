@@ -50,6 +50,25 @@ test("integration", async () => {
 });
 ```
 
+Durable Object RPC helper example:
+
+```ts
+import { env, runInDurableObject } from "cloudflare:test";
+import { expect, test } from "@rstest/core";
+
+test("can call RPC methods on a Durable Object instance", async () => {
+  const id = (env.COUNTER as DurableObjectNamespace).idFromName("singleton");
+  const stub = (env.COUNTER as DurableObjectNamespace).get(id);
+
+  const value = await runInDurableObject<{ incrementAndGet: () => Promise<number> }, number>(
+    stub,
+    (instance) => instance.incrementAndGet()
+  );
+
+  expect(value).toBe(1);
+});
+```
+
 ## Config utilities
 
 `@cloudflare/rstest-pool-workers/config` also exports helpers aligned with the

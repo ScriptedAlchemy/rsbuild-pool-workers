@@ -35,6 +35,10 @@ export const env: Record<string, unknown> = new Proxy(
       const bindings = runtime().getEnvSync();
       return bindings[property as string];
     },
+    has(_target, property) {
+      const bindings = runtime().getEnvSync();
+      return property in bindings;
+    },
     ownKeys() {
       return Reflect.ownKeys(runtime().getEnvSync());
     },
@@ -99,9 +103,14 @@ export async function runInDurableObject<_ObjectType, _ReturnType>(
   // Provide a throw-on-use placeholder so callbacks that only need `instance`
   // can run today, while stateful callbacks fail with actionable guidance.
   const statePlaceholder = new Proxy(
-    {},
     {
-      get() {
+      __kind: "DurableObjectStatePlaceholder"
+    },
+    {
+      get(target, property) {
+        if (property === "__kind") {
+          return target.__kind;
+        }
         throw new Error(
           "runInDurableObject(): DurableObjectState access is not yet available in Rstest mode. " +
             "Use RPC-callable instance methods for now."

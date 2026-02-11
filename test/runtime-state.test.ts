@@ -42,6 +42,8 @@ describe("Workers runtime state integration", () => {
     const response = await SELF.fetch("http://localhost/");
     expect(await response.text()).toBe("42");
     expect(workersEnv.ANSWER).toBe(42);
+    expect("ANSWER" in workersEnv).toBe(true);
+    expect(Object.keys(workersEnv)).toContain("ANSWER");
   });
 
   test("pushStorageSnapshot and popStorageSnapshot restore persisted KV state", async () => {
@@ -305,13 +307,17 @@ describe("Workers runtime state integration", () => {
       get: (id: unknown) => unknown;
     };
     const stub = namespace.get(namespace.idFromName("singleton"));
+    const seenStateKinds: string[] = [];
 
     await expect(
       runInDurableObject(stub, async (_instance, state: unknown) => {
+        const kind = (state as { __kind?: string }).__kind;
+        seenStateKinds.push(String(kind));
         const storage = (state as { storage: unknown }).storage;
         void storage;
         return "value";
       })
     ).rejects.toThrow("DurableObjectState access is not yet available in Rstest mode");
+    expect(seenStateKinds).toEqual(["DurableObjectStatePlaceholder"]);
   });
 });

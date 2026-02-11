@@ -153,7 +153,7 @@ import {
   - Promise-like return values (thenables), which are normalized like async results.
 - top-level `workers` supports the same object/function forms and `inject()` behavior.
 - if both top-level `workers` and `test.poolOptions.workers` are provided, top-level `workers` takes precedence (including sync/async/promise config export forms), and nested function-valued workers options are not evaluated.
-- `defineWorkersConfig()` supports object, promise, sync function, and async function config exports.
+- `defineWorkersConfig()` supports object, promise/promise-like, sync function, and async function config exports.
 - when using function exports (sync, async, or sync functions returning promises), config function arguments and invocation context (`this`) from rstest/rsbuild are forwarded unchanged.
 - function exports may also return Promise-like values (thenables); helpers normalize them before applying workers wiring.
 - `cloudflare:test` currently supports:

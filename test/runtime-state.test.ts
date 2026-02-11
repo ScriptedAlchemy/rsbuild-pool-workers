@@ -84,6 +84,24 @@ describe("Workers runtime state integration", () => {
     expect(await response.text()).toBe("POST:payload");
   });
 
+  test("SELF.fetch supports URL object inputs", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            fetch(request) {
+              return new Response(new URL(request.url).pathname);
+            }
+          };
+        `
+      }
+    });
+
+    const response = await SELF.fetch(new URL("http://localhost/url-input"));
+    expect(await response.text()).toBe("/url-input");
+  });
+
   test("pushStorageSnapshot and popStorageSnapshot restore persisted KV state", async () => {
     const persistRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-kv-"));
 

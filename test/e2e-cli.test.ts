@@ -154,6 +154,49 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports SELF.fetch URL inputs end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./url-input.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(request) {
+            return new Response(new URL(request.url).pathname);
+          }
+        };
+      `,
+      "url-input.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("URL input is dispatched correctly", async () => {
+          const res = await SELF.fetch(new URL("http://localhost/e2e-url-input"));
+          expect(await res.text()).toBe("/e2e-url-input");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("url-input.test.ts");
+    });
+  });
+
   test("respects isolatedStorage=false and preserves storage across tests", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

@@ -89,6 +89,7 @@ import {
 ## Notes
 
 - TypeScript worker entrypoints in `workers.main` are bundled for Miniflare runtime.
+- `cloudflare:test-internal` is also aliased to the same runtime helpers for compatibility.
 - `test.poolOptions.workers` can be an object or function. Function mode supports:
   - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables.
 - `cloudflare:test` currently supports:

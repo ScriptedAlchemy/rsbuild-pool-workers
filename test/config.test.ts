@@ -392,6 +392,23 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_TOP_LEVEL_API;
   });
 
+  test("resolves relative workers.main from caller directory", () => {
+    const value = defineWorkersConfig({
+      workers: {
+        main: "./fixtures/worker-main.ts"
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    const parsed = JSON.parse(JSON.parse(String(defineValue))) as { main?: string };
+    expect(parsed.main).toBe(path.resolve(process.cwd(), "test", "fixtures", "worker-main.ts"));
+  });
+
   test("resolves relative wrangler.configPath from caller directory", () => {
     const value = defineWorkersConfig({
       workers: {
@@ -1179,6 +1196,28 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-top-level-value");
 
     delete process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_VALUE;
+  });
+
+  test("defineWorkersProject resolves relative workers.main in promise top-level workers function", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () => ({
+          main: "./fixtures/project-worker-main.ts"
+        })
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    const parsed = JSON.parse(JSON.parse(String(defineValue))) as { main?: string };
+    expect(parsed.main).toBe(
+      path.resolve(process.cwd(), "test", "fixtures", "project-worker-main.ts")
+    );
   });
 
   test("defineWorkersProject resolves relative wrangler.configPath from caller directory", () => {

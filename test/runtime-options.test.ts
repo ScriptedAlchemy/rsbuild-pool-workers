@@ -122,4 +122,38 @@ describe("resolveRuntimeOptions", () => {
 
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
+
+  test("bundles MTS entrypoint into in-memory script", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-options-mts-"));
+    const mainPath = path.join(tempRoot, "worker.mts");
+    const depPath = path.join(tempRoot, "dep.mts");
+
+    await fs.writeFile(depPath, `export const suffix = "mts";\n`);
+    await fs.writeFile(
+      mainPath,
+      `
+        import { suffix } from "./dep.mts";
+        export default {
+          fetch() {
+            return new Response("from-" + suffix);
+          }
+        };
+      `
+    );
+
+    const options = await resolveRuntimeOptions(
+      {
+        main: mainPath,
+        miniflare: {}
+      },
+      tempRoot
+    );
+
+    expect(options.miniflare.modules).toBe(true);
+    expect(typeof options.miniflare.script).toBe("string");
+    expect(String(options.miniflare.script)).toContain("from-");
+    expect(options.miniflare.scriptPath).toBeUndefined();
+
+    await fs.rm(tempRoot, { recursive: true, force: true });
+  });
 });

@@ -40,6 +40,34 @@ describe("mapAnyConfigExport", () => {
     expect(resolved.include).toEqual(["original-promise.test.ts", "mapped-promise.test.ts"]);
   });
 
+  test("maps promise-like config exports", async () => {
+    const value = {
+      include: ["original-promise-like.test.ts"]
+    } satisfies RstestConfig;
+    const mapped = mapAnyConfigExport(
+      (config) => ({
+        ...config,
+        include: [...(config.include ?? []), "mapped-promise-like.test.ts"]
+      }),
+      {
+        then(resolve: (resolved: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>
+    );
+
+    if (!(mapped instanceof Promise)) {
+      throw new Error("Expected mapped promise-like export");
+    }
+
+    const resolved = await mapped;
+    expect(resolved.include).toEqual([
+      "original-promise-like.test.ts",
+      "mapped-promise-like.test.ts"
+    ]);
+  });
+
   test("forwards config function export arguments through mapper", async () => {
     const mapped = mapAnyConfigExport(
       (value) => ({

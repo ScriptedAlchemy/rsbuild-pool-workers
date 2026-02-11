@@ -374,6 +374,122 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("dedupes workers plugin for promise-like config exports when plugins is single value", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const promiseLikeValue = {
+      plugins: existingPlugin as unknown as any,
+      workers: {
+        main: "./src/index.ts"
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
+  test("keeps falsey plugin entries while deduping in promise-like config exports", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const promiseLikeValue = {
+      plugins: [false as unknown as any, existingPlugin],
+      workers: {
+        main: "./src/index.ts"
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toContain(false);
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
+  });
+
+  test("prefers top-level workers in promise-like exports when nested workers are also set", async () => {
+    const promiseLikeValue = {
+      workers: {
+        main: "./src/promise-like-top-level-precedence.ts",
+        miniflare: {
+          bindings: {
+            PROMISE_LIKE_PRECEDENCE: "promise-like-top-level"
+          }
+        }
+      },
+      test: {
+        poolOptions: {
+          workers: {
+            main: "./src/promise-like-nested-precedence.ts",
+            miniflare: {
+              bindings: {
+                PROMISE_LIKE_PRECEDENCE: "promise-like-nested"
+              }
+            }
+          }
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-top-level-precedence.ts");
+    expect(String(defineValue)).not.toContain("promise-like-nested-precedence.ts");
+  });
+
   test("dedupes workers plugin for promise config exports when plugins is single value", async () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -1797,6 +1913,122 @@ describe("defineWorkersConfig", () => {
     expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
       WORKERS_RSBUILD_PLUGIN_NAME
     );
+  });
+
+  test("defineWorkersProject dedupes workers plugin for promise-like config exports when plugins is single value", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const promiseLikeValue = {
+      plugins: existingPlugin as unknown as any,
+      workers: {
+        main: "./src/project-promise-like-entry.ts"
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
+  test("defineWorkersProject keeps falsey plugin entries while deduping in promise-like config exports", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const promiseLikeValue = {
+      plugins: [false as unknown as any, existingPlugin],
+      workers: {
+        main: "./src/project-promise-like-entry.ts"
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toContain(false);
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
+  });
+
+  test("defineWorkersProject prefers top-level workers in promise-like exports when nested workers are also set", async () => {
+    const promiseLikeValue = {
+      workers: {
+        main: "./src/project-promise-like-top-level-precedence.ts",
+        miniflare: {
+          bindings: {
+            PROJECT_PROMISE_LIKE_PRECEDENCE: "project-promise-like-top-level"
+          }
+        }
+      },
+      test: {
+        poolOptions: {
+          workers: {
+            main: "./src/project-promise-like-nested-precedence.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_PROMISE_LIKE_PRECEDENCE: "project-promise-like-nested"
+              }
+            }
+          }
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-like-top-level-precedence.ts");
+    expect(String(defineValue)).not.toContain("project-promise-like-nested-precedence.ts");
   });
 
   test("defineWorkersProject dedupes workers plugin for promise config exports", async () => {

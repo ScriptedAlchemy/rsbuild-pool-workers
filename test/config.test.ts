@@ -333,4 +333,55 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("index.ts");
   });
+
+  test("defineWorkersProject supports promise config exports", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: {
+          main: "./src/project-entry.ts"
+        },
+        include: ["test/project/**/*.test.ts"]
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-entry.ts");
+  });
+
+  test("defineWorkersProject supports async config and async workers options", async () => {
+    process.env.RSTEST_INJECT_PROJECT_URL = "\"http://localhost:9555\"";
+
+    const configFactory = defineWorkersProject(async () => ({
+      test: {
+        poolOptions: {
+          workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/project-worker.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_URL: inject<string>("PROJECT_URL")
+              }
+            }
+          })
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("http://localhost:9555");
+
+    delete process.env.RSTEST_INJECT_PROJECT_URL;
+  });
 });

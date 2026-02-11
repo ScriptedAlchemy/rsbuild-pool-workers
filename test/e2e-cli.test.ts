@@ -1472,6 +1472,49 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersConfig top-level workers object end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          include: ["./top-level-workers-object.test.ts"],
+          workers: {
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                TOP_LEVEL_OBJECT_GREETING: "hello-top-level-object"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.TOP_LEVEL_OBJECT_GREETING));
+          }
+        };
+      `,
+      "top-level-workers-object.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("top-level workers object is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("hello-top-level-object");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("top-level-workers-object.test.ts");
+    });
+  });
+
   test("supports top-level workers function inject() direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

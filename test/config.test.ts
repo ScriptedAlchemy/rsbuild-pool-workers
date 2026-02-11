@@ -64,6 +64,40 @@ describe("defineWorkersConfig", () => {
     expect(resolved.source?.define).toBeDefined();
   });
 
+  test("supports promise config exports and dedupes workers plugin", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        plugins: [existingPlugin],
+        workers: {
+          main: "./src/index.ts"
+        },
+        include: ["test/**/*.test.ts"]
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    expect(resolved.include).toEqual(["test/**/*.test.ts"]);
+
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
   test("preserves sync config function return shape", () => {
     const configFactory = defineWorkersConfig(() => ({
       workers: {

@@ -4,6 +4,7 @@ import type {
   DurableObjectStatePlaceholder,
   DurableObjectStubLike,
   ExecutionContext,
+  env,
   PagesEventContext,
   QueueController,
   QueueResult,
@@ -45,6 +46,12 @@ type _ExecutionContextContract = Assert<
   IsAssignable<
     CreatedExecutionContext,
     ExecutionContext
+  >
+>;
+type _EnvReadonlyContract = Assert<
+  IsAssignable<
+    typeof env,
+    Readonly<Record<string, unknown>>
   >
 >;
 type _ExecutionContextInternalContract = Assert<

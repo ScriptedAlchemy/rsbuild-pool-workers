@@ -28,7 +28,7 @@ function isDurableObjectStub(value: unknown): value is {
   );
 }
 
-export const env: Record<string, unknown> = new Proxy(
+export const env: Readonly<Record<string, unknown>> = new Proxy(
   {},
   {
     get(_target, property) {

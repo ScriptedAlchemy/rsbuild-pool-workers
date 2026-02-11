@@ -45,6 +45,34 @@ function ensureWorkersPluginInstalled(plugins: unknown[]): void {
   plugins.push(workersRsbuildPlugin());
 }
 
+function applyWorkersWiring(
+  flattenedConfig: RstestConfig,
+  workersOptions: WorkersPoolOptions
+): void {
+  const plugins = Array.isArray(flattenedConfig.plugins)
+    ? [...flattenedConfig.plugins]
+    : flattenedConfig.plugins
+      ? [flattenedConfig.plugins]
+      : [];
+  ensureWorkersPluginInstalled(plugins);
+  flattenedConfig.plugins = plugins;
+
+  flattenedConfig.setupFiles = [
+    ...(Array.isArray(flattenedConfig.setupFiles)
+      ? flattenedConfig.setupFiles
+      : flattenedConfig.setupFiles
+        ? [flattenedConfig.setupFiles]
+        : [])
+  ];
+  ensureArrayIncludes(flattenedConfig.setupFiles, [SETUP_FILE_PATH]);
+
+  flattenedConfig.source ??= {};
+  flattenedConfig.source.define ??= {};
+  flattenedConfig.source.define[WORKERS_OPTIONS_DEFINE_KEY] = JSON.stringify(
+    JSON.stringify(workersOptions)
+  );
+}
+
 function getCallerConfigDirectory(): string {
   const stack = new Error().stack?.split("\n") ?? [];
   const thisFilePath = fileURLToPath(import.meta.url);
@@ -165,29 +193,7 @@ function ensureWorkersConfig<T extends RstestConfig>(rawConfig: WorkersUserConfi
     false,
     configDirectory
   );
-
-  const plugins = Array.isArray(flattenedConfig.plugins)
-    ? [...flattenedConfig.plugins]
-    : flattenedConfig.plugins
-      ? [flattenedConfig.plugins]
-      : [];
-  ensureWorkersPluginInstalled(plugins);
-  flattenedConfig.plugins = plugins;
-
-  flattenedConfig.setupFiles = [
-    ...(Array.isArray(flattenedConfig.setupFiles)
-      ? flattenedConfig.setupFiles
-      : flattenedConfig.setupFiles
-        ? [flattenedConfig.setupFiles]
-        : [])
-  ];
-  ensureArrayIncludes(flattenedConfig.setupFiles, [SETUP_FILE_PATH]);
-
-  flattenedConfig.source ??= {};
-  flattenedConfig.source.define ??= {};
-  flattenedConfig.source.define[WORKERS_OPTIONS_DEFINE_KEY] = JSON.stringify(
-    JSON.stringify(workersOptions)
-  );
+  applyWorkersWiring(flattenedConfig, workersOptions);
 
   return flattenedConfig as T;
 }
@@ -215,29 +221,7 @@ async function ensureWorkersConfigAsync<T extends RstestConfig>(
   } else {
     workersOptions = normalizeWorkersPaths(rawWorkersOptions, configDirectory);
   }
-
-  const plugins = Array.isArray(flattenedConfig.plugins)
-    ? [...flattenedConfig.plugins]
-    : flattenedConfig.plugins
-      ? [flattenedConfig.plugins]
-      : [];
-  ensureWorkersPluginInstalled(plugins);
-  flattenedConfig.plugins = plugins;
-
-  flattenedConfig.setupFiles = [
-    ...(Array.isArray(flattenedConfig.setupFiles)
-      ? flattenedConfig.setupFiles
-      : flattenedConfig.setupFiles
-        ? [flattenedConfig.setupFiles]
-        : [])
-  ];
-  ensureArrayIncludes(flattenedConfig.setupFiles, [SETUP_FILE_PATH]);
-
-  flattenedConfig.source ??= {};
-  flattenedConfig.source.define ??= {};
-  flattenedConfig.source.define[WORKERS_OPTIONS_DEFINE_KEY] = JSON.stringify(
-    JSON.stringify(workersOptions)
-  );
+  applyWorkersWiring(flattenedConfig, workersOptions);
 
   return flattenedConfig as T;
 }

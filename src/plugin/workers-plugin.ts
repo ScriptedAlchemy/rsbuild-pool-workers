@@ -11,6 +11,10 @@ const cloudflareTestTsPath = path.resolve(__dirname, "../cloudflare-test/index.t
 const CLOUDFLARE_TEST_MODULE_PATH = fs.existsSync(cloudflareTestJsPath)
   ? cloudflareTestJsPath
   : cloudflareTestTsPath;
+const CLOUDFLARE_TEST_SPECIFIERS = [
+  "cloudflare:test",
+  "cloudflare:test-internal"
+] as const;
 export const WORKERS_RSBUILD_PLUGIN_NAME = "@cloudflare/rstest-pool-workers:config";
 
 function ensureArrayIncludes<T>(array: T[], items: T[]): void {
@@ -35,20 +39,21 @@ export function workersRsbuildPlugin(): RsbuildPlugin {
     name: WORKERS_RSBUILD_PLUGIN_NAME,
     setup(api) {
       api.resolve(({ resolveData }) => {
-        if (resolveData.request === "cloudflare:test") {
-          resolveData.request = CLOUDFLARE_TEST_MODULE_PATH;
-        } else if (resolveData.request === "cloudflare:test-internal") {
+        if (CLOUDFLARE_TEST_SPECIFIERS.includes(resolveData.request as (typeof CLOUDFLARE_TEST_SPECIFIERS)[number])) {
           resolveData.request = CLOUDFLARE_TEST_MODULE_PATH;
         }
       });
 
       api.modifyEnvironmentConfig((config, { mergeEnvironmentConfig }) => {
+        const alias = Object.fromEntries(
+          CLOUDFLARE_TEST_SPECIFIERS.map((specifier) => [
+            specifier,
+            CLOUDFLARE_TEST_MODULE_PATH
+          ])
+        );
         const next = mergeEnvironmentConfig(config, {
           resolve: {
-            alias: {
-              "cloudflare:test": CLOUDFLARE_TEST_MODULE_PATH,
-              "cloudflare:test-internal": CLOUDFLARE_TEST_MODULE_PATH
-            }
+            alias
           }
         });
 

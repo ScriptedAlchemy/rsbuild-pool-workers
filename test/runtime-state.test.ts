@@ -6,7 +6,8 @@ import {
   SELF,
   env as workersEnv,
   fetchMock,
-  listDurableObjectIds
+  listDurableObjectIds,
+  runInDurableObject
 } from "../src/cloudflare-test/index";
 import {
   setWorkersRuntimeOptionsForTesting
@@ -219,5 +220,98 @@ describe("Workers runtime state integration", () => {
 
     const second = await SELF.fetch("http://localhost/");
     expect(await second.text()).toBe("second-run");
+  });
+
+  test("runInDurableObject executes RPC-callable instance methods", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          import { DurableObject } from "cloudflare:workers";
+
+          export class Counter extends DurableObject {
+            async incrementAndGet() {
+              const current = Number((await this.ctx.storage.get("count")) ?? 0) + 1;
+              await this.ctx.storage.put("count", current);
+              return current;
+            }
+          }
+
+          export default {
+            fetch(_request, env) {
+              const id = env.COUNTER.idFromName("singleton");
+              return new Response(id.toString());
+            }
+          };
+        `,
+        durableObjects: {
+          COUNTER: "Counter"
+        }
+      }
+    });
+
+    await runtime.setup();
+
+    const namespace = workersEnv.COUNTER as {
+      idFromName: (name: string) => unknown;
+      get: (id: unknown) => unknown;
+    };
+    const id = namespace.idFromName("singleton");
+    const stub = namespace.get(id);
+
+    const result1 = await runInDurableObject<{ incrementAndGet: () => Promise<number> }, number>(
+      stub,
+      async (instance) => instance.incrementAndGet()
+    );
+    const result2 = await runInDurableObject<{ incrementAndGet: () => Promise<number> }, number>(
+      stub,
+      async (instance) => instance.incrementAndGet()
+    );
+
+    expect(result1).toBe(1);
+    expect(result2).toBe(2);
+  });
+
+  test("runInDurableObject throws actionable error on state access", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          import { DurableObject } from "cloudflare:workers";
+
+          export class Counter extends DurableObject {
+            async ping() {
+              return "pong";
+            }
+          }
+
+          export default {
+            fetch(_request, env) {
+              const id = env.COUNTER.idFromName("singleton");
+              return new Response(id.toString());
+            }
+          };
+        `,
+        durableObjects: {
+          COUNTER: "Counter"
+        }
+      }
+    });
+
+    await runtime.setup();
+
+    const namespace = workersEnv.COUNTER as {
+      idFromName: (name: string) => unknown;
+      get: (id: unknown) => unknown;
+    };
+    const stub = namespace.get(namespace.idFromName("singleton"));
+
+    await expect(
+      runInDurableObject(stub, async (_instance, state: unknown) => {
+        const storage = (state as { storage: unknown }).storage;
+        void storage;
+        return "value";
+      })
+    ).rejects.toThrow("DurableObjectState access is not yet available in Rstest mode");
   });
 });

@@ -14,6 +14,20 @@ function runtime() {
   return getWorkersRuntimeState();
 }
 
+function isDurableObjectStub(value: unknown): value is {
+  fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  id: { toString: () => string };
+} {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "fetch" in value &&
+    typeof (value as { fetch?: unknown }).fetch === "function" &&
+    "id" in value &&
+    typeof (value as { id?: unknown }).id === "object"
+  );
+}
+
 export const env: Record<string, unknown> = new Proxy(
   {},
   {
@@ -66,16 +80,45 @@ export const fetchMock = new Proxy(
 ) as MockAgent;
 
 export async function runInDurableObject<_ObjectType, _ReturnType>(
-  _stub: unknown,
-  _callback: (_instance: _ObjectType, _state: unknown) => _ReturnType | Promise<_ReturnType>
+  stub: unknown,
+  callback: (_instance: _ObjectType, _state: unknown) => _ReturnType | Promise<_ReturnType>
 ): Promise<_ReturnType> {
-  throw new Error(
-    "runInDurableObject() is not yet available in Rstest mode. " +
-      "Use Durable Object public APIs through `SELF.fetch()` integration paths."
+  if (!isDurableObjectStub(stub)) {
+    throw new TypeError(
+      "Failed to execute 'runInDurableObject': parameter 1 is not of type 'DurableObjectStub'."
+    );
+  }
+  if (typeof callback !== "function") {
+    throw new TypeError(
+      "Failed to execute 'runInDurableObject': parameter 2 is not of type 'function'."
+    );
+  }
+
+  // We can execute RPC-callable instance methods from the same isolate in Rstest,
+  // but do not yet have access to the underlying DurableObjectState object.
+  // Provide a throw-on-use placeholder so callbacks that only need `instance`
+  // can run today, while stateful callbacks fail with actionable guidance.
+  const statePlaceholder = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error(
+          "runInDurableObject(): DurableObjectState access is not yet available in Rstest mode. " +
+            "Use RPC-callable instance methods for now."
+        );
+      }
+    }
   );
+
+  return callback(stub as _ObjectType, statePlaceholder);
 }
 
-export async function runDurableObjectAlarm(_stub: unknown): Promise<boolean> {
+export async function runDurableObjectAlarm(stub: unknown): Promise<boolean> {
+  if (!isDurableObjectStub(stub)) {
+    throw new TypeError(
+      "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
+    );
+  }
   throw new Error(
     "runDurableObjectAlarm() is not yet available in Rstest mode."
   );

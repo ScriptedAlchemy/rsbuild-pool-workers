@@ -286,4 +286,33 @@ describe("defineWorkersConfig", () => {
       WORKERS_RSBUILD_PLUGIN_NAME
     );
   });
+
+  test("does not inject duplicate workers plugin when plugins is a single value", () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const value = defineWorkersConfig({
+      plugins: existingPlugin as unknown as any,
+      workers: {
+        main: "./src/index.ts"
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const plugins = Array.isArray(value.plugins)
+      ? value.plugins
+      : value.plugins
+        ? [value.plugins]
+        : [];
+
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
 });

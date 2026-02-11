@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test } from "@rstest/core";
 import {
   SELF,
   env as workersEnv,
+  fetchMock,
   listDurableObjectIds
 } from "../src/cloudflare-test/index";
 import {
@@ -136,5 +137,41 @@ describe("Workers runtime state integration", () => {
     expect(idStrings).toContain(createdId);
 
     await fs.rm(persistRoot, { recursive: true, force: true });
+  });
+
+  test("fetchMock resets interceptor state between tests", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          export default {
+            async fetch() {
+              return new Response("ok");
+            }
+          };
+        `
+      }
+    });
+
+    await runtime.setup();
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+    fetchMock
+      .get("https://example.com")
+      .intercept({ path: "/data", method: "GET" })
+      .reply(200, "mocked-1");
+
+    expect(fetchMock.pendingInterceptors().length).toBe(1);
+
+    await runtime.resetFetchMock();
+    fetchMock.activate();
+    expect(fetchMock.pendingInterceptors().length).toBe(0);
+
+    fetchMock.disableNetConnect();
+    fetchMock
+      .get("https://example.com")
+      .intercept({ path: "/data", method: "GET" })
+      .reply(200, "mocked-2");
+    expect(fetchMock.pendingInterceptors().length).toBe(1);
   });
 });

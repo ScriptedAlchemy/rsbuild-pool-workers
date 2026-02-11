@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { Miniflare } from "miniflare";
-import { Agent, MockAgent, getGlobalDispatcher, setGlobalDispatcher } from "undici";
+import { Miniflare, createFetchMock } from "miniflare";
+import type { MockAgent } from "undici";
 import type { WorkersRuntimeOptions } from "./options";
 import { readRawWorkersOptionsFromDefine, resolveRuntimeOptions } from "./options";
 
@@ -36,8 +36,11 @@ export class WorkersRuntimeState {
   private resolvedOptions: WorkersRuntimeOptions | undefined;
   private snapshotRootPath: string | undefined;
   private snapshots: SnapshotEntry[] = [];
-  private readonly originalDispatcher = getGlobalDispatcher();
-  private mockAgent: MockAgent = new MockAgent({ agent: new Agent() });
+  private mockAgent = createFetchMock();
+
+  constructor() {
+    this.mockAgent.enableNetConnect();
+  }
 
   private async closeMockAgent(): Promise<void> {
     try {
@@ -53,6 +56,15 @@ export class WorkersRuntimeState {
     }
   }
 
+  private createMiniflareOptionsWithMockAgent(
+    base: WorkersRuntimeOptions["miniflare"]
+  ): WorkersRuntimeOptions["miniflare"] {
+    return {
+      ...base,
+      fetchMock: this.mockAgent
+    };
+  }
+
   async setup(): Promise<void> {
     if (this.setupReady) {
       return;
@@ -62,17 +74,16 @@ export class WorkersRuntimeState {
     const options = await resolveRuntimeOptions(rawOptions);
     this.resolvedOptions = options;
     this.isolatedStorage = options.isolatedStorage;
-    this.miniflare = new Miniflare(options.miniflare);
+    this.miniflare = new Miniflare(
+      this.createMiniflareOptionsWithMockAgent(options.miniflare)
+    );
     await this.miniflare.ready;
     this.envCache = (await this.miniflare.getBindings()) as Record<string, unknown>;
-
-    await this.resetFetchMock();
     this.setupReady = true;
   }
 
   async teardown(): Promise<void> {
     await this.closeMockAgent();
-    setGlobalDispatcher(this.originalDispatcher);
 
     const mf = this.miniflare;
     this.miniflare = undefined;
@@ -94,13 +105,19 @@ export class WorkersRuntimeState {
 
   async resetFetchMock(): Promise<void> {
     await this.closeMockAgent();
-    this.mockAgent = new MockAgent({ agent: new Agent() });
+    this.mockAgent = createFetchMock();
     this.mockAgent.enableNetConnect();
-    setGlobalDispatcher(this.mockAgent);
+
+    if (this.miniflare && this.resolvedOptions) {
+      await this.miniflare.setOptions(
+        this.createMiniflareOptionsWithMockAgent(this.resolvedOptions.miniflare)
+      );
+      this.envCache = (await this.miniflare.getBindings()) as Record<string, unknown>;
+    }
   }
 
   getFetchMock(): MockAgent {
-    return this.mockAgent;
+    return this.mockAgent as unknown as MockAgent;
   }
 
   isIsolatedStorageEnabled(): boolean {
@@ -301,7 +318,9 @@ export class WorkersRuntimeState {
     const rawOptions = readRawWorkersOptionsFromDefine();
     const options = await resolveRuntimeOptions(rawOptions);
     this.resolvedOptions = options;
-    this.miniflare = new Miniflare(options.miniflare);
+    this.miniflare = new Miniflare(
+      this.createMiniflareOptionsWithMockAgent(options.miniflare)
+    );
     await this.miniflare.ready;
     this.envCache = (await this.miniflare.getBindings()) as Record<string, unknown>;
 

@@ -54,6 +54,15 @@ export const env: Record<string, unknown> = new Proxy(
         writable: true,
         value: undefined
       };
+    },
+    set() {
+      throw new TypeError("Cannot assign to read only property on cloudflare:test env.");
+    },
+    defineProperty() {
+      throw new TypeError("Cannot redefine properties on cloudflare:test env.");
+    },
+    deleteProperty() {
+      throw new TypeError("Cannot delete properties from cloudflare:test env.");
     }
   }
 );

@@ -44,6 +44,15 @@ describe("Workers runtime state integration", () => {
     expect(workersEnv.ANSWER).toBe(42);
     expect("ANSWER" in workersEnv).toBe(true);
     expect(Object.keys(workersEnv)).toContain("ANSWER");
+    expect(() => {
+      (workersEnv as Record<string, unknown>).ANSWER = 7;
+    }).toThrow("Cannot assign to read only property on cloudflare:test env.");
+    expect(() => {
+      delete (workersEnv as Record<string, unknown>).ANSWER;
+    }).toThrow("Cannot delete properties from cloudflare:test env.");
+    expect(() => {
+      Object.defineProperty(workersEnv, "ANSWER", { value: 9 });
+    }).toThrow("Cannot redefine properties on cloudflare:test env.");
   });
 
   test("pushStorageSnapshot and popStorageSnapshot restore persisted KV state", async () => {

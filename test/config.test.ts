@@ -713,6 +713,30 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("sync-this");
   });
 
+  test("preserves this binding for async config function exports", async () => {
+    const configFactory = defineWorkersConfig(async function (this: { mode?: string }) {
+      return {
+        workers: {
+          main: "./src/index.ts",
+          miniflare: {
+            bindings: {
+              MODE: this.mode ?? "unknown"
+            }
+          }
+        }
+      };
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    const resolved = await configFactory.call({ mode: "async-this" });
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("async-this");
+  });
+
   test("supports sync function-valued workers options with inject()", () => {
     process.env.RSTEST_INJECT_API_PORT = "8787";
 
@@ -1251,6 +1275,35 @@ describe("defineWorkersConfig", () => {
     const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-sync-forwarding.ts");
+  });
+
+  test("defineWorkersProject preserves this binding for sync config function exports", () => {
+    const value = defineWorkersProject(function (this: { mode?: string }) {
+      return {
+        workers: {
+          main: "./src/project-sync-this.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_MODE: this.mode ?? "unknown"
+            }
+          }
+        }
+      };
+    });
+
+    if (typeof value !== "function") {
+      throw new Error("Expected sync config function export");
+    }
+
+    const resolved = value.call({ mode: "project-sync-this" });
+    if (resolved instanceof Promise) {
+      throw new Error("Expected sync config result");
+    }
+
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-sync-this");
+    expect(String(defineValue)).toContain("project-sync-this.ts");
   });
 
   test("defineWorkersProject prefers top-level workers over test.poolOptions.workers", () => {

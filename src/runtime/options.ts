@@ -1,4 +1,7 @@
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { build as esbuildBuild } from "esbuild";
 import { mergeWorkerOptions } from "miniflare";
 import { z } from "zod";
 
@@ -23,6 +26,42 @@ export type RawWorkersRuntimeOptions = z.input<typeof WorkersOptionsSchema>;
 export type WorkersRuntimeOptions = z.output<typeof WorkersOptionsSchema> & {
   miniflare: Record<string, unknown>;
 };
+
+const TYPESCRIPT_ENTRYPOINT_REGEXP = /\.(?:cts|mts|ts|tsx)$/i;
+
+async function bundleWorkerEntrypoint(mainPath: string): Promise<string> {
+  const result = await esbuildBuild({
+    entryPoints: [mainPath],
+    absWorkingDir: path.dirname(mainPath),
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "browser",
+    target: "es2022",
+    sourcemap: "inline",
+    legalComments: "none",
+    charset: "utf8",
+    conditions: ["workerd", "worker", "browser"],
+    external: ["cloudflare:*", "workerd:*", "node:*"],
+    outfile: path.join(os.tmpdir(), "worker-bundle.mjs")
+  });
+
+  const file = result.outputFiles.find((entry) => entry.path.endsWith(".mjs"));
+  if (!file) {
+    throw new Error(`Failed to bundle worker entrypoint ${mainPath}: no output file produced.`);
+  }
+
+  return file.text;
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function readDefineJson(): string {
   try {
@@ -101,8 +140,16 @@ export async function resolveRuntimeOptions(
     "modules" in resolved.miniflare;
 
   if (!hasExplicitScript && resolved.main) {
-    resolved.miniflare.modules = true;
-    resolved.miniflare.scriptPath = resolved.main;
+    if (
+      TYPESCRIPT_ENTRYPOINT_REGEXP.test(resolved.main) &&
+      (await fileExists(resolved.main))
+    ) {
+      resolved.miniflare.modules = true;
+      resolved.miniflare.script = await bundleWorkerEntrypoint(resolved.main);
+    } else {
+      resolved.miniflare.modules = true;
+      resolved.miniflare.scriptPath = resolved.main;
+    }
   }
 
   if (!("compatibilityDate" in resolved.miniflare)) {

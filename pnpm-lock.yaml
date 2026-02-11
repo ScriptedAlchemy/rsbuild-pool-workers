@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      esbuild:
+        specifier: ^0.27.3
+        version: 0.27.3
       miniflare:
         specifier: ^4.20260107.0
         version: 4.20260210.0

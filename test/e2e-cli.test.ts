@@ -35,7 +35,7 @@ describe("rstest CLI integration", () => {
       `,
       "worker.ts": `
         export default {
-          fetch(_request, env) {
+          fetch(_request: Request, env: Record<string, unknown>) {
             return new Response("ok:" + String(env.MY_BINDING));
           }
         };

@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
 import { resolveRuntimeOptions } from "../src/runtime/options";
@@ -32,5 +34,39 @@ describe("resolveRuntimeOptions", () => {
 
     expect(options.miniflare.script).toContain("fetch");
     expect(options.miniflare.scriptPath).toBeUndefined();
+  });
+
+  test("bundles TypeScript entrypoint into in-memory script", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-options-"));
+    const mainPath = path.join(tempRoot, "worker.ts");
+    const depPath = path.join(tempRoot, "dep.ts");
+
+    await fs.writeFile(depPath, `export const greeting = "hello";\n`);
+    await fs.writeFile(
+      mainPath,
+      `
+        import { greeting } from "./dep";
+        export default {
+          fetch() {
+            return new Response(greeting + " from ts");
+          }
+        };
+      `
+    );
+
+    const options = await resolveRuntimeOptions(
+      {
+        main: mainPath,
+        miniflare: {}
+      },
+      tempRoot
+    );
+
+    expect(options.miniflare.modules).toBe(true);
+    expect(typeof options.miniflare.script).toBe("string");
+    expect(String(options.miniflare.script)).toContain("from ts");
+    expect(options.miniflare.scriptPath).toBeUndefined();
+
+    await fs.rm(tempRoot, { recursive: true, force: true });
   });
 });

@@ -328,4 +328,49 @@ describe("Workers runtime state integration", () => {
     ).rejects.toThrow("DurableObjectState access is not yet available in Rstest mode");
     expect(seenStateKinds).toEqual(["DurableObjectStatePlaceholder"]);
   });
+
+  test("runInDurableObject preserves callback return values and errors", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          import { DurableObject } from "cloudflare:workers";
+
+          export class Counter extends DurableObject {
+            async ping() {
+              return "pong";
+            }
+          }
+
+          export default {
+            fetch(_request, env) {
+              const id = env.COUNTER.idFromName("singleton");
+              return new Response(id.toString());
+            }
+          };
+        `,
+        durableObjects: {
+          COUNTER: "Counter"
+        }
+      }
+    });
+
+    await runtime.setup();
+
+    const namespace = workersEnv.COUNTER as unknown as DurableObjectNamespaceLike;
+    const stub = namespace.get(namespace.idFromName("singleton"));
+
+    const response = await runInDurableObject<{ ping: () => Promise<string> }, Response>(
+      stub,
+      async () => new Response("from-callback")
+    );
+    expect(response).toBeInstanceOf(Response);
+    expect(await response.text()).toBe("from-callback");
+
+    await expect(
+      runInDurableObject(stub, async () => {
+        throw new Error("callback-failure");
+      })
+    ).rejects.toThrow("callback-failure");
+  });
 });

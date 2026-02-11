@@ -1346,6 +1346,108 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports defineWorkersProject promise export end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_VALUE: "project-promise-ok"
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_VALUE));
+          }
+        };
+      `,
+      "project-promise.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("defineWorkersProject promise export wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise.test.ts");
+    });
+  });
+
+  test("supports defineWorkersProject async workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          test: {
+            include: ["./project-async-workers.test.ts"],
+            poolOptions: {
+              workers: async ({ inject }) => ({
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_ASYNC_VALUE: inject("PROJECT_ASYNC_VALUE")
+                  }
+                }
+              })
+            }
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_ASYNC_VALUE));
+          }
+        };
+      `,
+      "project-async-workers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("defineWorkersProject async workers options wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-async-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-async-workers.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_ASYNC_VALUE: "\"project-async-ok\""
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject top-level workers option end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

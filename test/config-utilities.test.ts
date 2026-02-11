@@ -57,4 +57,20 @@ describe("config utilities", () => {
 
     await fs.rm(tempDir, { recursive: true, force: true });
   });
+
+  test("readD1Migrations throws on non-string input", async () => {
+    await expect(
+      readD1Migrations(123 as unknown as string)
+    ).rejects.toThrow(
+      "Failed to execute 'readD1Migrations': parameter 1 is not of type 'string'."
+    );
+  });
+
+  test("buildPagesASSETSBinding throws on non-string input", async () => {
+    await expect(
+      buildPagesASSETSBinding(123 as unknown as string)
+    ).rejects.toThrow(
+      "Failed to execute 'buildPagesASSETSBinding': parameter 1 is not of type 'string'."
+    );
+  });
 });

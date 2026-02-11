@@ -1055,6 +1055,79 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports cloudflare:test-internal listDurableObjectIds alias", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-do-list.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  },
+                  durableObjectsPersist: "./.mf/do-internal"
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          async fetch(_request, env) {
+            const id = env.COUNTER.newUniqueId();
+            await env.COUNTER.get(id).fetch("http://localhost/");
+            return new Response(id.toString());
+          }
+        };
+      `,
+      "internal-do-list.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF, env, listDurableObjectIds } from "cloudflare:test-internal";
+
+        test("lists durable object ids via internal alias", async () => {
+          const createdOne = await (await SELF.fetch("http://localhost/")).text();
+          const createdTwo = await (await SELF.fetch("http://localhost/")).text();
+
+          let idStrings: string[] = [];
+          for (let i = 0; i < 10; i++) {
+            const ids = await listDurableObjectIds(env.COUNTER as any);
+            idStrings = ids.map((id) => String(id.toString()));
+            if (idStrings.includes(createdOne) && idStrings.includes(createdTwo)) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+
+          expect(idStrings).toContain(createdOne);
+          expect(idStrings).toContain(createdTwo);
+          expect(idStrings).toEqual([...idStrings].sort((a, b) => a.localeCompare(b)));
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-do-list.test.ts");
+    });
+  });
+
   test("keeps cloudflare:test env bindings read-only", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

@@ -56,6 +56,57 @@ describe("rstest CLI integration", () => {
     }
   }
 
+  async function runFixtureExpectFailure(
+    files: Record<string, string>,
+    assertions: (result: { stdout: string; stderr: string }) => void,
+    options?: { env?: Record<string, string | undefined> }
+  ): Promise<void> {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-e2e-fail-"));
+    const packageRoot = process.cwd();
+
+    try {
+      for (const [relativePath, contents] of Object.entries(files)) {
+        const filePath = path.join(tempRoot, relativePath);
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.writeFile(filePath, contents.trimStart(), "utf8");
+      }
+
+      const rstestBin = path.join(packageRoot, "node_modules", ".bin", "rstest");
+      try {
+        await execFileAsync(
+          rstestBin,
+          ["run", "--root", tempRoot],
+          {
+            cwd: tempRoot,
+            env: {
+              ...process.env,
+              ...(options?.env ?? {})
+            },
+            maxBuffer: 1024 * 1024 * 5
+          }
+        );
+        throw new Error("Expected fixture run to fail, but it succeeded");
+      } catch (error) {
+        if (error instanceof Error && error.message === "Expected fixture run to fail, but it succeeded") {
+          throw error;
+        }
+
+        const stdout =
+          error && typeof error === "object"
+            ? String((error as { stdout?: string }).stdout ?? "")
+            : "";
+        const stderr =
+          error && typeof error === "object"
+            ? String((error as { stderr?: string }).stderr ?? "")
+            : String(error);
+
+        assertions({ stdout, stderr });
+      }
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true });
+    }
+  }
+
   test("runs cloudflare:test through defineWorkersConfig end-to-end", async () => {
     const packageRoot = process.cwd();
 
@@ -2631,6 +2682,41 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces promise-like nested workers rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          then(resolve) {
+            const value = {
+              test: {
+                include: ["./promise-like-rejection.test.ts"],
+                poolOptions: {
+                  workers: () => Promise.reject(new Error("promise-like nested workers rejection e2e"))
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "promise-like-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("promise-like nested workers rejection e2e");
+    });
+  });
+
   test("supports promise-like config exports with top-level workers function end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -4750,6 +4836,41 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise-like.test.ts");
+    });
+  });
+
+  test("surfaces defineWorkersProject promise-like nested workers rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          then(resolve) {
+            const value = {
+              test: {
+                include: ["./project-promise-like-rejection.test.ts"],
+                poolOptions: {
+                  workers: () => Promise.reject(new Error("project promise-like nested workers rejection e2e"))
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "project-promise-like-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("project promise-like nested workers rejection e2e");
     });
   });
 

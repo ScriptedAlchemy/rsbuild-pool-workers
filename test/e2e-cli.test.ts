@@ -1860,6 +1860,52 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports async config export with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersConfig(async () => ({
+          plugins: [false as any, workersRsbuildPlugin()],
+          include: ["./async-falsey-plugin.test.ts"],
+          workers: {
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                ASYNC_FALSEY_PLUGIN_VALUE: "async-falsey-plugin-ok"
+              }
+            }
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.ASYNC_FALSEY_PLUGIN_VALUE));
+          }
+        };
+      `,
+      "async-falsey-plugin.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("async config with falsey + preinstalled workers plugin works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("async-falsey-plugin-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("async-falsey-plugin.test.ts");
+    });
+  });
+
   test("supports async config with top-level async workers function end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3571,6 +3617,53 @@ describe("rstest CLI integration", () => {
         }
       }
     );
+  });
+
+  test("supports defineWorkersProject async export with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersProject(async () => ({
+          plugins: [false as any, workersRsbuildPlugin()],
+          include: ["./project-async-falsey-plugin.test.ts"],
+          workers: {
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_ASYNC_FALSEY_PLUGIN_VALUE: "project-async-falsey-plugin-ok"
+              }
+            }
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_ASYNC_FALSEY_PLUGIN_VALUE));
+          }
+        };
+      `,
+      "project-async-falsey-plugin.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project async config with falsey + preinstalled workers plugin works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-async-falsey-plugin-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-async-falsey-plugin.test.ts");
+    });
   });
 
   test("supports defineWorkersProject inject() direct-env fallback end-to-end", async () => {

@@ -1,5 +1,6 @@
 /// <reference path="../cloudflare-test/module-declarations.d.ts" />
 
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { RstestConfig } from "@rstest/core";
@@ -13,7 +14,9 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SETUP_FILE_PATH = path.resolve(__dirname, "../runtime/setup.js");
+const setupPathJs = path.resolve(__dirname, "../runtime/setup.js");
+const setupPathTs = path.resolve(__dirname, "../runtime/setup.ts");
+const SETUP_FILE_PATH = fs.existsSync(setupPathJs) ? setupPathJs : setupPathTs;
 export const WORKERS_OPTIONS_DEFINE_KEY = "__RSTEST_POOL_WORKERS_OPTIONS_JSON__";
 
 function ensureArrayIncludes<T>(array: T[], items: T[]): void {
@@ -22,6 +25,58 @@ function ensureArrayIncludes<T>(array: T[], items: T[]): void {
       array.push(item);
     }
   }
+}
+
+function getCallerConfigDirectory(): string {
+  const stack = new Error().stack?.split("\n") ?? [];
+  const thisFilePath = fileURLToPath(import.meta.url);
+
+  for (const line of stack.slice(2)) {
+    const match =
+      line.match(/\((.+):\d+:\d+\)$/) ??
+      line.match(/at (.+):\d+:\d+$/);
+    if (!match?.[1]) {
+      continue;
+    }
+
+    const rawPath = match[1].startsWith("file://")
+      ? fileURLToPath(match[1])
+      : match[1];
+    const candidate = rawPath.replaceAll("\\", "/");
+    if (candidate === thisFilePath.replaceAll("\\", "/")) {
+      continue;
+    }
+    if (candidate.includes("/src/config/index.ts")) {
+      continue;
+    }
+    if (!path.isAbsolute(rawPath)) {
+      continue;
+    }
+    return path.dirname(rawPath);
+  }
+
+  return process.cwd();
+}
+
+function normalizeWorkersPaths(
+  options: WorkersPoolOptions,
+  configDirectory: string
+): WorkersPoolOptions {
+  const next: WorkersPoolOptions = {
+    ...options,
+    miniflare: options.miniflare ? { ...options.miniflare } : undefined,
+    wrangler: options.wrangler ? { ...options.wrangler } : undefined
+  };
+
+  if (next.main && !path.isAbsolute(next.main)) {
+    next.main = path.resolve(configDirectory, next.main);
+  }
+
+  if (next.wrangler?.configPath && !path.isAbsolute(next.wrangler.configPath)) {
+    next.wrangler.configPath = path.resolve(configDirectory, next.wrangler.configPath);
+  }
+
+  return next;
 }
 
 function createInject() {
@@ -44,7 +99,8 @@ function createInject() {
 
 function extractWorkersOptions(
   config: WorkersUserConfig,
-  allowAsyncWorkersFunction: boolean
+  allowAsyncWorkersFunction: boolean,
+  configDirectory: string
 ): {
   flattenedConfig: RstestConfig;
   workersOptions: WorkersPoolOptions;
@@ -61,7 +117,10 @@ function extractWorkersOptions(
   const rawWorkersOptions = workers ?? test?.poolOptions?.workers ?? {};
 
   if (typeof rawWorkersOptions !== "function") {
-    return { flattenedConfig, workersOptions: rawWorkersOptions };
+    return {
+      flattenedConfig,
+      workersOptions: normalizeWorkersPaths(rawWorkersOptions, configDirectory)
+    };
   }
 
   const resolved = rawWorkersOptions({ inject: createInject() });
@@ -77,12 +136,17 @@ function extractWorkersOptions(
     );
   }
 
-  const workersOptions = resolved;
+  const workersOptions = normalizeWorkersPaths(resolved, configDirectory);
   return { flattenedConfig, workersOptions };
 }
 
 function ensureWorkersConfig<T extends RstestConfig>(rawConfig: WorkersUserConfig<T>): T {
-  const { flattenedConfig, workersOptions } = extractWorkersOptions(rawConfig, false);
+  const configDirectory = getCallerConfigDirectory();
+  const { flattenedConfig, workersOptions } = extractWorkersOptions(
+    rawConfig,
+    false,
+    configDirectory
+  );
 
   flattenedConfig.plugins ??= [];
   flattenedConfig.plugins.push(workersRsbuildPlugin());
@@ -108,6 +172,7 @@ function ensureWorkersConfig<T extends RstestConfig>(rawConfig: WorkersUserConfi
 async function ensureWorkersConfigAsync<T extends RstestConfig>(
   rawConfig: WorkersUserConfig<T>
 ): Promise<T> {
+  const configDirectory = getCallerConfigDirectory();
   const { workers, test, ...rest } = rawConfig as unknown as WorkersUserConfig & {
     [key: string]: unknown;
   };
@@ -120,9 +185,12 @@ async function ensureWorkersConfigAsync<T extends RstestConfig>(
   const rawWorkersOptions = workers ?? test?.poolOptions?.workers ?? {};
   let workersOptions: WorkersPoolOptions;
   if (typeof rawWorkersOptions === "function") {
-    workersOptions = await rawWorkersOptions({ inject: createInject() });
+    workersOptions = normalizeWorkersPaths(
+      await rawWorkersOptions({ inject: createInject() }),
+      configDirectory
+    );
   } else {
-    workersOptions = rawWorkersOptions;
+    workersOptions = normalizeWorkersPaths(rawWorkersOptions, configDirectory);
   }
 
   flattenedConfig.plugins ??= [];

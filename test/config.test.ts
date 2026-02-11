@@ -28,7 +28,11 @@ describe("defineWorkersConfig", () => {
         : [];
     expect(setupFiles).toContain("./custom-setup.ts");
     expect(
-      setupFiles.some((entry: string) => entry.endsWith(path.join("runtime", "setup.js")))
+      setupFiles.some(
+        (entry: string) =>
+          entry.endsWith(path.join("runtime", "setup.js")) ||
+          entry.endsWith(path.join("runtime", "setup.ts"))
+      )
     ).toBe(true);
     expect(resolved.plugins?.length).toBe(1);
 

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { RsbuildPlugin } from "@rstest/core";
@@ -5,7 +6,11 @@ import type { RsbuildPlugin } from "@rstest/core";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const CLOUDFLARE_TEST_MODULE_PATH = path.resolve(__dirname, "../cloudflare-test/index.js");
+const cloudflareTestJsPath = path.resolve(__dirname, "../cloudflare-test/index.js");
+const cloudflareTestTsPath = path.resolve(__dirname, "../cloudflare-test/index.ts");
+const CLOUDFLARE_TEST_MODULE_PATH = fs.existsSync(cloudflareTestJsPath)
+  ? cloudflareTestJsPath
+  : cloudflareTestTsPath;
 
 function ensureArrayIncludes<T>(array: T[], items: T[]): void {
   for (const item of items) {
@@ -28,6 +33,14 @@ export function workersRsbuildPlugin(): RsbuildPlugin {
   return {
     name: "@cloudflare/rstest-pool-workers:config",
     setup(api) {
+      api.resolve(({ resolveData }) => {
+        if (resolveData.request === "cloudflare:test") {
+          resolveData.request = CLOUDFLARE_TEST_MODULE_PATH;
+        } else if (resolveData.request === "cloudflare:test-internal") {
+          resolveData.request = CLOUDFLARE_TEST_MODULE_PATH;
+        }
+      });
+
       api.modifyEnvironmentConfig((config, { mergeEnvironmentConfig }) => {
         const next = mergeEnvironmentConfig(config, {
           resolve: {

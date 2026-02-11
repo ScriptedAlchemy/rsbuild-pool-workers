@@ -2322,6 +2322,114 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports config function thenable exports with single preinstalled workers plugin value end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersConfig(() => {
+          const value = {
+            plugins: workersRsbuildPlugin(),
+            include: ["./config-function-thenable-single-preinstalled.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  THENABLE_CONFIG_SINGLE_PREINSTALLED_VALUE: "thenable-config-single-preinstalled-ok"
+                }
+              }
+            }
+          };
+          return {
+            then(resolve) {
+              resolve(value);
+              return Promise.resolve(value);
+            }
+          } as PromiseLike<typeof value>;
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.THENABLE_CONFIG_SINGLE_PREINSTALLED_VALUE));
+          }
+        };
+      `,
+      "config-function-thenable-single-preinstalled.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("thenable config function export with single preinstalled plugin is resolved", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("thenable-config-single-preinstalled-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("config-function-thenable-single-preinstalled.test.ts");
+    });
+  });
+
+  test("supports config function thenable exports with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersConfig(() => {
+          const value = {
+            plugins: [false as any, workersRsbuildPlugin()],
+            include: ["./config-function-thenable-falsey-preinstalled.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  THENABLE_CONFIG_FALSEY_PREINSTALLED_VALUE: "thenable-config-falsey-preinstalled-ok"
+                }
+              }
+            }
+          };
+          return {
+            then(resolve) {
+              resolve(value);
+              return Promise.resolve(value);
+            }
+          } as PromiseLike<typeof value>;
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.THENABLE_CONFIG_FALSEY_PREINSTALLED_VALUE));
+          }
+        };
+      `,
+      "config-function-thenable-falsey-preinstalled.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("thenable config function export with falsey + preinstalled plugin is resolved", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("thenable-config-falsey-preinstalled-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("config-function-thenable-falsey-preinstalled.test.ts");
+    });
+  });
+
   test("does not evaluate nested workers function in async config export when top-level async function is set end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -5548,6 +5656,116 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-config-function-thenable-preinstalled.test.ts");
+    });
+  });
+
+  test("supports defineWorkersProject config function thenable exports with single preinstalled workers plugin value end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersProject(() => {
+          const value = {
+            plugins: workersRsbuildPlugin(),
+            include: ["./project-config-function-thenable-single-preinstalled.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_THENABLE_CONFIG_SINGLE_PREINSTALLED_VALUE: "project-thenable-config-single-preinstalled-ok"
+                }
+              }
+            }
+          };
+          return {
+            then(resolve) {
+              resolve(value);
+              return Promise.resolve(value);
+            }
+          } as PromiseLike<typeof value>;
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_THENABLE_CONFIG_SINGLE_PREINSTALLED_VALUE));
+          }
+        };
+      `,
+      "project-config-function-thenable-single-preinstalled.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project thenable config function export with single preinstalled plugin is resolved", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-thenable-config-single-preinstalled-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-config-function-thenable-single-preinstalled.test.ts");
+    });
+  });
+
+  test("supports defineWorkersProject config function thenable exports with falsey plugin entries and preinstalled workers plugin end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const pluginPathImport = path.join(packageRoot, "src", "plugin", "workers-plugin.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        import { workersRsbuildPlugin } from ${JSON.stringify(pluginPathImport)};
+        export default defineWorkersProject(() => {
+          const value = {
+            plugins: [false as any, workersRsbuildPlugin()],
+            include: ["./project-config-function-thenable-falsey-preinstalled.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_THENABLE_CONFIG_FALSEY_PREINSTALLED_VALUE: "project-thenable-config-falsey-preinstalled-ok"
+                }
+              }
+            }
+          };
+          return {
+            then(resolve) {
+              resolve(value);
+              return Promise.resolve(value);
+            }
+          } as PromiseLike<typeof value>;
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_THENABLE_CONFIG_FALSEY_PREINSTALLED_VALUE));
+          }
+        };
+      `,
+      "project-config-function-thenable-falsey-preinstalled.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project thenable config function export with falsey + preinstalled plugin is resolved", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-thenable-config-falsey-preinstalled-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-config-function-thenable-falsey-preinstalled.test.ts");
     });
   });
 

@@ -314,6 +314,85 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("dedupes workers plugin for thenable config function exports when plugins is single value", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersConfig(() => {
+      const value = {
+        plugins: existingPlugin as unknown as any,
+        workers: {
+          main: "./src/thenable-single-plugin.ts"
+        }
+      };
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toHaveLength(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
+  test("keeps falsey plugin entries while deduping thenable config function exports", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersConfig(() => {
+      const value = {
+        plugins: [false as unknown as any, existingPlugin],
+        workers: {
+          main: "./src/thenable-falsey-plugin.ts"
+        }
+      };
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toContain(false);
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
+  });
+
   test("preserves this binding for promise-returning config function exports", async () => {
     const configFactory = defineWorkersConfig(function (this: { mode?: string }) {
       return Promise.resolve({
@@ -3844,6 +3923,85 @@ describe("defineWorkersConfig", () => {
     expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
       WORKERS_RSBUILD_PLUGIN_NAME
     );
+  });
+
+  test("defineWorkersProject dedupes workers plugin for thenable config function exports when plugins is single value", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersProject(() => {
+      const value = {
+        plugins: existingPlugin as unknown as any,
+        workers: {
+          main: "./src/project-thenable-single-plugin.ts"
+        }
+      };
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toHaveLength(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
+
+  test("defineWorkersProject keeps falsey plugin entries while deduping thenable config function exports", async () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const configFactory = defineWorkersProject(() => {
+      const value = {
+        plugins: [false as unknown as any, existingPlugin],
+        workers: {
+          main: "./src/project-thenable-falsey-plugin.ts"
+        }
+      };
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory();
+    const plugins = Array.isArray(resolved.plugins)
+      ? resolved.plugins
+      : resolved.plugins
+        ? [resolved.plugins]
+        : [];
+    expect(plugins).toContain(false);
+    const names = plugins
+      .map((plugin) =>
+        typeof plugin === "object" && plugin !== null && "name" in plugin
+          ? String((plugin as { name?: unknown }).name)
+          : ""
+      )
+      .filter(Boolean);
+    expect(names.filter((name) => name === WORKERS_RSBUILD_PLUGIN_NAME)).toHaveLength(1);
   });
 
   test("defineWorkersProject preserves this binding for promise-returning config function exports", async () => {

@@ -628,6 +628,70 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("resets fetchMock between fixture tests", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./fetch-mock-reset.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          async fetch() {
+            const response = await fetch("http://example.com/data");
+            return new Response(await response.text());
+          }
+        };
+      `,
+      "fetch-mock-reset.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF, fetchMock } from "cloudflare:test";
+
+        test("first test leaves a pending interceptor", async () => {
+          fetchMock.activate();
+          fetchMock.disableNetConnect();
+          fetchMock
+            .get("http://example.com")
+            .intercept({ path: "/unused", method: "GET" })
+            .reply(200, "unused");
+
+          expect(fetchMock.pendingInterceptors().length).toBe(1);
+        });
+
+        test("second test starts with a reset fetchMock", async () => {
+          fetchMock.activate();
+          expect(fetchMock.pendingInterceptors().length).toBe(0);
+
+          fetchMock.disableNetConnect();
+          fetchMock
+            .get("http://example.com")
+            .intercept({ path: "/data", method: "GET" })
+            .reply(200, "after-reset");
+
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("after-reset");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("fetch-mock-reset.test.ts");
+    });
+  });
+
   test("supports runInDurableObject for RPC-callable methods", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

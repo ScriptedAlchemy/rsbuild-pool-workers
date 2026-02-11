@@ -95,6 +95,9 @@ function getCallerConfigDirectory(): string {
     if (candidate.includes("/src/config/index.ts")) {
       continue;
     }
+    if (candidate.includes("/node_modules/")) {
+      continue;
+    }
     if (!path.isAbsolute(rawPath)) {
       continue;
     }

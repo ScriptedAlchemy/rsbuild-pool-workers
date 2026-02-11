@@ -620,4 +620,57 @@ describe("rstest CLI integration", () => {
       delete process.env.RSTEST_INJECT_GREETING;
     }
   });
+
+  test("supports async config with async workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    process.env.RSTEST_INJECT_ASYNC_GREETING = "\"hello-from-async-inject\"";
+    try {
+      const files: Record<string, string> = {
+        "rstest.config.ts": `
+          import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+          export default defineWorkersConfig(async () => ({
+            test: {
+              include: ["./async-workers-options.test.ts"],
+              poolOptions: {
+                workers: async ({ inject }) => ({
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      GREETING: inject("ASYNC_GREETING")
+                    }
+                  }
+                })
+              }
+            }
+          }));
+        `,
+        "worker.ts": `
+          export default {
+            fetch(_request, env) {
+              return new Response(String(env.GREETING));
+            }
+          };
+        `,
+        "async-workers-options.test.ts": `
+          import { test, expect } from "@rstest/core";
+          import { SELF } from "cloudflare:test";
+
+          test("async workers options are resolved before runtime starts", async () => {
+            const res = await SELF.fetch("http://localhost/");
+            expect(await res.text()).toBe("hello-from-async-inject");
+          });
+        `
+      };
+
+      await runFixture(files, ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("async-workers-options.test.ts");
+      });
+    } finally {
+      delete process.env.RSTEST_INJECT_ASYNC_GREETING;
+    }
+  });
 });

@@ -50,6 +50,18 @@ export default defineWorkersProject({
     main: "./src/index.ts"
   }
 });
+
+// function-valued workers options + inject() are also supported:
+export const withInjectedWorkers = defineWorkersProject({
+  workers: ({ inject }) => ({
+    main: "./src/index.ts",
+    miniflare: {
+      bindings: {
+        API_ORIGIN: inject("API_ORIGIN")
+      }
+    }
+  })
+});
 ```
 
 Then in tests:

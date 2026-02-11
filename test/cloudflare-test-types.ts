@@ -24,6 +24,8 @@ import type {
   createExecutionContext as createExecutionContextInternal,
   env as envInternal,
   fetchMock as fetchMockInternal,
+  listDurableObjectIds as listDurableObjectIdsInternal,
+  runInDurableObject as runInDurableObjectInternal,
   SELF as SELFInternal
 } from "cloudflare:test-internal";
 import { WORKERS_RSBUILD_PLUGIN_NAME } from "../src/index";
@@ -44,6 +46,10 @@ type RunInDurableObjectReturn = ReturnType<
 type WaitOnExecutionContextReturn = ReturnType<typeof waitOnExecutionContext>;
 type CreatedPagesEventContext = ReturnType<
   typeof createPagesEventContext<{ userId: string }>
+>;
+type ListDurableObjectIdsInternalReturn = ReturnType<typeof listDurableObjectIdsInternal>;
+type RunInDurableObjectInternalReturn = ReturnType<
+  typeof runInDurableObjectInternal<{ ping: () => Promise<string> }, string>
 >;
 
 type _ExecutionContextContract = Assert<
@@ -134,6 +140,18 @@ type _SelfInternalContract = Assert<
       fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
       scheduled: (options?: { scheduledTime?: number; cron?: string }) => Promise<void>;
     }
+  >
+>;
+type _ListDurableObjectIdsInternalContract = Assert<
+  IsAssignable<
+    ListDurableObjectIdsInternalReturn,
+    Promise<DurableObjectIdLike[]>
+  >
+>;
+type _RunInDurableObjectInternalContract = Assert<
+  IsAssignable<
+    RunInDurableObjectInternalReturn,
+    Promise<string>
   >
 >;
 type _EnvInternalReadonlyContract = Assert<

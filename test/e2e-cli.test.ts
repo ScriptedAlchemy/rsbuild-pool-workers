@@ -3010,6 +3010,73 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports promise config export with nested thenable workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            test: {
+              include: ["./promise-nested-thenable-workers-fn.test.ts"],
+              poolOptions: {
+                workers: ({ inject }) => {
+                  const value = {
+                    main: "./worker.ts",
+                    miniflare: {
+                      bindings: {
+                        PROMISE_NESTED_THENABLE_WORKERS_FN: inject("PROMISE_NESTED_THENABLE_WORKERS_FN")
+                      }
+                    }
+                  };
+                  return {
+                    then(resolve) {
+                      resolve(value);
+                      return Promise.resolve(value);
+                    }
+                  };
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_NESTED_THENABLE_WORKERS_FN));
+          }
+        };
+      `,
+      "promise-nested-thenable-workers-fn.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise nested thenable workers function wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-nested-thenable-workers-fn-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-nested-thenable-workers-fn.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_NESTED_THENABLE_WORKERS_FN:
+            "\"promise-nested-thenable-workers-fn-ok\""
+        }
+      }
+    );
+  });
+
   test("supports promise config export nested async workers function direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3228,6 +3295,68 @@ describe("rstest CLI integration", () => {
         env: {
           RSTEST_INJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC:
             "\"promise-top-level-workers-fn-async-ok\""
+        }
+      }
+    );
+  });
+
+  test("supports promise config export with top-level thenable workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-top-level-workers-fn-thenable.test.ts"],
+            workers: ({ inject }) => {
+              const value = {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE: inject("PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE")
+                  }
+                }
+              };
+              return {
+                then(resolve) {
+                  resolve(value);
+                  return Promise.resolve(value);
+                }
+              };
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE));
+          }
+        };
+      `,
+      "promise-top-level-workers-fn-thenable.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise top-level thenable workers function is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-workers-fn-thenable-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-top-level-workers-fn-thenable.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE:
+            "\"promise-top-level-workers-fn-thenable-ok\""
         }
       }
     );
@@ -4162,6 +4291,68 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersProject promise export with top-level thenable workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-top-level-workers-fn-thenable.test.ts"],
+            workers: ({ inject }) => {
+              const value = {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE: inject("PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE")
+                  }
+                }
+              };
+              return {
+                then(resolve) {
+                  resolve(value);
+                  return Promise.resolve(value);
+                }
+              };
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE));
+          }
+        };
+      `,
+      "project-promise-top-level-workers-fn-thenable.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise top-level thenable workers function is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-workers-fn-thenable-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-top-level-workers-fn-thenable.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE:
+            "\"project-promise-top-level-workers-fn-thenable-ok\""
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject promise export async top-level workers direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -4374,6 +4565,73 @@ describe("rstest CLI integration", () => {
         env: {
           RSTEST_INJECT_PROJECT_PROMISE_NESTED_ASYNC_WORKERS_FN:
             "\"project-promise-nested-async-workers-fn-ok\""
+        }
+      }
+    );
+  });
+
+  test("supports defineWorkersProject promise export with nested thenable workers function end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            test: {
+              include: ["./project-promise-nested-thenable-workers-fn.test.ts"],
+              poolOptions: {
+                workers: ({ inject }) => {
+                  const value = {
+                    main: "./worker.ts",
+                    miniflare: {
+                      bindings: {
+                        PROJECT_PROMISE_NESTED_THENABLE_WORKERS_FN: inject("PROJECT_PROMISE_NESTED_THENABLE_WORKERS_FN")
+                      }
+                    }
+                  };
+                  return {
+                    then(resolve) {
+                      resolve(value);
+                      return Promise.resolve(value);
+                    }
+                  };
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_NESTED_THENABLE_WORKERS_FN));
+          }
+        };
+      `,
+      "project-promise-nested-thenable-workers-fn.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise nested thenable workers function wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-nested-thenable-workers-fn-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-nested-thenable-workers-fn.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_NESTED_THENABLE_WORKERS_FN:
+            "\"project-promise-nested-thenable-workers-fn-ok\""
         }
       }
     );

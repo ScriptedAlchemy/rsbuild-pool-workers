@@ -585,6 +585,48 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROMISE_NESTED_ASYNC;
   });
 
+  test("supports promise config exports with nested thenable workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_NESTED_THENABLE = "\"promise-nested-thenable\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        test: {
+          include: ["test/promise-nested-thenable/**/*.test.ts"],
+          poolOptions: {
+            workers: ({ inject }: WorkerPoolOptionsContext) => {
+              const resolvedValue = {
+                main: "./src/promise-nested-thenable.ts",
+                miniflare: {
+                  bindings: {
+                    PROMISE_NESTED_THENABLE: inject<string>("PROMISE_NESTED_THENABLE")
+                  }
+                }
+              };
+              return {
+                then(resolve: (resolved: typeof resolvedValue) => void) {
+                  resolve(resolvedValue);
+                  return Promise.resolve(resolvedValue);
+                }
+              } as unknown as PromiseLike<typeof resolvedValue>;
+            }
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    expect(resolved.include).toEqual(["test/promise-nested-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-nested-thenable");
+
+    delete process.env.RSTEST_INJECT_PROMISE_NESTED_THENABLE;
+  });
+
   test("supports direct env fallback for promise nested async workers function", async () => {
     process.env.PROMISE_NESTED_ASYNC_FALLBACK = "\"promise-nested-async-fallback\"";
 
@@ -709,6 +751,44 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("promise-top-level-async");
 
     delete process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_ASYNC;
+  });
+
+  test("supports promise config exports with top-level thenable workers function", async () => {
+    process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_THENABLE = "\"promise-top-level-thenable\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => {
+          const resolvedValue = {
+            main: "./src/promise-top-level-thenable.ts",
+            miniflare: {
+              bindings: {
+                PROMISE_TOP_LEVEL_THENABLE: inject<string>("PROMISE_TOP_LEVEL_THENABLE")
+              }
+            }
+          };
+          return {
+            then(resolve: (resolved: typeof resolvedValue) => void) {
+              resolve(resolvedValue);
+              return Promise.resolve(resolvedValue);
+            }
+          } as unknown as PromiseLike<typeof resolvedValue>;
+        },
+        include: ["test/promise-top-level-thenable/**/*.test.ts"]
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    expect(resolved.include).toEqual(["test/promise-top-level-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-top-level-thenable");
+
+    delete process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_THENABLE;
   });
 
   test("supports direct env fallback for promise async top-level workers function", async () => {
@@ -1954,6 +2034,50 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_NESTED_ASYNC;
   });
 
+  test("defineWorkersProject supports promise exports with nested thenable workers function", async () => {
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_NESTED_THENABLE = "\"project-promise-nested-thenable\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        test: {
+          include: ["test/project-promise-nested-thenable/**/*.test.ts"],
+          poolOptions: {
+            workers: ({ inject }: WorkerPoolOptionsContext) => {
+              const resolvedValue = {
+                main: "./src/project-promise-nested-thenable-entry.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_PROMISE_NESTED_THENABLE: inject<string>(
+                      "PROJECT_PROMISE_NESTED_THENABLE"
+                    )
+                  }
+                }
+              };
+              return {
+                then(resolve: (resolved: typeof resolvedValue) => void) {
+                  resolve(resolvedValue);
+                  return Promise.resolve(resolvedValue);
+                }
+              } as unknown as PromiseLike<typeof resolvedValue>;
+            }
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-promise-nested-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-nested-thenable");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_NESTED_THENABLE;
+  });
+
   test("defineWorkersProject supports direct env fallback for promise nested async workers function", async () => {
     process.env.PROJECT_PROMISE_NESTED_ASYNC_FALLBACK =
       "\"project-promise-nested-async-fallback\"";
@@ -2047,6 +2171,46 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-top-level-async");
 
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_ASYNC;
+  });
+
+  test("defineWorkersProject supports promise exports with top-level thenable workers function", async () => {
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_THENABLE = "\"project-promise-top-level-thenable\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => {
+          const resolvedValue = {
+            main: "./src/project-promise-top-level-thenable-entry.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_PROMISE_TOP_LEVEL_THENABLE: inject<string>(
+                  "PROJECT_PROMISE_TOP_LEVEL_THENABLE"
+                )
+              }
+            }
+          };
+          return {
+            then(resolve: (resolved: typeof resolvedValue) => void) {
+              resolve(resolvedValue);
+              return Promise.resolve(resolvedValue);
+            }
+          } as unknown as PromiseLike<typeof resolvedValue>;
+        },
+        include: ["test/project-promise-top-level-thenable/**/*.test.ts"]
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    expect(resolved.include).toEqual(["test/project-promise-top-level-thenable/**/*.test.ts"]);
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-top-level-thenable");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_THENABLE;
   });
 
   test("defineWorkersProject supports direct env fallback for promise async top-level workers function", async () => {

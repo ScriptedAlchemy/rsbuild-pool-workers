@@ -62,4 +62,27 @@ describe("mapAnyConfigExport", () => {
     const resolved = await mapped({ mode: "test" }, "cli");
     expect(resolved.include).toEqual(["test-cli", "mapped-function.test.ts"]);
   });
+
+  test("forwards async config function export arguments through mapper", async () => {
+    const mapped = mapAnyConfigExport(
+      (value) => ({
+        ...value,
+        include: [...(value.include ?? []), "mapped-async-function.test.ts"]
+      }),
+      async (...args: unknown[]) => {
+        const context = args[0] as { mode?: string } | undefined;
+        const suffix = typeof args[1] === "string" ? args[1] : "none";
+        return {
+          include: [`${context?.mode ?? "unknown"}-${suffix}`]
+        } satisfies RstestConfig;
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped async function export");
+    }
+
+    const resolved = await mapped({ mode: "serve" }, "watch");
+    expect(resolved.include).toEqual(["serve-watch", "mapped-async-function.test.ts"]);
+  });
 });

@@ -52,6 +52,21 @@ describe("resolveRuntimeOptions", () => {
     expect(options.miniflare.scriptPath).toBeUndefined();
   });
 
+  test("preserves explicit scriptPath config", async () => {
+    const options = await resolveRuntimeOptions(
+      {
+        main: "./ignored.ts",
+        miniflare: {
+          scriptPath: "/custom/worker.js"
+        }
+      },
+      process.cwd()
+    );
+
+    expect(options.miniflare.scriptPath).toBe("/custom/worker.js");
+    expect(options.miniflare.script).toBeUndefined();
+  });
+
   test("accepts additional worker export hints in options", async () => {
     const options = await resolveRuntimeOptions({
       additionalExports: {

@@ -37,8 +37,16 @@ export type WorkersUserConfig<T extends RstestConfig = RstestConfig> = T & {
   test?: WorkersTestConfig;
 };
 
-export type ConfigFn<T extends RstestConfig> = (...args: unknown[]) => T | Promise<T>;
-export type AnyConfigExport<T extends RstestConfig> = T | Promise<T> | ConfigFn<T>;
+export type ConfigFn<
+  T extends RstestConfig,
+  TArgs extends unknown[] = unknown[],
+  TThis = unknown
+> = (this: TThis, ...args: TArgs) => T | Promise<T>;
+export type AnyConfigExport<
+  T extends RstestConfig,
+  TArgs extends unknown[] = unknown[],
+  TThis = unknown
+> = T | Promise<T> | ConfigFn<T, TArgs, TThis>;
 
 export function mapAnyConfigExport<T extends RstestConfig, U extends RstestConfig>(
   mapper: (value: T) => U,
@@ -52,14 +60,28 @@ export function mapAnyConfigExport<T extends RstestConfig, U extends RstestConfi
   mapper: (value: T) => U,
   config: ConfigFn<T>
 ): ConfigFn<U>;
-export function mapAnyConfigExport<T extends RstestConfig, U extends RstestConfig>(
+export function mapAnyConfigExport<
+  T extends RstestConfig,
+  U extends RstestConfig,
+  TArgs extends unknown[],
+  TThis
+>(
   mapper: (value: T) => U,
-  config: AnyConfigExport<T>
-): AnyConfigExport<U> {
+  config: ConfigFn<T, TArgs, TThis>
+): ConfigFn<U, TArgs, TThis>;
+export function mapAnyConfigExport<
+  T extends RstestConfig,
+  U extends RstestConfig,
+  TArgs extends unknown[],
+  TThis
+>(
+  mapper: (value: T) => U,
+  config: AnyConfigExport<T, TArgs, TThis>
+): AnyConfigExport<U, TArgs, TThis> {
   if (typeof config === "function") {
     return (function (this: unknown, ...args: unknown[]) {
       return Promise.resolve((config as ConfigFn<T>).apply(this, args)).then(mapper);
-    }) as ConfigFn<U>;
+    }) as ConfigFn<U, TArgs, TThis>;
   }
 
   if (config instanceof Promise) {

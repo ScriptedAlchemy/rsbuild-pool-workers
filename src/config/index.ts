@@ -235,36 +235,50 @@ export function defineWorkersConfig(
 export function defineWorkersConfig(
   config: Promise<WorkersUserConfig<RstestConfig>>
 ): Promise<WorkersUserConfig<RstestConfig>>;
-export function defineWorkersConfig(
+export function defineWorkersConfig<
+  TArgs extends unknown[],
+  TThis
+>(
   config: (
-    ...args: unknown[]
+    this: TThis,
+    ...args: TArgs
   ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>
 ): (
-  ...args: unknown[]
+  this: TThis,
+  ...args: TArgs
 ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
-export function defineWorkersConfig(
-  config: AnyConfigExport<WorkersUserConfig<RstestConfig>>
-): AnyConfigExport<WorkersUserConfig<RstestConfig>> {
+export function defineWorkersConfig<
+  TArgs extends unknown[] = unknown[],
+  TThis = unknown
+>(
+  config: AnyConfigExport<WorkersUserConfig<RstestConfig>, TArgs, TThis>
+): AnyConfigExport<WorkersUserConfig<RstestConfig>, TArgs, TThis> {
   if (typeof config === "function") {
     const fn = config as (
-      ...args: unknown[]
+      this: TThis,
+      ...args: TArgs
     ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
-    return (function (this: unknown, ...args: unknown[]) {
+    return (function (this: TThis, ...args: TArgs) {
       const value = fn.apply(this, args);
       if (value instanceof Promise) {
-        return value.then((resolved) => ensureWorkersConfigAsync(resolved));
+        return value.then((resolved) =>
+          ensureWorkersConfigAsync(resolved as WorkersUserConfig<RstestConfig>)
+        );
       }
-      return ensureWorkersConfig(value);
+      return ensureWorkersConfig(value as WorkersUserConfig<RstestConfig>);
     }) as (
-      ...args: unknown[]
+      this: TThis,
+      ...args: TArgs
     ) => WorkersUserConfig<RstestConfig> | Promise<WorkersUserConfig<RstestConfig>>;
   }
 
   if (config instanceof Promise) {
-    return config.then((value) => ensureWorkersConfigAsync(value));
+    return config.then((value) =>
+      ensureWorkersConfigAsync(value as WorkersUserConfig<RstestConfig>)
+    );
   }
 
-  return ensureWorkersConfig(config);
+  return ensureWorkersConfig(config as WorkersUserConfig<RstestConfig>);
 }
 
 export const defineWorkersProject = defineWorkersConfig;

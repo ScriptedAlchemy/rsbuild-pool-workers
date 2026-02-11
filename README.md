@@ -126,7 +126,7 @@ import {
   - `env`
   - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`) and `SELF.scheduled()`
   - `fetchMock`
-  - `listDurableObjectIds`
+  - `listDurableObjectIds` (deterministic lexicographic ordering)
   - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`)
   - event/queue helpers and D1 migration helper utilities
 - Some advanced `cloudflare:test` APIs are currently stubs in Rstest mode:

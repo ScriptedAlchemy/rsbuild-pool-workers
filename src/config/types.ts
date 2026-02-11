@@ -22,16 +22,18 @@ export interface WorkersPoolOptions {
   wrangler?: WorkersWranglerOptions;
 }
 
+export type WorkersPoolOptionsInput =
+  | WorkersPoolOptions
+  | ((ctx: WorkerPoolOptionsContext) => WorkersPoolOptions | Promise<WorkersPoolOptions>);
+
 export type WorkersTestConfig = Partial<RstestConfig> & {
   poolOptions?: {
-    workers?:
-      | WorkersPoolOptions
-      | ((ctx: WorkerPoolOptionsContext) => WorkersPoolOptions | Promise<WorkersPoolOptions>);
+    workers?: WorkersPoolOptionsInput;
   };
 };
 
 export type WorkersUserConfig<T extends RstestConfig = RstestConfig> = T & {
-  workers?: WorkersPoolOptions;
+  workers?: WorkersPoolOptionsInput;
   test?: WorkersTestConfig;
 };
 

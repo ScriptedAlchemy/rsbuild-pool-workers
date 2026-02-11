@@ -1965,6 +1965,58 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersProject top-level workers function with inject() end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          include: ["./project-top-level-workers-fn.test.ts"],
+          workers: ({ inject }) => ({
+            main: "./worker.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_TOP_LEVEL_FN_VALUE: inject("PROJECT_TOP_LEVEL_FN_VALUE")
+              }
+            }
+          })
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_TOP_LEVEL_FN_VALUE));
+          }
+        };
+      `,
+      "project-top-level-workers-fn.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("top-level workers function inject value is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-top-level-workers-fn-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-top-level-workers-fn.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_TOP_LEVEL_FN_VALUE: "\"project-top-level-workers-fn-ok\""
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject top-level workers option end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

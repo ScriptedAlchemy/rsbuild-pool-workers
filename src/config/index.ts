@@ -267,6 +267,7 @@ export * from "./pages";
 export type {
   AnyConfigExport,
   WorkerPoolOptionsContext,
+  WorkersPoolOptionsInput,
   WorkersPoolOptions,
   WorkersUserConfig,
   WorkersWranglerOptions

@@ -141,8 +141,9 @@ describe("Workers runtime state integration", () => {
     });
 
     await runtime.setup();
-    const response = await runtime.dispatchFetch("http://localhost/create");
-    const createdId = await response.text();
+    const first = await runtime.dispatchFetch("http://localhost/create");
+    const second = await runtime.dispatchFetch("http://localhost/create");
+    const createdIds = [await first.text(), await second.text()];
 
     const ids = await listDurableObjectIds(
       workersEnv.COUNTER as unknown as DurableObjectNamespaceLike
@@ -152,7 +153,10 @@ describe("Workers runtime state integration", () => {
         ? String((id as { toString: () => string }).toString())
         : String(id)
     );
-    expect(idStrings).toContain(createdId);
+    for (const createdId of createdIds) {
+      expect(idStrings).toContain(createdId);
+    }
+    expect(idStrings).toEqual([...idStrings].sort((a, b) => a.localeCompare(b)));
 
     await fs.rm(persistRoot, { recursive: true, force: true });
   });

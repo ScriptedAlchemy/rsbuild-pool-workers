@@ -265,7 +265,9 @@ export class WorkersRuntimeState {
     }
 
     const idFromString = (namespace as { idFromString: (id: string) => unknown }).idFromString;
-    return Array.from(ids).map((id) => idFromString(id));
+    return Array.from(ids)
+      .sort((a, b) => a.localeCompare(b))
+      .map((id) => idFromString(id));
   }
 
   private getPersistPaths(): string[] {

@@ -286,4 +286,53 @@ describe("rstest CLI integration", () => {
       expect(stdout).toContain("do-rpc.test.ts");
     });
   });
+
+  test("supports cloudflare:test-internal runtime alias", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-module.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    VALUE: "internal-ok"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.VALUE));
+          }
+        };
+      `,
+      "internal-module.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF, env } from "cloudflare:test-internal";
+
+        test("internal alias resolves correctly", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("internal-ok");
+          expect(env.VALUE).toBe("internal-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-module.test.ts");
+    });
+  });
 });

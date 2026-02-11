@@ -2741,6 +2741,63 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("prefers top-level workers in promise-like config exports end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          then(resolve) {
+            const value = {
+              include: ["./promise-like-precedence.test.ts"],
+              workers: () => ({
+                main: "./worker-top-level.ts",
+                miniflare: {
+                  bindings: {
+                    PROMISE_LIKE_PRECEDENCE_VALUE: "promise-like-top-level-function-selected"
+                  }
+                }
+              }),
+              test: {
+                poolOptions: {
+                  workers: () => {
+                    throw new Error("promise-like nested workers function should not execute");
+                  }
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_LIKE_PRECEDENCE_VALUE));
+          }
+        };
+      `,
+      "promise-like-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise-like top-level workers function value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-like-top-level-function-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("promise-like-precedence.test.ts");
+    });
+  });
+
   test("supports promise config export with preinstalled workers plugin end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -4035,6 +4092,63 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise-like-falsey-preinstalled.test.ts");
+    });
+  });
+
+  test("prefers top-level workers in defineWorkersProject promise-like exports end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          then(resolve) {
+            const value = {
+              include: ["./project-promise-like-precedence.test.ts"],
+              workers: () => ({
+                main: "./worker-top-level.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_PROMISE_LIKE_PRECEDENCE_VALUE: "project-promise-like-top-level-function-selected"
+                  }
+                }
+              }),
+              test: {
+                poolOptions: {
+                  workers: () => {
+                    throw new Error("project promise-like nested workers function should not execute");
+                  }
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_LIKE_PRECEDENCE_VALUE));
+          }
+        };
+      `,
+      "project-promise-like-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise-like top-level workers function value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-like-top-level-function-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise-like-precedence.test.ts");
     });
   });
 

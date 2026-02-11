@@ -2095,6 +2095,57 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports config function exports returning thenables end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => {
+          const value = {
+            include: ["./config-function-thenable.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  THENABLE_CONFIG_VALUE: "thenable-config-ok"
+                }
+              }
+            }
+          };
+          return {
+            then(resolve) {
+              resolve(value);
+              return Promise.resolve(value);
+            }
+          } as PromiseLike<typeof value>;
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.THENABLE_CONFIG_VALUE));
+          }
+        };
+      `,
+      "config-function-thenable.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("thenable config function export is resolved", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("thenable-config-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("config-function-thenable.test.ts");
+    });
+  });
+
   test("does not evaluate nested workers function in async config export when top-level async function is set end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3143,6 +3194,58 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise.test.ts");
+    });
+  });
+
+  test("supports defineWorkersProject config function exports returning thenables end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => {
+          const value = {
+            include: ["./project-config-function-thenable.test.ts"],
+            workers: {
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_THENABLE_CONFIG_VALUE: "project-thenable-config-ok"
+                }
+              }
+            }
+          };
+          return {
+            then(resolve) {
+              resolve(value);
+              return Promise.resolve(value);
+            }
+          } as PromiseLike<typeof value>;
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_THENABLE_CONFIG_VALUE));
+          }
+        };
+      `,
+      "project-config-function-thenable.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project thenable config function export is resolved", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-thenable-config-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-config-function-thenable.test.ts");
     });
   });
 

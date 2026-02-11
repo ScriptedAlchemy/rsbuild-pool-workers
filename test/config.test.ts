@@ -363,6 +363,30 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_TOP_LEVEL_API;
   });
 
+  test("resolves relative wrangler.configPath from caller directory", () => {
+    const value = defineWorkersConfig({
+      workers: {
+        main: "./src/index.ts",
+        wrangler: {
+          configPath: "./fixtures/wrangler.jsonc"
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    const parsed = JSON.parse(JSON.parse(String(defineValue))) as {
+      wrangler?: { configPath?: string };
+    };
+    expect(parsed.wrangler?.configPath).toBe(
+      path.resolve(process.cwd(), "test", "fixtures", "wrangler.jsonc")
+    );
+  });
+
   test("supports direct env fallback for inject()", () => {
     process.env.API_HOST = "\"http://localhost:8787\"";
 
@@ -1071,6 +1095,30 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-top-level-value");
 
     delete process.env.RSTEST_INJECT_PROJECT_TOP_LEVEL_VALUE;
+  });
+
+  test("defineWorkersProject resolves relative wrangler.configPath from caller directory", () => {
+    const value = defineWorkersProject({
+      workers: ({ inject }: WorkerPoolOptionsContext) => ({
+        main: "./src/project-top-level-worker.ts",
+        wrangler: {
+          configPath: inject<string>("PROJECT_WRANGLER_CONFIG_PATH") ?? "./fixtures/project-wrangler.jsonc"
+        }
+      })
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    const parsed = JSON.parse(JSON.parse(String(defineValue))) as {
+      wrangler?: { configPath?: string };
+    };
+    expect(parsed.wrangler?.configPath).toBe(
+      path.resolve(process.cwd(), "test", "fixtures", "project-wrangler.jsonc")
+    );
   });
 
   test("defineWorkersProject supports async top-level workers function in async config export", async () => {

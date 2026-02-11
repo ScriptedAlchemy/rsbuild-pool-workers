@@ -867,6 +867,57 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports cloudflare:test-internal fetchMock alias", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-fetch-mock.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          async fetch() {
+            const response = await fetch("http://example.com/internal-data");
+            return new Response(await response.text());
+          }
+        };
+      `,
+      "internal-fetch-mock.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF, fetchMock } from "cloudflare:test-internal";
+
+        test("fetchMock works via internal alias", async () => {
+          fetchMock.activate();
+          fetchMock.disableNetConnect();
+          fetchMock
+            .get("http://example.com")
+            .intercept({ path: "/internal-data", method: "GET" })
+            .reply(200, "internal-mock-ok");
+
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("internal-mock-ok");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-fetch-mock.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal for durable object helpers", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

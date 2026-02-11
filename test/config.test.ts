@@ -384,4 +384,32 @@ describe("defineWorkersConfig", () => {
 
     delete process.env.RSTEST_INJECT_PROJECT_URL;
   });
+
+  test("defineWorkersProject deduplicates existing workers plugin", () => {
+    const existingPlugin = {
+      name: WORKERS_RSBUILD_PLUGIN_NAME,
+      setup() {}
+    };
+
+    const value = defineWorkersProject({
+      plugins: [existingPlugin],
+      workers: {
+        main: "./src/project-worker.ts"
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const plugins = Array.isArray(value.plugins)
+      ? value.plugins
+      : value.plugins
+        ? [value.plugins]
+        : [];
+    expect(plugins.length).toBe(1);
+    expect((plugins[0] as { name?: string } | undefined)?.name).toBe(
+      WORKERS_RSBUILD_PLUGIN_NAME
+    );
+  });
 });

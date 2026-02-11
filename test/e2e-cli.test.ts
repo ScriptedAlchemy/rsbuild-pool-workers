@@ -1679,6 +1679,62 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersProject inject() direct-env fallback end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          test: {
+            include: ["./project-direct-fallback.test.ts"],
+            poolOptions: {
+              workers: async ({ inject }) => ({
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_DIRECT_VALUE: inject("PROJECT_DIRECT_VALUE")
+                  }
+                }
+              })
+            }
+          }
+        }));
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_DIRECT_VALUE));
+          }
+        };
+      `,
+      "project-direct-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("direct env fallback works through defineWorkersProject", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-direct-fallback-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-direct-fallback.test.ts");
+      },
+      {
+        env: {
+          PROJECT_DIRECT_VALUE: "project-direct-fallback-ok"
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject top-level workers option end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

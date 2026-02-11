@@ -469,4 +469,34 @@ describe("defineWorkersConfig", () => {
       WORKERS_RSBUILD_PLUGIN_NAME
     );
   });
+
+  test("defineWorkersProject supports direct env fallback for inject()", async () => {
+    process.env.PROJECT_FALLBACK_VALUE = "\"from-project-fallback\"";
+
+    const configFactory = defineWorkersProject(async () => ({
+      test: {
+        poolOptions: {
+          workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/project-worker.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_FALLBACK_VALUE: inject<string>("PROJECT_FALLBACK_VALUE")
+              }
+            }
+          })
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("from-project-fallback");
+
+    delete process.env.PROJECT_FALLBACK_VALUE;
+  });
 });

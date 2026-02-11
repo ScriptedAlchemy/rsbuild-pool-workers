@@ -62,6 +62,12 @@ test("integration", async () => {
   expect(response.status).toBe(200);
   expect(env).toBeTruthy();
 });
+
+test("Request objects are also supported", async () => {
+  const request = new Request("http://localhost/health", { method: "POST" });
+  const response = await SELF.fetch(request);
+  expect(response.status).toBe(200);
+});
 ```
 
 Durable Object RPC helper example:
@@ -112,7 +118,7 @@ import {
 - `defineWorkersConfig()` supports object, promise, sync function, and async function config exports.
 - `cloudflare:test` currently supports:
   - `env`
-  - `SELF.fetch()` and `SELF.scheduled()`
+  - `SELF.fetch()` (string, `URL`, and `Request` inputs) and `SELF.scheduled()`
   - `fetchMock`
   - `listDurableObjectIds`
   - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`)

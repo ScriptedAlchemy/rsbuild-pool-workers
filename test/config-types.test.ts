@@ -156,4 +156,32 @@ describe("mapAnyConfigExport", () => {
     const resolved = await mapped.call({ mode: "ctx" }, "arg");
     expect(resolved.include).toEqual(["ctx-arg", "mapped-promise-function.test.ts"]);
   });
+
+  test("preserves this and arguments for thenable-returning mapped config functions", async () => {
+    const mapped = mapAnyConfigExport(
+      (value) => ({
+        ...value,
+        include: [...(value.include ?? []), "mapped-thenable-function.test.ts"]
+      }),
+      function (this: { mode?: string }, ...args: unknown[]) {
+        const suffix = typeof args[0] === "string" ? args[0] : "none";
+        const value = {
+          include: [`${this.mode ?? "unknown"}-${suffix}`]
+        } satisfies RstestConfig;
+        return {
+          then(resolve: (resolved: typeof value) => void) {
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as unknown as PromiseLike<typeof value>;
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped thenable-returning function export");
+    }
+
+    const resolved = await mapped.call({ mode: "thenable-ctx" }, "thenable-arg");
+    expect(resolved.include).toEqual(["thenable-ctx-thenable-arg", "mapped-thenable-function.test.ts"]);
+  });
 });

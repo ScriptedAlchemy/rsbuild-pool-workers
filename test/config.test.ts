@@ -1,7 +1,7 @@
 import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
 import { defineWorkersConfig, defineWorkersProject } from "../src/config/index";
-import type { WorkerPoolOptionsContext } from "../src/config/index";
+import type { WorkerPoolOptionsContext, WorkersPoolOptions } from "../src/config/index";
 import { WORKERS_RSBUILD_PLUGIN_NAME } from "../src/plugin/workers-plugin";
 
 describe("defineWorkersConfig", () => {
@@ -1059,6 +1059,36 @@ describe("defineWorkersConfig", () => {
     const errorMessage = "promise-like top-level workers rejection";
     const promiseLikeValue = {
       workers: () => Promise.reject(new Error(errorMessage))
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(errorMessage);
+  });
+
+  test("propagates rejection from promise-like top-level thenable workers function", async () => {
+    const errorMessage = "promise-like top-level thenable workers rejection";
+    const promiseLikeValue = {
+      workers: () => ({
+        then(
+          _resolve: (value: WorkersPoolOptions) => unknown,
+          reject?: (reason: unknown) => unknown
+        ) {
+          const error = new Error(errorMessage);
+          if (typeof reject === "function") {
+            reject(error);
+          }
+          return Promise.reject(error);
+        }
+      }) as PromiseLike<WorkersPoolOptions>
     };
     const configPromiseLike = defineWorkersConfig({
       then(resolve: (value: typeof promiseLikeValue) => void) {
@@ -3207,6 +3237,36 @@ describe("defineWorkersConfig", () => {
     const errorMessage = "project promise-like top-level workers rejection";
     const promiseLikeValue = {
       workers: () => Promise.reject(new Error(errorMessage))
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates rejection from promise-like top-level thenable workers function", async () => {
+    const errorMessage = "project promise-like top-level thenable workers rejection";
+    const promiseLikeValue = {
+      workers: () => ({
+        then(
+          _resolve: (value: WorkersPoolOptions) => unknown,
+          reject?: (reason: unknown) => unknown
+        ) {
+          const error = new Error(errorMessage);
+          if (typeof reject === "function") {
+            reject(error);
+          }
+          return Promise.reject(error);
+        }
+      }) as PromiseLike<WorkersPoolOptions>
     };
     const value = defineWorkersProject({
       then(resolve: (resolved: typeof promiseLikeValue) => void) {

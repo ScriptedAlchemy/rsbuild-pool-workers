@@ -10,6 +10,7 @@ import {
   env as workersEnv,
   fetchMock,
   listDurableObjectIds,
+  runDurableObjectAlarm,
   runInDurableObject
 } from "../src/cloudflare-test/index";
 import {
@@ -372,5 +373,49 @@ describe("Workers runtime state integration", () => {
         throw new Error("callback-failure");
       })
     ).rejects.toThrow("callback-failure");
+  });
+
+  test("runDurableObjectAlarm rejects with unsupported guidance for real stubs", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          import { DurableObject } from "cloudflare:workers";
+
+          export class Counter extends DurableObject {
+            async alarm() {}
+            async fetch(request) {
+              if (new URL(request.url).pathname === "/set") {
+                await this.ctx.storage.setAlarm(Date.now() + 1_000);
+                return new Response("set");
+              }
+              return new Response("ok");
+            }
+          }
+
+          export default {
+            async fetch(_request, env) {
+              const id = env.COUNTER.idFromName("singleton");
+              const stub = env.COUNTER.get(id);
+              await stub.fetch("http://localhost/set");
+              return new Response("done");
+            }
+          };
+        `,
+        durableObjects: {
+          COUNTER: "Counter"
+        }
+      }
+    });
+
+    await runtime.setup();
+    await SELF.fetch("http://localhost/");
+
+    const namespace = workersEnv.COUNTER as unknown as DurableObjectNamespaceLike;
+    const stub = namespace.get(namespace.idFromName("singleton"));
+
+    await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+      "runDurableObjectAlarm() is not yet available in Rstest mode."
+    );
   });
 });

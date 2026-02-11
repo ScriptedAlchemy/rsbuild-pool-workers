@@ -240,6 +240,9 @@ export function defineWorkersConfig(
 
 export const defineWorkersProject = defineWorkersConfig;
 
+export * from "./d1";
+export * from "./pages";
+
 export type {
   AnyConfigExport,
   WorkerPoolOptionsContext,

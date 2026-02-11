@@ -334,6 +334,54 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports SELF.fetch Request header forwarding end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./request-headers.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(request) {
+            return new Response(request.headers.get("x-test-header") ?? "missing");
+          }
+        };
+      `,
+      "request-headers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("Request headers are forwarded", async () => {
+          const req = new Request("http://localhost/", {
+            headers: {
+              "x-test-header": "e2e-header-value"
+            }
+          });
+          const res = await SELF.fetch(req);
+          expect(await res.text()).toBe("e2e-header-value");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("request-headers.test.ts");
+    });
+  });
+
   test("respects isolatedStorage=false and preserves storage across tests", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

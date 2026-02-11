@@ -499,4 +499,33 @@ describe("defineWorkersConfig", () => {
 
     delete process.env.PROJECT_FALLBACK_VALUE;
   });
+
+  test("defineWorkersProject supports sync function-valued workers options with inject()", () => {
+    process.env.RSTEST_INJECT_PROJECT_SYNC_VALUE = "\"project-sync-value\"";
+
+    const value = defineWorkersProject({
+      test: {
+        poolOptions: {
+          workers: ({ inject }: WorkerPoolOptionsContext) => ({
+            main: "./src/project-worker.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_SYNC_VALUE: inject<string>("PROJECT_SYNC_VALUE")
+              }
+            }
+          })
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-sync-value");
+
+    delete process.env.RSTEST_INJECT_PROJECT_SYNC_VALUE;
+  });
 });

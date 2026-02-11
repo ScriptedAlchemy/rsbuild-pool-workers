@@ -1735,6 +1735,62 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersProject sync workers function with inject() end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          test: {
+            include: ["./project-sync-workers.test.ts"],
+            poolOptions: {
+              workers: ({ inject }) => ({
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_SYNC_GREETING: inject("PROJECT_SYNC_GREETING")
+                  }
+                }
+              })
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_SYNC_GREETING));
+          }
+        };
+      `,
+      "project-sync-workers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("sync workers function inject value is wired", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-sync-inject-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-sync-workers.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_SYNC_GREETING: "\"project-sync-inject-ok\""
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject top-level workers option end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

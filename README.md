@@ -114,7 +114,7 @@ import {
 
 ## Notes
 
-- TypeScript worker entrypoints in `workers.main` are bundled for Miniflare runtime.
+- TypeScript worker entrypoints in `workers.main` (`.ts`, `.tsx`, `.mts`, `.cts`) are bundled for Miniflare runtime.
 - `cloudflare:test-internal` is also aliased to the same runtime helpers for compatibility.
 - `env` bindings exposed by `cloudflare:test` are read-only.
 - `fetchMock` state is reset before each test case via runtime setup hooks.

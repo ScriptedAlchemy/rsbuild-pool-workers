@@ -180,8 +180,6 @@ export class WorkersRuntimeState {
   }
 
   async listDurableObjectIds(namespace: unknown): Promise<unknown[]> {
-    await this.setup();
-
     const hasIdFromString =
       typeof namespace === "object" &&
       namespace !== null &&
@@ -192,6 +190,8 @@ export class WorkersRuntimeState {
         "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
       );
     }
+
+    await this.setup();
 
     const bindings = this.getEnvSync();
     const bindingName = Object.entries(bindings).find(([, value]) => value === namespace)?.[0];

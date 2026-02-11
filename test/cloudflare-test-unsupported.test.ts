@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "@rstest/core";
+import { describe, expect, test } from "@rstest/core";
 import {
   type DurableObjectStubLike,
   introspectWorkflow,
@@ -7,15 +7,6 @@ import {
   runDurableObjectAlarm,
   runInDurableObject
 } from "../src/cloudflare-test/index";
-import { setWorkersRuntimeOptionsForTesting } from "../src/runtime/options";
-import { getWorkersRuntimeState } from "../src/runtime/state";
-
-const runtime = getWorkersRuntimeState();
-
-afterEach(async () => {
-  await runtime.teardown();
-  setWorkersRuntimeOptionsForTesting(undefined);
-});
 
 describe("unsupported cloudflare:test APIs", () => {
   test("runInDurableObject validates argument types", async () => {
@@ -48,19 +39,6 @@ describe("unsupported cloudflare:test APIs", () => {
   });
 
   test("listDurableObjectIds validates namespace argument type", async () => {
-    setWorkersRuntimeOptionsForTesting({
-      miniflare: {
-        modules: true,
-        script: `
-          export default {
-            fetch() {
-              return new Response("ok");
-            }
-          };
-        `
-      }
-    });
-
     await expect(
       listDurableObjectIds({} as never)
     ).rejects.toThrow(

@@ -23,6 +23,20 @@ describe("resolveRuntimeOptions", () => {
     expect(options.additionalExports).toEqual({});
   });
 
+  test("preserves explicit compatibilityDate when provided", async () => {
+    const options = await resolveRuntimeOptions(
+      {
+        main: "./src/worker.ts",
+        miniflare: {
+          compatibilityDate: "2023-10-10"
+        }
+      },
+      "/repo/example"
+    );
+
+    expect(options.miniflare.compatibilityDate).toBe("2023-10-10");
+  });
+
   test("preserves explicit script config", async () => {
     const options = await resolveRuntimeOptions(
       {

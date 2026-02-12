@@ -454,10 +454,11 @@ function readRstestIncludePatterns(
   const isRstestNamespaceExpression = (
     expression: ts.LeftHandSideExpression
   ): boolean => {
-    if (ts.isIdentifier(expression)) {
-      return defineConfigNamespaceIdentifiers.has(expression.text);
+    const unwrappedExpression = unwrapConfigExpression(expression);
+    if (ts.isIdentifier(unwrappedExpression)) {
+      return defineConfigNamespaceIdentifiers.has(unwrappedExpression.text);
     }
-    return isRequireFromRstestCore(expression);
+    return isRequireFromRstestCore(unwrappedExpression);
   };
 
   const isDefineConfigCallExpression = (
@@ -1393,6 +1394,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-namespace-element-access.config.ts"
     );
+    const wrappedNamespacePropertyConfigPath = path.join(
+      tempDirectory,
+      "rstest-wrapped-namespace-property.config.ts"
+    );
+    const wrappedNamespaceElementConfigPath = path.join(
+      tempDirectory,
+      "rstest-wrapped-namespace-element.config.ts"
+    );
     const requireNamespaceConfigPath = path.join(tempDirectory, "rstest-require-namespace.config.ts");
     const requireTemplateConfigPath = path.join(tempDirectory, "rstest-require-template.config.ts");
     const requireAliasConfigPath = path.join(tempDirectory, "rstest-require-alias.config.ts");
@@ -1571,6 +1580,38 @@ void unrelated;
 
 export default rstest["defineConfig"]({
   include: ["test/**/*.namespace-element.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      wrappedNamespacePropertyConfigPath,
+      `
+import * as rstest from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.wrapped-namespace-property-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default (rstest).defineConfig({
+  include: ["test/**/*.wrapped-namespace-property.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      wrappedNamespaceElementConfigPath,
+      `
+import * as rstest from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.wrapped-namespace-element-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default (rstest)["defineConfig"]({
+  include: ["test/**/*.wrapped-namespace-element.test.ts"]
 });
 `,
       "utf8"
@@ -1841,6 +1882,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(namespaceElementAccessConfigPath)).toEqual([
         "test/**/*.namespace-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(wrappedNamespacePropertyConfigPath)).toEqual([
+        "test/**/*.wrapped-namespace-property.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(wrappedNamespaceElementConfigPath)).toEqual([
+        "test/**/*.wrapped-namespace-element.test.ts"
       ]);
       expect(readRstestIncludePatterns(requireNamespaceConfigPath)).toEqual([
         "test/**/*.require-namespace.test.ts"

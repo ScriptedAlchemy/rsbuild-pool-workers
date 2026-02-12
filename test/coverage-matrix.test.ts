@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
 
@@ -40,6 +41,38 @@ function expectTitleCoverage(titles: string[], expectedTitles: string[]): void {
 }
 
 describe("regression coverage matrix", () => {
+  test("parses title strings across quote styles and test modifiers", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "title-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `
+test("double quote", () => {});
+test('single quote', () => {});
+test(\`template literal\`, () => {});
+test.only("only variant", () => {});
+test.skip('skip variant', () => {});
+test.todo(\`todo variant\`, () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      const titles = readTestTitles(fixturePath);
+      expectTitleCoverage(titles, [
+        "double quote",
+        "single quote",
+        "template literal",
+        "only variant",
+        "skip variant",
+        "todo variant"
+      ]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
   test("covers config-function invalid-return variants in unit suite", () => {
     const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
     const expectedUnitSuffixes = [

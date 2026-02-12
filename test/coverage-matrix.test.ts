@@ -1350,6 +1350,10 @@ test("cts title", () => {});
     );
     const requireNamespaceConfigPath = path.join(tempDirectory, "rstest-require-namespace.config.ts");
     const requireAliasConfigPath = path.join(tempDirectory, "rstest-require-alias.config.ts");
+    const requireShorthandConfigPath = path.join(
+      tempDirectory,
+      "rstest-require-shorthand.config.ts"
+    );
     const requireDirectPropertyConfigPath = path.join(
       tempDirectory,
       "rstest-require-direct-property.config.ts"
@@ -1501,6 +1505,22 @@ void unrelated;
 
 export default makeConfig({
   include: ["test/**/*.require-alias.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      requireShorthandConfigPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = {
+  include: ["test/**/*.require-shorthand-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default defineConfig({
+  include: ["test/**/*.require-shorthand.test.ts"]
 });
 `,
       "utf8"
@@ -1684,6 +1704,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(requireAliasConfigPath)).toEqual([
         "test/**/*.require-alias.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(requireShorthandConfigPath)).toEqual([
+        "test/**/*.require-shorthand.test.ts"
       ]);
       expect(readRstestIncludePatterns(requireDirectPropertyConfigPath)).toEqual([
         "test/**/*.require-direct-property.test.ts"

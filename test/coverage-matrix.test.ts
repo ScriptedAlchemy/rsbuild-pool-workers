@@ -2031,6 +2031,10 @@ export default config;
       tempDirectory,
       "rstest-non-literal-with-fallback.config.ts"
     );
+    const missingDefineConfigArgumentPath = path.join(
+      tempDirectory,
+      "rstest-missing-define-config-argument.config.ts"
+    );
     const dynamicIncludeKeyPath = path.join(tempDirectory, "rstest-dynamic-include-key.config.ts");
 
     fs.writeFileSync(
@@ -2076,6 +2080,20 @@ export default defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      missingDefineConfigArgumentPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.missing-argument-fallback-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default defineConfig();
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       dynamicIncludeKeyPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -2093,6 +2111,7 @@ export default defineConfig({
       expect(readRstestIncludePatterns(missingIncludePath)).toEqual([]);
       expect(readRstestIncludePatterns(nonLiteralIncludePath)).toEqual([]);
       expect(readRstestIncludePatterns(nonLiteralWithFallbackPath)).toEqual([]);
+      expect(readRstestIncludePatterns(missingDefineConfigArgumentPath)).toEqual([]);
       expect(readRstestIncludePatterns(dynamicIncludeKeyPath)).toEqual([]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });

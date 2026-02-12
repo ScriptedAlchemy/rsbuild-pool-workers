@@ -64,16 +64,27 @@ function expectSuffixCoverage(
     titles.filter((title) => title.startsWith(prefix)).map((title) => title.slice(prefix.length))
   );
   expect(found.size).toBeGreaterThanOrEqual(expectedSuffixes.length);
-  for (const suffix of expectedSuffixes) {
-    expect(found.has(suffix)).toBe(true);
-  }
+  const missing = expectedSuffixes.filter((suffix) => !found.has(suffix));
+  expect(
+    missing,
+    [
+      `Missing expected suffixes for prefix: ${prefix}`,
+      `Expected: ${expectedSuffixes.join(", ")}`,
+      `Found: ${Array.from(found).join(", ")}`
+    ].join("\n")
+  ).toEqual([]);
 }
 
 function expectTitleCoverage(titles: string[], expectedTitles: string[]): void {
   const titleSet = new Set(titles);
-  for (const title of expectedTitles) {
-    expect(titleSet.has(title)).toBe(true);
-  }
+  const missing = expectedTitles.filter((title) => !titleSet.has(title));
+  expect(
+    missing,
+    [
+      "Missing expected test titles:",
+      ...missing.map((title) => `- ${title}`)
+    ].join("\n")
+  ).toEqual([]);
 }
 
 describe("regression coverage matrix", () => {

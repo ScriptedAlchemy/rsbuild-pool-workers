@@ -116,6 +116,39 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("nested-fallback");
   });
 
+  test("falls back to nested workers function when top-level workers is explicitly undefined", () => {
+    let nestedWorkersInvoked = false;
+
+    const value = defineWorkersConfig({
+      workers: undefined as unknown as WorkersPoolOptions,
+      test: {
+        poolOptions: {
+          workers: () => {
+            nestedWorkersInvoked = true;
+            return {
+              main: "./src/nested-function-undefined-fallback-worker.ts",
+              miniflare: {
+                bindings: {
+                  NESTED_FUNCTION_UNDEFINED_FALLBACK: "nested-function-undefined-fallback"
+                }
+              }
+            };
+          }
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("nested-function-undefined-fallback-worker.ts");
+    expect(String(defineValue)).toContain("nested-function-undefined-fallback");
+    expect(nestedWorkersInvoked).toBe(true);
+  });
+
   test("sync config function falls back to nested workers when top-level workers is undefined", () => {
     const configFactory = defineWorkersConfig(() => ({
       workers: undefined as unknown as WorkersPoolOptions,
@@ -5179,6 +5212,40 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-nested-fallback-worker.ts");
     expect(String(defineValue)).toContain("project-nested-fallback");
+  });
+
+  test("defineWorkersProject falls back to nested workers function when top-level workers is explicitly undefined", () => {
+    let nestedWorkersInvoked = false;
+
+    const value = defineWorkersProject({
+      workers: undefined as unknown as WorkersPoolOptions,
+      test: {
+        poolOptions: {
+          workers: () => {
+            nestedWorkersInvoked = true;
+            return {
+              main: "./src/project-nested-function-undefined-fallback-worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_NESTED_FUNCTION_UNDEFINED_FALLBACK:
+                    "project-nested-function-undefined-fallback"
+                }
+              }
+            };
+          }
+        }
+      }
+    });
+
+    if (value instanceof Promise || typeof value === "function") {
+      throw new Error("Expected sync config export");
+    }
+
+    const defineValue = value.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-nested-function-undefined-fallback-worker.ts");
+    expect(String(defineValue)).toContain("project-nested-function-undefined-fallback");
+    expect(nestedWorkersInvoked).toBe(true);
   });
 
   test("defineWorkersProject sync config function falls back to nested workers when top-level workers is undefined", () => {

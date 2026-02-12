@@ -16,19 +16,24 @@ function readTestTitles(filePath: string): string[] {
 
   const titles = new Set<string>();
   const isSupportedTestExpression = (expression: ts.LeftHandSideExpression): boolean => {
-    if (ts.isIdentifier(expression)) {
-      return expression.text === "test";
+    const modifiers = new Set(["only", "skip", "todo", "concurrent"]);
+    const chain: string[] = [];
+    let current: ts.LeftHandSideExpression | ts.Expression = expression;
+
+    while (ts.isPropertyAccessExpression(current)) {
+      chain.unshift(current.name.text);
+      current = current.expression;
     }
 
-    if (
-      ts.isPropertyAccessExpression(expression) &&
-      ts.isIdentifier(expression.expression) &&
-      expression.expression.text === "test"
-    ) {
-      return ["only", "skip", "todo"].includes(expression.name.text);
+    if (!ts.isIdentifier(current) || current.text !== "test") {
+      return false;
     }
 
-    return false;
+    if (chain.length === 0) {
+      return true;
+    }
+
+    return chain.every((segment) => modifiers.has(segment));
   };
 
   const visit = (node: ts.Node): void => {
@@ -88,6 +93,8 @@ test(\`template \\\`quote\\\`\`, () => {});
 test.only("only variant", () => {});
 test.skip('skip variant', () => {});
 test.todo(\`todo variant\`, () => {});
+test.concurrent("concurrent variant", () => {});
+test.concurrent.only("concurrent only variant", () => {});
 `,
       "utf8"
     );
@@ -103,8 +110,37 @@ test.todo(\`todo variant\`, () => {});
         "template `quote`",
         "only variant",
         "skip variant",
-        "todo variant"
+        "todo variant",
+        "concurrent variant",
+        "concurrent only variant"
       ]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("ignores embedded fixture-source strings when collecting titles", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "embedded-source-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `
+const generatedSource = \`
+  test("embedded fixture title", () => {});
+  test.only("embedded only fixture title", () => {});
+\`;
+
+test("actual executable title", () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      const titles = readTestTitles(fixturePath);
+      expect(titles.includes("actual executable title")).toBe(true);
+      expect(titles.includes("embedded fixture title")).toBe(false);
+      expect(titles.includes("embedded only fixture title")).toBe(false);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

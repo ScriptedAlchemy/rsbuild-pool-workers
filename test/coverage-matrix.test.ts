@@ -1286,6 +1286,26 @@ test("cts title", () => {});
     ).toEqual([]);
   });
 
+  test("documents rstest include parser coverage notes in README", () => {
+    const readme = fs.readFileSync(path.join(process.cwd(), "README.md"), "utf8");
+    const requiredSnippets = [
+      "alias import",
+      "namespace/property or namespace-element access",
+      "CommonJS `require(\"@rstest/core\")` namespace/destructured bindings",
+      "array of string literals or a single string literal",
+      "dynamic/non-literal values are ignored"
+    ];
+    const missingSnippets = requiredSnippets.filter((snippet) => !readme.includes(snippet));
+
+    expect(
+      missingSnippets,
+      [
+        "README is missing rstest include parser coverage notes:",
+        ...missingSnippets.map((snippet) => `- ${snippet}`)
+      ].join("\n")
+    ).toEqual([]);
+  });
+
   test("reads rstest include patterns from array and single-string forms", () => {
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const arrayConfigPath = path.join(tempDirectory, "rstest-array.config.ts");

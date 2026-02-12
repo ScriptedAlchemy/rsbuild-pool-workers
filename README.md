@@ -166,6 +166,8 @@ import {
 - function export failures (sync throw, async rejection, promise rejection, thenable rejection) propagate as test-run failures with surfaced messages.
 - repository maintainers can run `pnpm test:matrix` to execute regression guardrails only (coverage parity, no focused/skipped/todo executable tests, guarded suite list invariants, and parser-cache correctness checks).
 - default `rstest.config.ts` include patterns are kept in sync with matrix-supported test suffixes (`.test.ts`, `.test.tsx`, `.test.mts`, `.test.cts`, `.test.js`, `.test.jsx`, `.test.mjs`, `.test.cjs`) via guard tests.
+- matrix include-parser guards for `rstest.config.ts` cover `defineConfig` calls through direct import, alias import, namespace/property or namespace-element access, and CommonJS `require("@rstest/core")` namespace/destructured bindings.
+- include extraction is intentionally literal-only: `include` may be an array of string literals or a single string literal (including quoted/computed `"include"` property keys); dynamic/non-literal values are ignored.
 - `cloudflare:test` currently supports:
   - `env`
   - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`; `Request` + `init` override semantics are preserved) and `SELF.scheduled()`

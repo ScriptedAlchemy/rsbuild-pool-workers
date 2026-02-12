@@ -1438,6 +1438,7 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-import-equals-element.config.ts"
     );
+    const jsConfigPath = path.join(tempDirectory, "rstest-js.config.js");
     const localShadowConfigPath = path.join(tempDirectory, "rstest-local-shadow.config.ts");
     const wrappedCalleeConfigPath = path.join(tempDirectory, "rstest-wrapped-callee.config.ts");
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
@@ -1809,6 +1810,20 @@ export default rstest["defineConfig"]({
       "utf8"
     );
     fs.writeFileSync(
+      jsConfigPath,
+      `
+const unrelated = {
+  include: ["test/**/*.js-config-should-not-be-read.ts"]
+};
+void unrelated;
+
+module.exports = require("@rstest/core").defineConfig({
+  include: ["test/**/*.js-config.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       localShadowConfigPath,
       `
 import { defineConfig as makeConfig } from "@rstest/core";
@@ -1993,6 +2008,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(importEqualsElementConfigPath)).toEqual([
         "test/**/*.import-equals-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(jsConfigPath)).toEqual([
+        "test/**/*.js-config.test.ts"
       ]);
       expect(readRstestIncludePatterns(localShadowConfigPath)).toEqual([
         "test/**/*.shadow.test.ts"

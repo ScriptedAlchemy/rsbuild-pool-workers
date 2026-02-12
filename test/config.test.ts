@@ -1858,6 +1858,47 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("promise-like-nested-fallback");
   });
 
+  test("promise-like exports fall back to nested workers function when top-level workers is undefined", async () => {
+    let nestedWorkersInvoked = false;
+
+    const promiseLikeValue = {
+      workers: undefined as unknown as WorkersPoolOptions,
+      test: {
+        poolOptions: {
+          workers: () => {
+            nestedWorkersInvoked = true;
+            return {
+              main: "./src/promise-like-nested-function-undefined-fallback.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_LIKE_NESTED_FUNCTION_UNDEFINED_FALLBACK:
+                    "promise-like-nested-function-fallback"
+                }
+              }
+            };
+          }
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    const resolved = await configPromiseLike;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-like-nested-function-undefined-fallback.ts");
+    expect(String(defineValue)).toContain("promise-like-nested-function-fallback");
+    expect(nestedWorkersInvoked).toBe(true);
+  });
+
   test("throws actionable error for promise-like exports with invalid top-level workers options", async () => {
     const promiseLikeValue = {
       workers: "invalid-workers-options" as unknown as WorkersPoolOptions
@@ -3320,6 +3361,43 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("promise-nested-undefined-fallback.ts");
     expect(String(defineValue)).toContain("promise-nested-fallback");
+  });
+
+  test("promise exports fall back to nested workers function when top-level workers is undefined", async () => {
+    let nestedWorkersInvoked = false;
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: undefined as unknown as WorkersPoolOptions,
+        test: {
+          poolOptions: {
+            workers: () => {
+              nestedWorkersInvoked = true;
+              return {
+                main: "./src/promise-nested-function-undefined-fallback.ts",
+                miniflare: {
+                  bindings: {
+                    PROMISE_NESTED_FUNCTION_UNDEFINED_FALLBACK:
+                      "promise-nested-function-fallback"
+                  }
+                }
+              };
+            }
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-nested-function-undefined-fallback.ts");
+    expect(String(defineValue)).toContain("promise-nested-function-fallback");
+    expect(nestedWorkersInvoked).toBe(true);
   });
 
   test("throws actionable error for promise exports with invalid top-level workers options", async () => {
@@ -5775,6 +5853,49 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-like-nested-fallback");
   });
 
+  test("defineWorkersProject promise-like exports fall back to nested workers function when top-level workers is undefined", async () => {
+    let nestedWorkersInvoked = false;
+
+    const promiseLikeValue = {
+      workers: undefined as unknown as WorkersPoolOptions,
+      test: {
+        poolOptions: {
+          workers: () => {
+            nestedWorkersInvoked = true;
+            return {
+              main: "./src/project-promise-like-nested-function-undefined-fallback.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_LIKE_NESTED_FUNCTION_UNDEFINED_FALLBACK:
+                    "project-promise-like-nested-function-fallback"
+                }
+              }
+            };
+          }
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain(
+      "project-promise-like-nested-function-undefined-fallback.ts"
+    );
+    expect(String(defineValue)).toContain("project-promise-like-nested-function-fallback");
+    expect(nestedWorkersInvoked).toBe(true);
+  });
+
   test("defineWorkersProject throws actionable error for promise-like exports with invalid top-level workers options", async () => {
     const promiseLikeValue = {
       workers: "invalid-workers-options" as unknown as WorkersPoolOptions
@@ -7292,6 +7413,43 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-promise-nested-undefined-fallback.ts");
     expect(String(defineValue)).toContain("project-promise-nested-fallback");
+  });
+
+  test("defineWorkersProject promise exports fall back to nested workers function when top-level workers is undefined", async () => {
+    let nestedWorkersInvoked = false;
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: undefined as unknown as WorkersPoolOptions,
+        test: {
+          poolOptions: {
+            workers: () => {
+              nestedWorkersInvoked = true;
+              return {
+                main: "./src/project-promise-nested-function-undefined-fallback.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_PROMISE_NESTED_FUNCTION_UNDEFINED_FALLBACK:
+                      "project-promise-nested-function-fallback"
+                  }
+                }
+              };
+            }
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-nested-function-undefined-fallback.ts");
+    expect(String(defineValue)).toContain("project-promise-nested-function-fallback");
+    expect(nestedWorkersInvoked).toBe(true);
   });
 
   test("defineWorkersProject throws actionable error for promise exports with invalid top-level workers options", async () => {

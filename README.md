@@ -165,6 +165,7 @@ import {
 - function exports may also return Promise-like values (thenables); helpers normalize them before applying workers wiring.
 - function export failures (sync throw, async rejection, promise rejection, thenable rejection) propagate as test-run failures with surfaced messages.
 - repository maintainers can run `pnpm test:matrix` to execute regression guardrails only (coverage parity, no focused/skipped/todo executable tests, guarded suite list invariants, and parser-cache correctness checks).
+- default `rstest.config.ts` include patterns are kept in sync with matrix-supported test suffixes (`.test.ts`, `.test.tsx`, `.test.mts`, `.test.cts`, `.test.js`, `.test.jsx`, `.test.mjs`, `.test.cjs`) via guard tests.
 - `cloudflare:test` currently supports:
   - `env`
   - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`; `Request` + `init` override semantics are preserved) and `SELF.scheduled()`

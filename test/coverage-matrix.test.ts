@@ -284,6 +284,30 @@ function readRstestIncludePatterns(
     true,
     ts.ScriptKind.TS
   );
+  const defineConfigIdentifiers = new Set(["defineConfig"]);
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)) {
+      continue;
+    }
+    if (
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== "@rstest/core"
+    ) {
+      continue;
+    }
+
+    const namedBindings = statement.importClause?.namedBindings;
+    if (!namedBindings || !ts.isNamedImports(namedBindings)) {
+      continue;
+    }
+
+    for (const element of namedBindings.elements) {
+      const importedName = element.propertyName?.text ?? element.name.text;
+      if (importedName === "defineConfig") {
+        defineConfigIdentifiers.add(element.name.text);
+      }
+    }
+  }
 
   const readPatternsFromIncludeInitializer = (
     initializer: ts.Expression
@@ -319,7 +343,7 @@ function readRstestIncludePatterns(
     expression: ts.LeftHandSideExpression
   ): boolean => {
     if (ts.isIdentifier(expression)) {
-      return expression.text === "defineConfig";
+      return defineConfigIdentifiers.has(expression.text);
     }
     if (ts.isPropertyAccessExpression(expression)) {
       return expression.name.text === "defineConfig";
@@ -1189,6 +1213,7 @@ test("cts title", () => {});
     const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
     const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
     const elementAccessConfigPath = path.join(tempDirectory, "rstest-element-access.config.ts");
+    const aliasConfigPath = path.join(tempDirectory, "rstest-alias.config.ts");
     const fallbackConfigPath = path.join(tempDirectory, "rstest-fallback.config.ts");
 
     fs.writeFileSync(
@@ -1265,6 +1290,17 @@ export default core["defineConfig"]({
       "utf8"
     );
     fs.writeFileSync(
+      aliasConfigPath,
+      `
+import { defineConfig as makeConfig } from "@rstest/core";
+
+export default makeConfig({
+  include: ["test/**/*.alias.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       fallbackConfigPath,
       `
 const config = {
@@ -1295,6 +1331,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(elementAccessConfigPath)).toEqual([
         "test/**/*.element-access.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(aliasConfigPath)).toEqual([
+        "test/**/*.alias.test.ts"
       ]);
       expect(readRstestIncludePatterns(fallbackConfigPath)).toEqual([
         "test/**/*.fallback-first.test.ts"

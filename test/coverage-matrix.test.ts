@@ -1364,7 +1364,8 @@ test("cts title", () => {});
       "single string literal",
       "including static spread array literals",
       "dynamic/non-literal values are ignored",
-      "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present"
+      "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present",
+      "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)"
     ];
     const missingSnippets = requiredSnippets.filter((snippet) => !readme.includes(snippet));
 

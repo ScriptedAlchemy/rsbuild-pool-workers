@@ -276,6 +276,12 @@ function isPropertyNameText(name: ts.PropertyName, expected: string): boolean {
   if (ts.isStringLiteral(name) || ts.isNoSubstitutionTemplateLiteral(name)) {
     return name.text === expected;
   }
+  if (ts.isComputedPropertyName(name)) {
+    const expression = name.expression;
+    if (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)) {
+      return expression.text === expected;
+    }
+  }
   return false;
 }
 
@@ -1259,6 +1265,10 @@ test("cts title", () => {});
       "rstest-namespace-element-access.config.ts"
     );
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
+    const templateIncludeKeyConfigPath = path.join(
+      tempDirectory,
+      "rstest-template-include-key.config.ts"
+    );
     const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
     const elementAccessConfigPath = path.join(tempDirectory, "rstest-element-access.config.ts");
     const aliasConfigPath = path.join(tempDirectory, "rstest-alias.config.ts");
@@ -1375,6 +1385,17 @@ export default defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      templateIncludeKeyConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  [\`include\`]: ["test/**/*.template-include.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       propertyAccessConfigPath,
       `
 const core = {
@@ -1453,6 +1474,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(quotedIncludeKeyConfigPath)).toEqual([
         "test/**/*.quoted-include.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(templateIncludeKeyConfigPath)).toEqual([
+        "test/**/*.template-include.test.ts"
       ]);
       expect(readRstestIncludePatterns(propertyAccessConfigPath)).toEqual([
         "test/**/*.property-access.test.ts"

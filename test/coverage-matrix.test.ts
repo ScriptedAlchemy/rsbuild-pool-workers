@@ -27,6 +27,12 @@ const SUPPORTED_TEST_FILE_SUFFIXES = [
   ".test.ts",
   ".test.tsx"
 ];
+const IGNORED_TEST_DISCOVERY_DIRECTORIES = new Set([
+  ".git",
+  "build",
+  "dist",
+  "node_modules"
+]);
 const TEST_MODIFIER_SEGMENTS = new Set(["only", "skip", "todo", "concurrent"]);
 type VersionedCacheEntry<T> = {
   version: string;
@@ -231,6 +237,9 @@ function listDiscoveredTestSuites(directory: string): string[] {
     for (const entry of fs.readdirSync(currentDirectory, { withFileTypes: true })) {
       const absolutePath = path.join(currentDirectory, entry.name);
       if (entry.isDirectory()) {
+        if (IGNORED_TEST_DISCOVERY_DIRECTORIES.has(entry.name)) {
+          continue;
+        }
         visit(absolutePath);
         continue;
       }
@@ -499,6 +508,42 @@ test[dynamicModifier]("dynamic bracket run if", () => {});
         "nested/nested.test.ts",
         "root.test.ts"
       ]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("ignores non-source directories during suite discovery", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const ignoredNodeModulesDirectory = path.join(tempDirectory, "node_modules", "pkg");
+    const ignoredGitDirectory = path.join(tempDirectory, ".git");
+    const ignoredDistDirectory = path.join(tempDirectory, "dist");
+    const sourceDirectory = path.join(tempDirectory, "src");
+
+    fs.mkdirSync(ignoredNodeModulesDirectory, { recursive: true });
+    fs.mkdirSync(ignoredGitDirectory, { recursive: true });
+    fs.mkdirSync(ignoredDistDirectory, { recursive: true });
+    fs.mkdirSync(sourceDirectory, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(ignoredNodeModulesDirectory, "ignored.test.ts"),
+      "test(\"ignored\", () => {});",
+      "utf8"
+    );
+    fs.writeFileSync(
+      path.join(ignoredGitDirectory, "ignored.test.ts"),
+      "test(\"ignored\", () => {});",
+      "utf8"
+    );
+    fs.writeFileSync(
+      path.join(ignoredDistDirectory, "ignored.test.ts"),
+      "test(\"ignored\", () => {});",
+      "utf8"
+    );
+    fs.writeFileSync(path.join(sourceDirectory, "kept.test.ts"), "test(\"kept\", () => {});", "utf8");
+
+    try {
+      expect(listDiscoveredTestSuites(tempDirectory)).toEqual(["src/kept.test.ts"]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }
@@ -916,6 +961,28 @@ test("cts title", () => {});
       [
         "SUPPORTED_TEST_FILE_SUFFIXES must not contain duplicate entries.",
         `Unique count: ${unique.length}, actual count: ${suffixes.length}`
+      ].join("\n")
+    ).toBe(unique.length);
+  });
+
+  test("keeps ignored discovery directory list sorted and unique", () => {
+    const ignoredDirectories = [...IGNORED_TEST_DISCOVERY_DIRECTORIES];
+    const sorted = [...ignoredDirectories].sort();
+    const unique = Array.from(new Set(ignoredDirectories));
+
+    expect(
+      ignoredDirectories,
+      [
+        "IGNORED_TEST_DISCOVERY_DIRECTORIES should remain sorted for readability.",
+        `Expected sorted order: ${sorted.join(", ")}`
+      ].join("\n")
+    ).toEqual(sorted);
+
+    expect(
+      ignoredDirectories.length,
+      [
+        "IGNORED_TEST_DISCOVERY_DIRECTORIES must not contain duplicates.",
+        `Unique count: ${unique.length}, actual count: ${ignoredDirectories.length}`
       ].join("\n")
     ).toBe(unique.length);
   });

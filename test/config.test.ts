@@ -1481,6 +1481,30 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("propagates actionable error from promise-like nested workers function string return", async () => {
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: () => "invalid-workers-options" as unknown as WorkersPoolOptions
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+    );
+  });
+
   test("propagates thrown errors from promise-like nested workers function", async () => {
     const errorMessage = "promise-like nested workers throw";
     const promiseLikeValue = {
@@ -2108,6 +2132,26 @@ describe("defineWorkersConfig", () => {
 
     await expect(configPromiseLike).rejects.toThrow(
       "Invalid workers options from workers() return value: expected an object but received boolean."
+    );
+  });
+
+  test("propagates actionable error from promise-like top-level workers function undefined return", async () => {
+    const promiseLikeValue = {
+      workers: () => undefined as unknown as WorkersPoolOptions
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received undefined."
     );
   });
 
@@ -5028,6 +5072,30 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("defineWorkersProject propagates actionable error from promise-like nested workers function string return", async () => {
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: () => "invalid-workers-options" as unknown as WorkersPoolOptions
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+    );
+  });
+
   test("defineWorkersProject propagates thrown errors from promise-like nested workers function", async () => {
     const errorMessage = "project promise-like nested workers throw";
     const promiseLikeValue = {
@@ -5671,6 +5739,26 @@ describe("defineWorkersConfig", () => {
 
     await expect(value).rejects.toThrow(
       "Invalid workers options from workers() return value: expected an object but received boolean."
+    );
+  });
+
+  test("defineWorkersProject propagates actionable error from promise-like top-level workers function undefined return", async () => {
+    const promiseLikeValue = {
+      workers: () => undefined as unknown as WorkersPoolOptions
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received undefined."
     );
   });
 

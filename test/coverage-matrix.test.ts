@@ -49,9 +49,27 @@ function extractSupportedModifierChain(
   const chain: string[] = [];
   let current: ts.LeftHandSideExpression | ts.Expression = expression;
 
-  while (ts.isPropertyAccessExpression(current)) {
-    chain.unshift(current.name.text);
-    current = current.expression;
+  while (true) {
+    if (ts.isPropertyAccessExpression(current)) {
+      chain.unshift(current.name.text);
+      current = current.expression;
+      continue;
+    }
+
+    if (ts.isElementAccessExpression(current)) {
+      const argument = current.argumentExpression;
+      if (
+        !argument ||
+        (!ts.isStringLiteral(argument) && !ts.isNoSubstitutionTemplateLiteral(argument))
+      ) {
+        return undefined;
+      }
+      chain.unshift(argument.text);
+      current = current.expression;
+      continue;
+    }
+
+    break;
   }
 
   if (!ts.isIdentifier(current) || current.text !== "test") {
@@ -359,8 +377,12 @@ test("literal title", () => {});
 test("plain", () => {});
 test.only("only", () => {});
 test.concurrent.skip("concurrent skip", () => {});
+test["only"]("only bracket", () => {});
+test["concurrent"]["skip"]("concurrent skip bracket", () => {});
 test.each([1])("parameterized %i", () => {});
 test.runIf(true)("run if", () => {});
+const dynamicModifier = "only";
+test[dynamicModifier]("dynamic bracket run if", () => {});
 `,
       "utf8"
     );
@@ -369,7 +391,9 @@ test.runIf(true)("run if", () => {});
       expect(collectParsedTestCalls(fixturePath)).toEqual([
         { title: "plain", modifiers: [] },
         { title: "only", modifiers: ["only"] },
-        { title: "concurrent skip", modifiers: ["concurrent", "skip"] }
+        { title: "concurrent skip", modifiers: ["concurrent", "skip"] },
+        { title: "only bracket", modifiers: ["only"] },
+        { title: "concurrent skip bracket", modifiers: ["concurrent", "skip"] }
       ]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });

@@ -397,9 +397,17 @@ function readRstestIncludePatterns(
   ): string[] | undefined => {
     const unwrappedInitializer = unwrapConfigExpression(initializer);
     if (ts.isArrayLiteralExpression(unwrappedInitializer)) {
-      return unwrappedInitializer.elements
-        .filter((element): element is ts.StringLiteralLike => ts.isStringLiteralLike(element))
-        .map((element) => element.text);
+      const patterns: string[] = [];
+      for (const element of unwrappedInitializer.elements) {
+        if (ts.isSpreadElement(element)) {
+          continue;
+        }
+        const unwrappedElement = unwrapConfigExpression(element);
+        if (ts.isStringLiteralLike(unwrappedElement)) {
+          patterns.push(unwrappedElement.text);
+        }
+      }
+      return patterns;
     }
     if (ts.isStringLiteralLike(unwrappedInitializer)) {
       return [unwrappedInitializer.text];
@@ -1344,6 +1352,10 @@ test("cts title", () => {});
   test("reads rstest include patterns from array and single-string forms", () => {
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const arrayConfigPath = path.join(tempDirectory, "rstest-array.config.ts");
+    const wrappedArrayElementsConfigPath = path.join(
+      tempDirectory,
+      "rstest-wrapped-array-elements.config.ts"
+    );
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const typeAssertionConfigPath = path.join(tempDirectory, "rstest-type-assertion.config.ts");
     const nonNullConfigPath = path.join(tempDirectory, "rstest-non-null.config.ts");
@@ -1397,6 +1409,21 @@ export default defineConfig({
     \`test/**/*.test.tsx\`,
     dynamic
   ] satisfies string[])
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      wrappedArrayElementsConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: [
+    ("test/**/*.wrapped-array-parenthesized.test.ts"),
+    "test/**/*.wrapped-array-asserted.test.ts" as const,
+    \`test/**/*.wrapped-array-template.test.ts\`
+  ]
 });
 `,
       "utf8"
@@ -1723,6 +1750,11 @@ export default config;
       expect(readRstestIncludePatterns(arrayConfigPath)).toEqual([
         "test/**/*.test.ts",
         "test/**/*.test.tsx"
+      ]);
+      expect(readRstestIncludePatterns(wrappedArrayElementsConfigPath)).toEqual([
+        "test/**/*.wrapped-array-parenthesized.test.ts",
+        "test/**/*.wrapped-array-asserted.test.ts",
+        "test/**/*.wrapped-array-template.test.ts"
       ]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
       expect(readRstestIncludePatterns(typeAssertionConfigPath)).toEqual([

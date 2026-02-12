@@ -55,6 +55,41 @@ describe("mapAnyConfigExport", () => {
     expect(resolved.include).toEqual(["original-promise.test.ts", "mapped-promise.test.ts"]);
   });
 
+  test("propagates mapper throws for promise config exports", async () => {
+    const errorMessage = "mapper promise throw";
+    const mapped = mapAnyConfigExport(
+      () => {
+        throw new Error(errorMessage);
+      },
+      Promise.resolve({
+        include: ["base-promise.test.ts"]
+      } satisfies RstestConfig)
+    );
+
+    if (!(mapped instanceof Promise)) {
+      throw new Error("Expected mapped promise export");
+    }
+
+    await expect(mapped).rejects.toThrow(errorMessage);
+  });
+
+  test("propagates rejection for promise config exports", async () => {
+    const errorMessage = "promise export rejection";
+    const mapped = mapAnyConfigExport(
+      (value) => ({
+        ...value,
+        include: [...(value.include ?? []), "mapped-should-not-run.test.ts"]
+      }),
+      Promise.reject(new Error(errorMessage)) as Promise<RstestConfig>
+    );
+
+    if (!(mapped instanceof Promise)) {
+      throw new Error("Expected mapped rejected promise export");
+    }
+
+    await expect(mapped).rejects.toThrow(errorMessage);
+  });
+
   test("maps promise-like config exports", async () => {
     const value = {
       include: ["original-promise-like.test.ts"]

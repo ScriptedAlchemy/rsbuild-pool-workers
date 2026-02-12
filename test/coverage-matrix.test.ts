@@ -315,6 +315,15 @@ function readRstestIncludePatterns(configFilePath: string): string[] {
     if (ts.isPropertyAccessExpression(expression)) {
       return expression.name.text === "defineConfig";
     }
+    if (ts.isElementAccessExpression(expression)) {
+      const argument = expression.argumentExpression;
+      if (
+        argument &&
+        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))
+      ) {
+        return argument.text === "defineConfig";
+      }
+    }
     return false;
   };
 
@@ -1161,6 +1170,7 @@ test("cts title", () => {});
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
     const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
+    const elementAccessConfigPath = path.join(tempDirectory, "rstest-element-access.config.ts");
     const fallbackConfigPath = path.join(tempDirectory, "rstest-fallback.config.ts");
 
     fs.writeFileSync(
@@ -1222,6 +1232,21 @@ export default core.defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      elementAccessConfigPath,
+      `
+const core = {
+  defineConfig(value) {
+    return value;
+  }
+};
+
+export default core["defineConfig"]({
+  include: ["test/**/*.element-access.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       fallbackConfigPath,
       `
 const config = {
@@ -1249,6 +1274,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(propertyAccessConfigPath)).toEqual([
         "test/**/*.property-access.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(elementAccessConfigPath)).toEqual([
+        "test/**/*.element-access.test.ts"
       ]);
       expect(readRstestIncludePatterns(fallbackConfigPath)).toEqual([
         "test/**/*.fallback-first.test.ts"

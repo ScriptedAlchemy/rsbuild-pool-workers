@@ -2343,6 +2343,33 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces sync config function export invalid top-level workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          include: ["./sync-config-function-invalid-top-level-workers.test.ts"],
+          workers: "invalid-workers-options"
+        }));
+      `,
+      "sync-config-function-invalid-top-level-workers.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers: expected an object but received string."
+      );
+    });
+  });
+
   test("surfaces async config function export rejection end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2364,6 +2391,37 @@ describe("rstest CLI integration", () => {
 
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain("async config function rejection e2e");
+    });
+  });
+
+  test("surfaces async config function export invalid nested workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          test: {
+            include: ["./async-config-function-invalid-nested-workers.test.ts"],
+            poolOptions: {
+              workers: []
+            }
+          }
+        }));
+      `,
+      "async-config-function-invalid-nested-workers.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers: expected an object but received array."
+      );
     });
   });
 
@@ -9231,6 +9289,33 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject sync config function export invalid top-level workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          include: ["./project-sync-config-function-invalid-top-level-workers.test.ts"],
+          workers: "invalid-workers-options"
+        }));
+      `,
+      "project-sync-config-function-invalid-top-level-workers.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers: expected an object but received string."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject async config function export rejection end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -9252,6 +9337,37 @@ describe("rstest CLI integration", () => {
 
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain("project async config function rejection e2e");
+    });
+  });
+
+  test("surfaces defineWorkersProject async config function export invalid nested workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          test: {
+            include: ["./project-async-config-function-invalid-nested-workers.test.ts"],
+            poolOptions: {
+              workers: []
+            }
+          }
+        }));
+      `,
+      "project-async-config-function-invalid-nested-workers.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers: expected an object but received array."
+      );
     });
   });
 

@@ -30,6 +30,7 @@
     "build": "tsup && node scripts/copy-types.mjs",
     "check:type": "tsc --noEmit",
     "test": "rstest run",
+    "test:matrix": "rstest run test/coverage-matrix.test.ts",
     "test:ci": "rstest run",
     "lint": "tsc --noEmit"
   },

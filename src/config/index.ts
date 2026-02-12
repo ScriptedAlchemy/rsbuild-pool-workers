@@ -155,6 +155,54 @@ function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   );
 }
 
+function describeWorkersOptionsValue(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  return typeof value;
+}
+
+function ensureWorkersOptionsObject(
+  value: unknown,
+  sourceLabel: string
+): WorkersPoolOptions {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError(
+      `Invalid workers options from ${sourceLabel}: expected an object but received ` +
+        `${describeWorkersOptionsValue(value)}.`
+    );
+  }
+
+  return value as WorkersPoolOptions;
+}
+
+function selectRawWorkersOptions(config: WorkersUserConfig): {
+  rawWorkersOptions: unknown;
+  sourceLabel: string;
+} {
+  if (config.workers !== undefined) {
+    return {
+      rawWorkersOptions: config.workers,
+      sourceLabel: "workers"
+    };
+  }
+
+  if (config.test?.poolOptions?.workers !== undefined) {
+    return {
+      rawWorkersOptions: config.test.poolOptions.workers,
+      sourceLabel: "test.poolOptions.workers"
+    };
+  }
+
+  return {
+    rawWorkersOptions: {},
+    sourceLabel: "default workers options"
+  };
+}
+
 function extractWorkersOptions(
   config: WorkersUserConfig,
   allowAsyncWorkersFunction: boolean,
@@ -172,12 +220,15 @@ function extractWorkersOptions(
     ...(rest as RstestConfig)
   };
 
-  const rawWorkersOptions = workers ?? test?.poolOptions?.workers ?? {};
+  const { rawWorkersOptions, sourceLabel } = selectRawWorkersOptions(config);
 
   if (typeof rawWorkersOptions !== "function") {
     return {
       flattenedConfig,
-      workersOptions: normalizeWorkersPaths(rawWorkersOptions, configDirectory)
+      workersOptions: normalizeWorkersPaths(
+        ensureWorkersOptionsObject(rawWorkersOptions, sourceLabel),
+        configDirectory
+      )
     };
   }
 
@@ -194,7 +245,10 @@ function extractWorkersOptions(
     );
   }
 
-  const workersOptions = normalizeWorkersPaths(resolved, configDirectory);
+  const workersOptions = normalizeWorkersPaths(
+    ensureWorkersOptionsObject(resolved, `${sourceLabel}() return value`),
+    configDirectory
+  );
   return { flattenedConfig, workersOptions };
 }
 
@@ -223,15 +277,21 @@ async function ensureWorkersConfigAsync<T extends RstestConfig>(
     ...(rest as RstestConfig)
   };
 
-  const rawWorkersOptions = workers ?? test?.poolOptions?.workers ?? {};
+  const { rawWorkersOptions, sourceLabel } = selectRawWorkersOptions(rawConfig);
   let workersOptions: WorkersPoolOptions;
   if (typeof rawWorkersOptions === "function") {
     workersOptions = normalizeWorkersPaths(
-      await rawWorkersOptions({ inject: createInject() }),
+      ensureWorkersOptionsObject(
+        await rawWorkersOptions({ inject: createInject() }),
+        `${sourceLabel}() return value`
+      ),
       configDirectory
     );
   } else {
-    workersOptions = normalizeWorkersPaths(rawWorkersOptions, configDirectory);
+    workersOptions = normalizeWorkersPaths(
+      ensureWorkersOptionsObject(rawWorkersOptions, sourceLabel),
+      configDirectory
+    );
   }
   applyWorkersWiring(flattenedConfig, workersOptions);
 

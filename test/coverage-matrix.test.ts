@@ -542,14 +542,26 @@ function readRstestIncludePatterns(
     return false;
   };
 
-  const topLevelVariableInitializers = new Map<string, ts.Expression>();
+  const topLevelIdentifierExpressions = new Map<string, ts.Expression>();
   for (const statement of sourceFile.statements) {
-    if (!ts.isVariableStatement(statement)) {
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name) && declaration.initializer) {
+          topLevelIdentifierExpressions.set(declaration.name.text, declaration.initializer);
+        }
+      }
       continue;
     }
-    for (const declaration of statement.declarationList.declarations) {
-      if (ts.isIdentifier(declaration.name) && declaration.initializer) {
-        topLevelVariableInitializers.set(declaration.name.text, declaration.initializer);
+
+    if (
+      ts.isExpressionStatement(statement) &&
+      ts.isBinaryExpression(statement.expression) &&
+      statement.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isIdentifier(unwrapConfigExpression(statement.expression.left))
+    ) {
+      const assignmentTarget = unwrapConfigExpression(statement.expression.left);
+      if (ts.isIdentifier(assignmentTarget)) {
+        topLevelIdentifierExpressions.set(assignmentTarget.text, statement.expression.right);
       }
     }
   }
@@ -559,12 +571,27 @@ function readRstestIncludePatterns(
   ): ts.Expression => {
     let current = unwrapConfigExpression(expression);
     const seenIdentifiers = new Set<string>();
-    while (ts.isIdentifier(current)) {
+    while (true) {
+      if (ts.isBinaryExpression(current)) {
+        if (
+          current.operatorToken.kind === ts.SyntaxKind.EqualsToken ||
+          current.operatorToken.kind === ts.SyntaxKind.CommaToken
+        ) {
+          current = unwrapConfigExpression(current.right);
+          continue;
+        }
+      }
+
+      if (!ts.isIdentifier(current)) {
+        break;
+      }
+
       if (seenIdentifiers.has(current.text)) {
         break;
       }
+
       seenIdentifiers.add(current.text);
-      const initializer = topLevelVariableInitializers.get(current.text);
+      const initializer = topLevelIdentifierExpressions.get(current.text);
       if (!initializer) {
         break;
       }
@@ -1573,6 +1600,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-identifier-preferred.config.js"
     );
+    const exportedIdentifierReassignmentPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-identifier-reassignment-preferred.config.ts"
+    );
+    const exportedModuleChainAssignmentPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-chain-assignment-preferred.config.js"
+    );
     const exportedIdentifierNonLiteralPath = path.join(
       tempDirectory,
       "rstest-exported-identifier-non-literal.config.ts"
@@ -1927,6 +1962,39 @@ const config = defineConfig({
 });
 
 module.exports = config;
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedIdentifierReassignmentPreferredPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+let config = defineConfig({
+  include: ["test/**/*.exported-identifier-reassignment-first.test.ts"]
+});
+
+config = defineConfig({
+  include: ["test/**/*.exported-identifier-reassignment-second.test.ts"]
+});
+
+export default config;
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleChainAssignmentPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-chain-assignment-should-not-be-read.ts"]
+});
+void unrelated;
+
+module.exports = exports.default = defineConfig({
+  include: ["test/**/*.exported-chain-assignment.test.ts"]
+});
 `,
       "utf8"
     );
@@ -2511,6 +2579,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedModuleIdentifierPreferredPath)).toEqual([
         "test/**/*.exported-module-identifier-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedIdentifierReassignmentPreferredPath)).toEqual([
+        "test/**/*.exported-identifier-reassignment-second.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleChainAssignmentPreferredPath)).toEqual([
+        "test/**/*.exported-chain-assignment.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedIdentifierNonLiteralPath)).toEqual([]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);

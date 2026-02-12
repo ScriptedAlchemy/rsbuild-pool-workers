@@ -1608,6 +1608,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-chain-assignment-preferred.config.js"
     );
+    const exportedDefaultCommaPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-default-comma-preferred.config.ts"
+    );
+    const exportedModuleCommaPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-comma-preferred.config.js"
+    );
     const exportedIdentifierNonLiteralPath = path.join(
       tempDirectory,
       "rstest-exported-identifier-non-literal.config.ts"
@@ -1995,6 +2003,36 @@ void unrelated;
 module.exports = exports.default = defineConfig({
   include: ["test/**/*.exported-chain-assignment.test.ts"]
 });
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedDefaultCommaPreferredPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-default-comma-should-not-be-read.ts"]
+});
+
+export default (unrelated, defineConfig({
+  include: ["test/**/*.exported-default-comma.test.ts"]
+}));
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleCommaPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-module-comma-should-not-be-read.ts"]
+});
+
+module.exports = (unrelated, defineConfig({
+  include: ["test/**/*.exported-module-comma.test.ts"]
+}));
 `,
       "utf8"
     );
@@ -2585,6 +2623,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedModuleChainAssignmentPreferredPath)).toEqual([
         "test/**/*.exported-chain-assignment.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedDefaultCommaPreferredPath)).toEqual([
+        "test/**/*.exported-default-comma.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleCommaPreferredPath)).toEqual([
+        "test/**/*.exported-module-comma.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedIdentifierNonLiteralPath)).toEqual([]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);

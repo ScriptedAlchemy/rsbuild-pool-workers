@@ -367,6 +367,33 @@ test("literal title", () => {});
     }
   });
 
+  test("ignores non-root test-like call expressions", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "non-root-call-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `
+const alias = test;
+const objectWithTest = { test };
+const getTest = () => test;
+
+contest("contest title", () => {});
+objectWithTest.test("object member title", () => {});
+alias("alias title", () => {});
+getTest()("factory title", () => {});
+test("root test title", () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(readTestTitles(fixturePath)).toEqual(["root test title"]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
   test("extracts supported modifier chains and ignores unsupported call forms", () => {
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const fixturePath = path.join(tempDirectory, "modifier-chain-fixture.test.ts");

@@ -1688,6 +1688,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-include-method-before-literal.config.ts"
     );
+    const includeComputedMethodOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-computed-method-override.config.ts"
+    );
+    const includeComputedMethodBeforeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-computed-method-before-literal.config.ts"
+    );
     const includeSetterOverrideConfigPath = path.join(
       tempDirectory,
       "rstest-include-setter-override.config.ts"
@@ -2202,6 +2210,34 @@ export default defineConfig({
     return ["test/**/*.include-method-before-literal-should-not-be-read.test.ts"];
   },
   include: ["test/**/*.include-method-before-literal.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeComputedMethodOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.include-computed-method-override-should-not-be-read.test.ts"],
+  ["include"]() {
+    return ["test/**/*.include-computed-method-override.test.ts"];
+  }
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeComputedMethodBeforeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  [\`include\`]() {
+    return ["test/**/*.include-computed-method-before-literal-should-not-be-read.test.ts"];
+  },
+  include: ["test/**/*.include-computed-method-before-literal.test.ts"]
 });
 `,
       "utf8"
@@ -3551,6 +3587,10 @@ export default config;
       expect(readRstestIncludePatterns(includeMethodOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(includeMethodBeforeLiteralConfigPath)).toEqual([
         "test/**/*.include-method-before-literal.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(includeComputedMethodOverrideConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(includeComputedMethodBeforeLiteralConfigPath)).toEqual([
+        "test/**/*.include-computed-method-before-literal.test.ts"
       ]);
       expect(readRstestIncludePatterns(includeSetterOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(includeSetterBeforeLiteralConfigPath)).toEqual([

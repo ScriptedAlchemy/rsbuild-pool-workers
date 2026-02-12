@@ -158,6 +158,7 @@ import {
 - `defineWorkersConfig()` supports object, promise/promise-like, sync function, and async function config exports.
 - when using function exports (sync, async, or sync functions returning promises/promise-like values), config function arguments and invocation context (`this`) from rstest/rsbuild are forwarded unchanged.
 - function exports may also return Promise-like values (thenables); helpers normalize them before applying workers wiring.
+- function export failures (sync throw, async rejection, promise rejection, thenable rejection) propagate as test-run failures with surfaced messages.
 - `cloudflare:test` currently supports:
   - `env`
   - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`; `Request` + `init` override semantics are preserved) and `SELF.scheduled()`

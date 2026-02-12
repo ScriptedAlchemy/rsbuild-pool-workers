@@ -1720,6 +1720,54 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("falls back to nested workers when defineWorkersConfig top-level workers is undefined end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          include: ["./workers-undefined-fallback.test.ts"],
+          workers: undefined,
+          test: {
+            poolOptions: {
+              workers: {
+                main: "./worker-nested.ts",
+                miniflare: {
+                  bindings: {
+                    WORKERS_UNDEFINED_FALLBACK: "nested-fallback-selected"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.WORKERS_UNDEFINED_FALLBACK));
+          }
+        };
+      `,
+      "workers-undefined-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("nested workers value is selected when top-level workers is undefined", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("nested-fallback-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("workers-undefined-fallback.test.ts");
+    });
+  });
+
   test("does not evaluate nested workers function when defineWorkersConfig top-level function is set end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -15176,6 +15224,55 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-workers-precedence.test.ts");
+    });
+  });
+
+  test("falls back to nested workers when defineWorkersProject top-level workers is undefined end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          include: ["./project-workers-undefined-fallback.test.ts"],
+          workers: undefined,
+          test: {
+            poolOptions: {
+              workers: {
+                main: "./worker-nested.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_WORKERS_UNDEFINED_FALLBACK: "project-nested-fallback-selected"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_WORKERS_UNDEFINED_FALLBACK));
+          }
+        };
+      `,
+      "project-workers-undefined-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project nested workers value is selected when top-level workers is undefined", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-nested-fallback-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-workers-undefined-fallback.test.ts");
     });
   });
 

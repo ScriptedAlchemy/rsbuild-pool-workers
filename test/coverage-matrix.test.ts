@@ -1718,6 +1718,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-identifier-non-literal.config.ts"
     );
+    const exportedNonLiteralBeatsHelperLiteralPath = path.join(
+      tempDirectory,
+      "rstest-exported-non-literal-beats-helper-literal.config.ts"
+    );
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const typeAssertionConfigPath = path.join(tempDirectory, "rstest-type-assertion.config.ts");
     const nonNullConfigPath = path.join(tempDirectory, "rstest-non-null.config.ts");
@@ -2304,6 +2308,24 @@ const config = defineConfig({
 });
 
 export default config;
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedNonLiteralBeatsHelperLiteralPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const helper = defineConfig({
+  include: ["test/**/*.exported-non-literal-helper-should-not-be-read.test.ts"]
+});
+void helper;
+
+const includePatterns = ["test/**/*.exported-non-literal-beats-helper.test.ts"];
+
+export default defineConfig({
+  include: includePatterns
+});
 `,
       "utf8"
     );
@@ -2905,6 +2927,7 @@ export default config;
         "test/**/*.exported-module-comma.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedIdentifierNonLiteralPath)).toEqual([]);
+      expect(readRstestIncludePatterns(exportedNonLiteralBeatsHelperLiteralPath)).toEqual([]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
       expect(readRstestIncludePatterns(typeAssertionConfigPath)).toEqual([
         "test/**/*.type-asserted.test.ts"

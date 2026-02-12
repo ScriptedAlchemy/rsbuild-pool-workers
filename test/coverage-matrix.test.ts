@@ -1431,6 +1431,10 @@ test("cts title", () => {});
     );
     const requireTemplateConfigPath = path.join(tempDirectory, "rstest-require-template.config.ts");
     const requireAliasConfigPath = path.join(tempDirectory, "rstest-require-alias.config.ts");
+    const requireQuotedAliasConfigPath = path.join(
+      tempDirectory,
+      "rstest-require-quoted-alias.config.ts"
+    );
     const requireShorthandConfigPath = path.join(
       tempDirectory,
       "rstest-require-shorthand.config.ts"
@@ -1759,6 +1763,22 @@ void unrelated;
 
 export default makeConfig({
   include: ["test/**/*.require-alias.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      requireQuotedAliasConfigPath,
+      `
+const { "defineConfig": makeConfig } = require("@rstest/core");
+
+const unrelated = {
+  include: ["test/**/*.require-quoted-alias-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default makeConfig({
+  include: ["test/**/*.require-quoted-alias.test.ts"]
 });
 `,
       "utf8"
@@ -2100,6 +2120,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(requireAliasConfigPath)).toEqual([
         "test/**/*.require-alias.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(requireQuotedAliasConfigPath)).toEqual([
+        "test/**/*.require-quoted-alias.test.ts"
       ]);
       expect(readRstestIncludePatterns(requireShorthandConfigPath)).toEqual([
         "test/**/*.require-shorthand.test.ts"

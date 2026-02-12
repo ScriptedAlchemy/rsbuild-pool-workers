@@ -2056,6 +2056,43 @@ describe("defineWorkersConfig", () => {
     delete process.env.PROMISE_NESTED_FALLBACK;
   });
 
+  test("prefers scoped env over direct env for promise nested workers function", async () => {
+    process.env.PROMISE_NESTED_SCOPED_PRECEDENCE = "\"promise-nested-direct-value\"";
+    process.env.RSTEST_INJECT_PROMISE_NESTED_SCOPED_PRECEDENCE = "\"promise-nested-scoped-value\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: ({ inject }: WorkerPoolOptionsContext) => ({
+              main: "./src/promise-nested-scoped-precedence.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_NESTED_SCOPED_PRECEDENCE: inject<string>(
+                    "PROMISE_NESTED_SCOPED_PRECEDENCE"
+                  )
+                }
+              }
+            })
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-nested-scoped-value");
+    expect(String(defineValue)).not.toContain("promise-nested-direct-value");
+
+    delete process.env.RSTEST_INJECT_PROMISE_NESTED_SCOPED_PRECEDENCE;
+    delete process.env.PROMISE_NESTED_SCOPED_PRECEDENCE;
+  });
+
   test("supports promise config exports with top-level workers function", async () => {
     process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL = "\"promise-top-level\"";
 
@@ -4606,6 +4643,44 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-nested-fallback");
 
     delete process.env.PROJECT_PROMISE_NESTED_FALLBACK;
+  });
+
+  test("defineWorkersProject prefers scoped env over direct env for promise nested workers function", async () => {
+    process.env.PROJECT_PROMISE_NESTED_SCOPED_PRECEDENCE = "\"project-promise-nested-direct-value\"";
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_NESTED_SCOPED_PRECEDENCE =
+      "\"project-promise-nested-scoped-value\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: ({ inject }: WorkerPoolOptionsContext) => ({
+              main: "./src/project-promise-nested-scoped-precedence-entry.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_NESTED_SCOPED_PRECEDENCE: inject<string>(
+                    "PROJECT_PROMISE_NESTED_SCOPED_PRECEDENCE"
+                  )
+                }
+              }
+            })
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-nested-scoped-value");
+    expect(String(defineValue)).not.toContain("project-promise-nested-direct-value");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_NESTED_SCOPED_PRECEDENCE;
+    delete process.env.PROJECT_PROMISE_NESTED_SCOPED_PRECEDENCE;
   });
 
   test("defineWorkersProject supports direct env fallback for promise nested async workers function", async () => {

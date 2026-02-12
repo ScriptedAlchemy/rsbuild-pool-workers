@@ -5062,6 +5062,67 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports promise config export nested workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            test: {
+              include: ["./promise-nested-workers-fn-scoped-precedence.test.ts"],
+              poolOptions: {
+                workers: ({ inject }) => ({
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      PROMISE_NESTED_WORKERS_FN_SCOPED_PRECEDENCE: inject("PROMISE_NESTED_WORKERS_FN_SCOPED_PRECEDENCE")
+                    }
+                  }
+                })
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_NESTED_WORKERS_FN_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "promise-nested-workers-fn-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise nested workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-nested-workers-fn-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-nested-workers-fn-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_NESTED_WORKERS_FN_SCOPED_PRECEDENCE:
+            "promise-nested-workers-fn-scoped-precedence-ok",
+          PROMISE_NESTED_WORKERS_FN_SCOPED_PRECEDENCE:
+            "promise-nested-workers-fn-direct-should-not-win"
+        }
+      }
+    );
+  });
+
   test("supports promise config export with top-level workers function end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -8382,6 +8443,67 @@ describe("rstest CLI integration", () => {
       {
         env: {
           PROJECT_PROMISE_NESTED_WORKERS_DIRECT_ENV: "project-promise-nested-workers-direct-env-ok"
+        }
+      }
+    );
+  });
+
+  test("supports defineWorkersProject promise nested workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            test: {
+              include: ["./project-promise-nested-workers-scoped-precedence.test.ts"],
+              poolOptions: {
+                workers: ({ inject }) => ({
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      PROJECT_PROMISE_NESTED_WORKERS_SCOPED_PRECEDENCE: inject("PROJECT_PROMISE_NESTED_WORKERS_SCOPED_PRECEDENCE")
+                    }
+                  }
+                })
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_NESTED_WORKERS_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "project-promise-nested-workers-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise nested workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-nested-workers-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-nested-workers-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_NESTED_WORKERS_SCOPED_PRECEDENCE:
+            "project-promise-nested-workers-scoped-precedence-ok",
+          PROJECT_PROMISE_NESTED_WORKERS_SCOPED_PRECEDENCE:
+            "project-promise-nested-workers-direct-should-not-win"
         }
       }
     );

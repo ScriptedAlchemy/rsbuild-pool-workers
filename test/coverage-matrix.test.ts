@@ -433,11 +433,13 @@ function readRstestIncludePatterns(
   ): string[] | undefined => {
     let includeInitializer: ts.Expression | undefined;
     for (const property of configObject.properties) {
-      if (
-        ts.isPropertyAssignment(property) &&
-        isPropertyNameText(property.name, "include")
-      ) {
+      if (ts.isPropertyAssignment(property) && isPropertyNameText(property.name, "include")) {
         includeInitializer = property.initializer;
+      } else if (
+        ts.isShorthandPropertyAssignment(property) &&
+        property.name.text === "include"
+      ) {
+        includeInitializer = property.name;
       }
     }
     if (!includeInitializer) {
@@ -1557,6 +1559,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-duplicate-include-non-literal.config.ts"
     );
+    const duplicateIncludeShorthandNonLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-duplicate-include-shorthand-non-literal.config.ts"
+    );
     const exportedDefineConfigPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-define-config-preferred.config.ts"
@@ -1803,6 +1809,20 @@ const nonLiteralInclude = ["test/**/*.duplicate-include-non-literal-last.test.ts
 export default defineConfig({
   include: ["test/**/*.duplicate-include-should-not-be-read.test.ts"],
   include: nonLiteralInclude
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      duplicateIncludeShorthandNonLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const include = ["test/**/*.duplicate-include-shorthand-non-literal-last.test.ts"];
+
+export default defineConfig({
+  include: ["test/**/*.duplicate-include-shorthand-should-not-be-read.test.ts"],
+  include
 });
 `,
       "utf8"
@@ -2668,6 +2688,7 @@ export default config;
         "test/**/*.duplicate-include-last.test.ts"
       ]);
       expect(readRstestIncludePatterns(duplicateIncludeNonLiteralConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(duplicateIncludeShorthandNonLiteralConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(exportedDefineConfigPreferredPath)).toEqual([
         "test/**/*.exported-define-preferred.test.ts"
       ]);

@@ -399,4 +399,42 @@ describe("mapAnyConfigExport", () => {
 
     await expect(mapped()).rejects.toThrow(errorMessage);
   });
+
+  test("propagates thrown errors from mapped config function exports", () => {
+    const errorMessage = "mapped function throw";
+    const mapped = mapAnyConfigExport(
+      (value) => ({
+        ...value,
+        include: [...(value.include ?? []), "mapped-should-not-run.test.ts"]
+      }),
+      function () {
+        throw new Error(errorMessage);
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped function export");
+    }
+
+    expect(() => mapped()).toThrow(errorMessage);
+  });
+
+  test("propagates rejection from async mapped config function exports", async () => {
+    const errorMessage = "mapped async function rejection";
+    const mapped = mapAnyConfigExport(
+      (value) => ({
+        ...value,
+        include: [...(value.include ?? []), "mapped-should-not-run.test.ts"]
+      }),
+      async function () {
+        throw new Error(errorMessage);
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped async function export");
+    }
+
+    await expect(mapped()).rejects.toThrow(errorMessage);
+  });
 });

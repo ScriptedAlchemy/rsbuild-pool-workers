@@ -254,6 +254,35 @@ function listDiscoveredTestSuites(directory: string): string[] {
   return discovered.sort();
 }
 
+function readRstestIncludePatterns(configFilePath: string): string[] {
+  const source = fs.readFileSync(configFilePath, "utf8");
+  const sourceFile = ts.createSourceFile(
+    configFilePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+
+  let patterns: string[] = [];
+
+  const visit = (node: ts.Node): void => {
+    if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name) && node.name.text === "include") {
+      const initializer = node.initializer;
+      if (ts.isArrayLiteralExpression(initializer)) {
+        patterns = initializer.elements
+          .filter((element): element is ts.StringLiteralLike => ts.isStringLiteralLike(element))
+          .map((element) => element.text);
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+  return patterns;
+}
+
 function expectSuffixCoverage(
   titles: string[],
   prefix: string,
@@ -1039,20 +1068,36 @@ test("cts title", () => {});
   });
 
   test("keeps rstest include patterns aligned with supported test suffixes", () => {
-    const rstestConfigSource = fs.readFileSync(path.join(process.cwd(), "rstest.config.ts"), "utf8");
+    const rstestConfigPath = path.join(process.cwd(), "rstest.config.ts");
+    const configuredPatterns = readRstestIncludePatterns(rstestConfigPath);
     const expectedPatterns = SUPPORTED_TEST_FILE_SUFFIXES.map(
       (suffix) => `test/**/*${suffix}`
     );
-
-    const missingPatterns = expectedPatterns.filter(
-      (pattern) => !rstestConfigSource.includes(`"${pattern}"`)
+    const unexpectedPatterns = configuredPatterns.filter(
+      (pattern) => !expectedPatterns.includes(pattern)
     );
+    const missingPatterns = expectedPatterns.filter(
+      (pattern) => !configuredPatterns.includes(pattern)
+    );
+
+    expect(
+      configuredPatterns,
+      "rstest include patterns should remain in the same order as SUPPORTED_TEST_FILE_SUFFIXES."
+    ).toEqual(expectedPatterns);
 
     expect(
       missingPatterns,
       [
         "rstest.config.ts is missing include patterns for supported test suffixes:",
         ...missingPatterns.map((pattern) => `- ${pattern}`)
+      ].join("\n")
+    ).toEqual([]);
+
+    expect(
+      unexpectedPatterns,
+      [
+        "rstest.config.ts has unexpected include patterns not represented in SUPPORTED_TEST_FILE_SUFFIXES:",
+        ...unexpectedPatterns.map((pattern) => `- ${pattern}`)
       ].join("\n")
     ).toEqual([]);
   });

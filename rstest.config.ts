@@ -2,14 +2,14 @@ import { defineConfig } from "@rstest/core";
 
 export default defineConfig({
   include: [
-    "test/**/*.test.ts",
-    "test/**/*.test.tsx",
-    "test/**/*.test.mts",
+    "test/**/*.test.cjs",
     "test/**/*.test.cts",
     "test/**/*.test.js",
     "test/**/*.test.jsx",
     "test/**/*.test.mjs",
-    "test/**/*.test.cjs"
+    "test/**/*.test.mts",
+    "test/**/*.test.ts",
+    "test/**/*.test.tsx"
   ],
   testEnvironment: "node",
   pool: {

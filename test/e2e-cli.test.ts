@@ -3917,6 +3917,35 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces promise export invalid top-level number workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-invalid-top-level-number-workers.test.ts"],
+            workers: 123
+          })
+        );
+      `,
+      "promise-invalid-top-level-number-workers.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces promise export invalid nested workers options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -4091,6 +4120,39 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers: expected an object but received string."
+      );
+    });
+  });
+
+  test("surfaces promise-like export invalid top-level number workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          then(resolve) {
+            const value = {
+              include: ["./promise-like-invalid-top-level-number-workers.test.ts"],
+              workers: 123
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "promise-like-invalid-top-level-number-workers.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers: expected an object but received number."
       );
     });
   });
@@ -8379,6 +8441,35 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject promise export invalid top-level number workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-invalid-top-level-number-workers.test.ts"],
+            workers: 123
+          })
+        );
+      `,
+      "project-promise-invalid-top-level-number-workers.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject promise export invalid nested workers options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -8553,6 +8644,39 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers: expected an object but received string."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject promise-like export invalid top-level number workers options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          then(resolve) {
+            const value = {
+              include: ["./project-promise-like-invalid-top-level-number-workers.test.ts"],
+              workers: 123
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "project-promise-like-invalid-top-level-number-workers.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers: expected an object but received number."
       );
     });
   });

@@ -1428,6 +1428,26 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("throws actionable error for promise-like exports with invalid top-level number workers options", async () => {
+    const promiseLikeValue = {
+      workers: 123 as unknown as WorkersPoolOptions
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(
+      "Invalid workers options from workers: expected an object but received number."
+    );
+  });
+
   test("throws actionable error for promise-like exports with invalid nested workers options", async () => {
     const promiseLikeValue = {
       test: {
@@ -2835,6 +2855,22 @@ describe("defineWorkersConfig", () => {
 
     await expect(configPromise).rejects.toThrow(
       "Invalid workers options from workers: expected an object but received string."
+    );
+  });
+
+  test("throws actionable error for promise exports with invalid top-level number workers options", async () => {
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: 123 as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(
+      "Invalid workers options from workers: expected an object but received number."
     );
   });
 
@@ -5063,6 +5099,26 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("defineWorkersProject throws actionable error for promise-like exports with invalid top-level number workers options", async () => {
+    const promiseLikeValue = {
+      workers: 123 as unknown as WorkersPoolOptions
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from workers: expected an object but received number."
+    );
+  });
+
   test("defineWorkersProject throws actionable error for promise-like exports with invalid nested workers options", async () => {
     const promiseLikeValue = {
       test: {
@@ -6525,6 +6581,22 @@ describe("defineWorkersConfig", () => {
 
     await expect(value).rejects.toThrow(
       "Invalid workers options from workers: expected an object but received string."
+    );
+  });
+
+  test("defineWorkersProject throws actionable error for promise exports with invalid top-level number workers options", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: 123 as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from workers: expected an object but received number."
     );
   });
 

@@ -431,15 +431,19 @@ function readRstestIncludePatterns(
   const readPatternsFromConfigObject = (
     configObject: ts.ObjectLiteralExpression
   ): string[] | undefined => {
+    let includeInitializer: ts.Expression | undefined;
     for (const property of configObject.properties) {
       if (
         ts.isPropertyAssignment(property) &&
         isPropertyNameText(property.name, "include")
       ) {
-        return readPatternsFromIncludeInitializer(property.initializer);
+        includeInitializer = property.initializer;
       }
     }
-    return undefined;
+    if (!includeInitializer) {
+      return undefined;
+    }
+    return readPatternsFromIncludeInitializer(includeInitializer);
   };
 
   const isRstestNamespaceExpression = (
@@ -1364,6 +1368,7 @@ test("cts title", () => {});
       "single string literal",
       "including static spread array literals",
       "dynamic/non-literal values are ignored",
+      "follows last-assignment object-literal semantics",
       "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present",
       "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)"
     ];
@@ -1392,6 +1397,14 @@ test("cts title", () => {});
     const nestedSpreadArrayElementsConfigPath = path.join(
       tempDirectory,
       "rstest-nested-spread-array-elements.config.ts"
+    );
+    const duplicateIncludeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-duplicate-include-literal.config.ts"
+    );
+    const duplicateIncludeNonLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-duplicate-include-non-literal.config.ts"
     );
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const typeAssertionConfigPath = path.join(tempDirectory, "rstest-type-assertion.config.ts");
@@ -1525,6 +1538,32 @@ export default defineConfig({
     ],
     ...dynamicPatterns
   ]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      duplicateIncludeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.duplicate-include-first.test.ts"],
+  include: ["test/**/*.duplicate-include-last.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      duplicateIncludeNonLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const nonLiteralInclude = ["test/**/*.duplicate-include-non-literal-last.test.ts"];
+
+export default defineConfig({
+  include: ["test/**/*.duplicate-include-should-not-be-read.test.ts"],
+  include: nonLiteralInclude
 });
 `,
       "utf8"
@@ -2023,6 +2062,10 @@ export default config;
         "test/**/*.nested-spread-static-b.test.ts",
         "test/**/*.nested-spread-static-c.test.ts"
       ]);
+      expect(readRstestIncludePatterns(duplicateIncludeLiteralConfigPath)).toEqual([
+        "test/**/*.duplicate-include-last.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(duplicateIncludeNonLiteralConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
       expect(readRstestIncludePatterns(typeAssertionConfigPath)).toEqual([
         "test/**/*.type-asserted.test.ts"

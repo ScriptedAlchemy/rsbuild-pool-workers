@@ -5551,6 +5551,70 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports promise config export top-level thenable workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-top-level-workers-fn-thenable-scoped-precedence.test.ts"],
+            workers: ({ inject }) => {
+              const value = {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE: inject("PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE")
+                  }
+                }
+              };
+              return {
+                then(resolve) {
+                  resolve(value);
+                  return Promise.resolve(value);
+                }
+              };
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "promise-top-level-workers-fn-thenable-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise top-level thenable workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-workers-fn-thenable-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-top-level-workers-fn-thenable-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE:
+            "promise-top-level-workers-fn-thenable-scoped-precedence-ok",
+          PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE:
+            "promise-top-level-workers-fn-thenable-direct-should-not-win"
+        }
+      }
+    );
+  });
+
   test("supports promise config export async top-level workers direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -5605,6 +5669,62 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports promise config export async top-level workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-top-level-workers-fn-async-scoped-precedence.test.ts"],
+            workers: async ({ inject }) => ({
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE: inject("PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE")
+                }
+              }
+            })
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "promise-top-level-workers-fn-async-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise async top-level workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-workers-fn-async-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-top-level-workers-fn-async-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE:
+            "promise-top-level-workers-fn-async-scoped-precedence-ok",
+          PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE:
+            "promise-top-level-workers-fn-async-direct-should-not-win"
+        }
+      }
+    );
+  });
+
   test("supports promise config export top-level workers function direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -5653,6 +5773,62 @@ describe("rstest CLI integration", () => {
       {
         env: {
           PROMISE_TOP_LEVEL_WORKERS_FN_DIRECT_ENV: "promise-top-level-workers-fn-direct-env-ok"
+        }
+      }
+    );
+  });
+
+  test("supports promise config export top-level workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-top-level-workers-fn-scoped-precedence.test.ts"],
+            workers: ({ inject }) => ({
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE: inject("PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE")
+                }
+              }
+            })
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "promise-top-level-workers-fn-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise top-level workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-workers-fn-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-top-level-workers-fn-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE:
+            "promise-top-level-workers-fn-scoped-precedence-ok",
+          PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE:
+            "promise-top-level-workers-fn-direct-should-not-win"
         }
       }
     );
@@ -8427,6 +8603,70 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersProject promise export top-level thenable workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-top-level-workers-fn-thenable-scoped-precedence.test.ts"],
+            workers: ({ inject }) => {
+              const value = {
+                main: "./worker.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE: inject("PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE")
+                  }
+                }
+              };
+              return {
+                then(resolve) {
+                  resolve(value);
+                  return Promise.resolve(value);
+                }
+              };
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "project-promise-top-level-workers-fn-thenable-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise top-level thenable workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-workers-fn-thenable-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-top-level-workers-fn-thenable-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE:
+            "project-promise-top-level-workers-fn-thenable-scoped-precedence-ok",
+          PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_THENABLE_SCOPED_PRECEDENCE:
+            "project-promise-top-level-workers-fn-thenable-direct-should-not-win"
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject promise export async top-level workers direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -8481,6 +8721,62 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersProject promise export async top-level workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-top-level-workers-fn-async-scoped-precedence.test.ts"],
+            workers: async ({ inject }) => ({
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE: inject("PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE")
+                }
+              }
+            })
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "project-promise-top-level-workers-fn-async-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise async top-level workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-workers-fn-async-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-top-level-workers-fn-async-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE:
+            "project-promise-top-level-workers-fn-async-scoped-precedence-ok",
+          PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_ASYNC_SCOPED_PRECEDENCE:
+            "project-promise-top-level-workers-fn-async-direct-should-not-win"
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject promise export top-level workers direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -8530,6 +8826,62 @@ describe("rstest CLI integration", () => {
         env: {
           PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_DIRECT_ENV:
             "project-promise-top-level-workers-fn-direct-env-ok"
+        }
+      }
+    );
+  });
+
+  test("supports defineWorkersProject promise export top-level workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-top-level-workers-fn-scoped-precedence.test.ts"],
+            workers: ({ inject }) => ({
+              main: "./worker.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE: inject("PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE")
+                }
+              }
+            })
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "project-promise-top-level-workers-fn-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise top-level workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-workers-fn-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-top-level-workers-fn-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE:
+            "project-promise-top-level-workers-fn-scoped-precedence-ok",
+          PROJECT_PROMISE_TOP_LEVEL_WORKERS_FN_SCOPED_PRECEDENCE:
+            "project-promise-top-level-workers-fn-direct-should-not-win"
         }
       }
     );

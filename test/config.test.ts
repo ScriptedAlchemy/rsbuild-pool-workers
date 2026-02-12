@@ -2356,6 +2356,49 @@ describe("defineWorkersConfig", () => {
     delete process.env.PROMISE_TOP_LEVEL_THENABLE_FALLBACK;
   });
 
+  test("prefers scoped env over direct env for promise top-level thenable workers function", async () => {
+    process.env.PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE =
+      "\"promise-top-level-thenable-direct-value\"";
+    process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE =
+      "\"promise-top-level-thenable-scoped-value\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => {
+          const resolvedValue = {
+            main: "./src/promise-top-level-thenable-scoped-precedence.ts",
+            miniflare: {
+              bindings: {
+                PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE: inject<string>(
+                  "PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE"
+                )
+              }
+            }
+          };
+          return {
+            then(resolve: (resolved: typeof resolvedValue) => void) {
+              resolve(resolvedValue);
+              return Promise.resolve(resolvedValue);
+            }
+          } as unknown as PromiseLike<typeof resolvedValue>;
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-top-level-thenable-scoped-value");
+    expect(String(defineValue)).not.toContain("promise-top-level-thenable-direct-value");
+
+    delete process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE;
+    delete process.env.PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE;
+  });
+
   test("supports direct env fallback for promise async top-level workers function", async () => {
     process.env.PROMISE_TOP_LEVEL_ASYNC_FALLBACK = "\"promise-top-level-async-fallback\"";
 
@@ -2384,6 +2427,41 @@ describe("defineWorkersConfig", () => {
     delete process.env.PROMISE_TOP_LEVEL_ASYNC_FALLBACK;
   });
 
+  test("prefers scoped env over direct env for promise async top-level workers function", async () => {
+    process.env.PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE =
+      "\"promise-top-level-async-direct-value\"";
+    process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE =
+      "\"promise-top-level-async-scoped-value\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+          main: "./src/promise-top-level-async-scoped-precedence.ts",
+          miniflare: {
+            bindings: {
+              PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE: inject<string>(
+                "PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE"
+              )
+            }
+          }
+        })
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-top-level-async-scoped-value");
+    expect(String(defineValue)).not.toContain("promise-top-level-async-direct-value");
+
+    delete process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE;
+    delete process.env.PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE;
+  });
+
   test("supports direct env fallback for promise top-level workers function", async () => {
     process.env.PROMISE_TOP_LEVEL_DIRECT_FALLBACK = "\"promise-top-level-direct-fallback\"";
 
@@ -2410,6 +2488,40 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("promise-top-level-direct-fallback");
 
     delete process.env.PROMISE_TOP_LEVEL_DIRECT_FALLBACK;
+  });
+
+  test("prefers scoped env over direct env for promise top-level workers function", async () => {
+    process.env.PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE = "\"promise-top-level-direct-value\"";
+    process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE =
+      "\"promise-top-level-scoped-value\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => ({
+          main: "./src/promise-top-level-scoped-precedence.ts",
+          miniflare: {
+            bindings: {
+              PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE: inject<string>(
+                "PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE"
+              )
+            }
+          }
+        })
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-top-level-scoped-value");
+    expect(String(defineValue)).not.toContain("promise-top-level-direct-value");
+
+    delete process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE;
+    delete process.env.PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE;
   });
 
   test("preserves sync config function return shape", () => {
@@ -5151,6 +5263,49 @@ describe("defineWorkersConfig", () => {
     delete process.env.PROJECT_PROMISE_TOP_LEVEL_THENABLE_FALLBACK;
   });
 
+  test("defineWorkersProject prefers scoped env over direct env for promise top-level thenable workers function", async () => {
+    process.env.PROJECT_PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE =
+      "\"project-promise-top-level-thenable-direct-value\"";
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE =
+      "\"project-promise-top-level-thenable-scoped-value\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => {
+          const resolvedValue = {
+            main: "./src/project-promise-top-level-thenable-scoped-precedence-entry.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE: inject<string>(
+                  "PROJECT_PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE"
+                )
+              }
+            }
+          };
+          return {
+            then(resolve: (resolved: typeof resolvedValue) => void) {
+              resolve(resolvedValue);
+              return Promise.resolve(resolvedValue);
+            }
+          } as unknown as PromiseLike<typeof resolvedValue>;
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-top-level-thenable-scoped-value");
+    expect(String(defineValue)).not.toContain("project-promise-top-level-thenable-direct-value");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE;
+    delete process.env.PROJECT_PROMISE_TOP_LEVEL_THENABLE_SCOPED_PRECEDENCE;
+  });
+
   test("defineWorkersProject supports direct env fallback for promise async top-level workers function", async () => {
     process.env.PROJECT_PROMISE_TOP_LEVEL_ASYNC_FALLBACK =
       "\"project-promise-top-level-async-fallback\"";
@@ -5182,6 +5337,41 @@ describe("defineWorkersConfig", () => {
     delete process.env.PROJECT_PROMISE_TOP_LEVEL_ASYNC_FALLBACK;
   });
 
+  test("defineWorkersProject prefers scoped env over direct env for promise async top-level workers function", async () => {
+    process.env.PROJECT_PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE =
+      "\"project-promise-top-level-async-direct-value\"";
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE =
+      "\"project-promise-top-level-async-scoped-value\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: async ({ inject }: WorkerPoolOptionsContext) => ({
+          main: "./src/project-promise-top-level-async-scoped-precedence-entry.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE: inject<string>(
+                "PROJECT_PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE"
+              )
+            }
+          }
+        })
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-top-level-async-scoped-value");
+    expect(String(defineValue)).not.toContain("project-promise-top-level-async-direct-value");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE;
+    delete process.env.PROJECT_PROMISE_TOP_LEVEL_ASYNC_SCOPED_PRECEDENCE;
+  });
+
   test("defineWorkersProject supports direct env fallback for promise top-level workers function", async () => {
     process.env.PROJECT_PROMISE_TOP_LEVEL_DIRECT_FALLBACK =
       "\"project-promise-top-level-direct-fallback\"";
@@ -5211,6 +5401,41 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-top-level-direct-fallback");
 
     delete process.env.PROJECT_PROMISE_TOP_LEVEL_DIRECT_FALLBACK;
+  });
+
+  test("defineWorkersProject prefers scoped env over direct env for promise top-level workers function", async () => {
+    process.env.PROJECT_PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE =
+      "\"project-promise-top-level-direct-value\"";
+    process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE =
+      "\"project-promise-top-level-scoped-value\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => ({
+          main: "./src/project-promise-top-level-scoped-precedence-entry.ts",
+          miniflare: {
+            bindings: {
+              PROJECT_PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE: inject<string>(
+                "PROJECT_PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE"
+              )
+            }
+          }
+        })
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-top-level-scoped-value");
+    expect(String(defineValue)).not.toContain("project-promise-top-level-direct-value");
+
+    delete process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE;
+    delete process.env.PROJECT_PROMISE_TOP_LEVEL_SCOPED_PRECEDENCE;
   });
 
   test("defineWorkersProject supports async config and async workers options", async () => {

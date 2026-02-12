@@ -191,6 +191,34 @@ describe("defineWorkersConfig", () => {
     expect(resolved.source?.define).toBeDefined();
   });
 
+  test("async config function exports fall back to nested workers when top-level workers is undefined", async () => {
+    const configFactory = defineWorkersConfig(async () => ({
+      workers: undefined as unknown as WorkersPoolOptions,
+      test: {
+        poolOptions: {
+          workers: {
+            main: "./src/async-nested-undefined-fallback.ts",
+            miniflare: {
+              bindings: {
+                ASYNC_UNDEFINED_FALLBACK: "async-nested-fallback"
+              }
+            }
+          }
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("async-nested-undefined-fallback.ts");
+    expect(String(defineValue)).toContain("async-nested-fallback");
+  });
+
   test("forwards async config function arguments", async () => {
     const configFactory = defineWorkersConfig(async (...args: unknown[]) => {
       const context = args[0] as { mode?: string } | undefined;
@@ -598,6 +626,36 @@ describe("defineWorkersConfig", () => {
     await expect(configFactory()).rejects.toThrow(errorMessage);
   });
 
+  test("promise-returning config function exports fall back to nested workers when top-level workers is undefined", async () => {
+    const configFactory = defineWorkersConfig(() =>
+      Promise.resolve({
+        workers: undefined as unknown as WorkersPoolOptions,
+        test: {
+          poolOptions: {
+            workers: {
+              main: "./src/promise-function-nested-undefined-fallback.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_FUNCTION_UNDEFINED_FALLBACK: "promise-function-nested-fallback"
+                }
+              }
+            }
+          }
+        }
+      })
+    );
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-function-nested-undefined-fallback.ts");
+    expect(String(defineValue)).toContain("promise-function-nested-fallback");
+  });
+
   test("propagates rejection for promise-returning config function exports with invalid top-level workers options", async () => {
     const configFactory = defineWorkersConfig(() =>
       Promise.resolve({
@@ -810,6 +868,42 @@ describe("defineWorkersConfig", () => {
     const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("thenable");
+  });
+
+  test("thenable-returning config function exports fall back to nested workers when top-level workers is undefined", async () => {
+    const configFactory = defineWorkersConfig(() => {
+      const value = {
+        workers: undefined as unknown as WorkersPoolOptions,
+        test: {
+          poolOptions: {
+            workers: {
+              main: "./src/thenable-nested-undefined-fallback.ts",
+              miniflare: {
+                bindings: {
+                  THENABLE_UNDEFINED_FALLBACK: "thenable-nested-fallback"
+                }
+              }
+            }
+          }
+        }
+      };
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("thenable-nested-undefined-fallback.ts");
+    expect(String(defineValue)).toContain("thenable-nested-fallback");
   });
 
   test("propagates rejection for thenable-returning config function exports", async () => {
@@ -8099,6 +8193,34 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROJECT_URL;
   });
 
+  test("defineWorkersProject async config exports fall back to nested workers when top-level workers is undefined", async () => {
+    const configFactory = defineWorkersProject(async () => ({
+      workers: undefined as unknown as WorkersPoolOptions,
+      test: {
+        poolOptions: {
+          workers: {
+            main: "./src/project-async-nested-undefined-fallback.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_ASYNC_UNDEFINED_FALLBACK: "project-async-nested-fallback"
+              }
+            }
+          }
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-async-nested-undefined-fallback.ts");
+    expect(String(defineValue)).toContain("project-async-nested-fallback");
+  });
+
   test("defineWorkersProject supports thenable workers option function in async config export", async () => {
     process.env.RSTEST_INJECT_PROJECT_THENABLE_URL = "\"http://localhost:9666\"";
 
@@ -8571,6 +8693,39 @@ describe("defineWorkersConfig", () => {
     await expect(configFactory()).rejects.toThrow(errorMessage);
   });
 
+  test("defineWorkersProject promise-returning config function exports fall back to nested workers when top-level workers is undefined", async () => {
+    const configFactory = defineWorkersProject(() =>
+      Promise.resolve({
+        workers: undefined as unknown as WorkersPoolOptions,
+        test: {
+          poolOptions: {
+            workers: {
+              main: "./src/project-promise-function-nested-undefined-fallback.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_FUNCTION_UNDEFINED_FALLBACK:
+                    "project-promise-function-nested-fallback"
+                }
+              }
+            }
+          }
+        }
+      })
+    );
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain(
+      "project-promise-function-nested-undefined-fallback.ts"
+    );
+    expect(String(defineValue)).toContain("project-promise-function-nested-fallback");
+  });
+
   test("defineWorkersProject propagates rejection for promise-returning config function exports with invalid top-level workers options", async () => {
     const configFactory = defineWorkersProject(() =>
       Promise.resolve({
@@ -8784,6 +8939,42 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("project-thenable");
     expect(String(defineValue)).toContain("project-thenable.ts");
+  });
+
+  test("defineWorkersProject thenable-returning config function exports fall back to nested workers when top-level workers is undefined", async () => {
+    const configFactory = defineWorkersProject(() => {
+      const value = {
+        workers: undefined as unknown as WorkersPoolOptions,
+        test: {
+          poolOptions: {
+            workers: {
+              main: "./src/project-thenable-nested-undefined-fallback.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_THENABLE_UNDEFINED_FALLBACK: "project-thenable-nested-fallback"
+                }
+              }
+            }
+          }
+        }
+      };
+      return {
+        then(resolve: (config: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    const resolved = await configFactory();
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-thenable-nested-undefined-fallback.ts");
+    expect(String(defineValue)).toContain("project-thenable-nested-fallback");
   });
 
   test("defineWorkersProject propagates rejection for thenable-returning config function exports", async () => {

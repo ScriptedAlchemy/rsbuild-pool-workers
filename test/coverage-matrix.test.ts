@@ -580,6 +580,28 @@ test.runIf(true)("run if", () => {});
     ).toEqual([]);
   });
 
+  test("keeps GUARDED_TEST_SUITES sorted and unique", () => {
+    const guardedSuites = [...GUARDED_TEST_SUITES];
+    const sorted = [...guardedSuites].sort();
+    const unique = Array.from(new Set(guardedSuites));
+
+    expect(
+      guardedSuites,
+      [
+        "GUARDED_TEST_SUITES must remain sorted for review clarity.",
+        `Expected sorted order: ${sorted.join(", ")}`
+      ].join("\n")
+    ).toEqual(sorted);
+
+    expect(
+      guardedSuites.length,
+      [
+        "GUARDED_TEST_SUITES must not contain duplicate entries.",
+        `Unique count: ${unique.length}, actual count: ${guardedSuites.length}`
+      ].join("\n")
+    ).toBe(unique.length);
+  });
+
   test("guards every test suite file in the test directory", () => {
     const discovered = listDiscoveredTestSuites(path.join(process.cwd(), "test"));
     const guarded = [...GUARDED_TEST_SUITES].sort();

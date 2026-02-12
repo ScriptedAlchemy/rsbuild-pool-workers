@@ -1616,6 +1616,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-chain-assignment-preferred.config.js"
     );
+    const exportedModuleDuplicateLiteralPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-duplicate-literal.config.js"
+    );
+    const exportedModuleDuplicateNonLiteralPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-duplicate-non-literal.config.js"
+    );
     const exportedDefaultCommaPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-default-comma-preferred.config.ts"
@@ -2044,6 +2052,38 @@ void unrelated;
 
 module.exports = exports.default = defineConfig({
   include: ["test/**/*.exported-chain-assignment.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleDuplicateLiteralPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+module.exports = defineConfig({
+  include: ["test/**/*.exported-module-duplicate-first.test.ts"]
+});
+
+module.exports = defineConfig({
+  include: ["test/**/*.exported-module-duplicate-last.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleDuplicateNonLiteralPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const includePatterns = ["test/**/*.exported-module-duplicate-non-literal.test.ts"];
+
+module.exports = defineConfig({
+  include: ["test/**/*.exported-module-duplicate-should-not-be-read.test.ts"]
+});
+
+module.exports = defineConfig({
+  include: includePatterns
 });
 `,
       "utf8"
@@ -2672,6 +2712,10 @@ export default config;
       expect(readRstestIncludePatterns(exportedModuleChainAssignmentPreferredPath)).toEqual([
         "test/**/*.exported-chain-assignment.test.ts"
       ]);
+      expect(readRstestIncludePatterns(exportedModuleDuplicateLiteralPath)).toEqual([
+        "test/**/*.exported-module-duplicate-last.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleDuplicateNonLiteralPath)).toEqual([]);
       expect(readRstestIncludePatterns(exportedDefaultCommaPreferredPath)).toEqual([
         "test/**/*.exported-default-comma.test.ts"
       ]);

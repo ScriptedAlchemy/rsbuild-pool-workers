@@ -276,17 +276,66 @@ function readRstestIncludePatterns(configFilePath: string): string[] {
     ts.ScriptKind.TS
   );
 
-  let patterns: string[] = [];
+  const readPatternsFromIncludeInitializer = (
+    initializer: ts.Expression
+  ): string[] | undefined => {
+    const unwrappedInitializer = unwrapConfigExpression(initializer);
+    if (ts.isArrayLiteralExpression(unwrappedInitializer)) {
+      return unwrappedInitializer.elements
+        .filter((element): element is ts.StringLiteralLike => ts.isStringLiteralLike(element))
+        .map((element) => element.text);
+    }
+    if (ts.isStringLiteralLike(unwrappedInitializer)) {
+      return [unwrappedInitializer.text];
+    }
+    return undefined;
+  };
+
+  const readPatternsFromConfigObject = (
+    configObject: ts.ObjectLiteralExpression
+  ): string[] | undefined => {
+    for (const property of configObject.properties) {
+      if (
+        ts.isPropertyAssignment(property) &&
+        ts.isIdentifier(property.name) &&
+        property.name.text === "include"
+      ) {
+        return readPatternsFromIncludeInitializer(property.initializer);
+      }
+    }
+    return undefined;
+  };
+
+  const isDefineConfigCallExpression = (
+    expression: ts.LeftHandSideExpression
+  ): boolean => {
+    if (ts.isIdentifier(expression)) {
+      return expression.text === "defineConfig";
+    }
+    if (ts.isPropertyAccessExpression(expression)) {
+      return expression.name.text === "defineConfig";
+    }
+    return false;
+  };
+
+  let patterns: string[] | undefined;
 
   const visit = (node: ts.Node): void => {
-    if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name) && node.name.text === "include") {
-      const initializer = unwrapConfigExpression(node.initializer);
-      if (ts.isArrayLiteralExpression(initializer)) {
-        patterns = initializer.elements
-          .filter((element): element is ts.StringLiteralLike => ts.isStringLiteralLike(element))
-          .map((element) => element.text);
-      } else if (ts.isStringLiteralLike(initializer)) {
-        patterns = [initializer.text];
+    if (patterns !== undefined) {
+      return;
+    }
+
+    if (ts.isCallExpression(node) && isDefineConfigCallExpression(node.expression)) {
+      const [firstArgument] = node.arguments;
+      if (firstArgument) {
+        const unwrappedArgument = unwrapConfigExpression(firstArgument);
+        if (ts.isObjectLiteralExpression(unwrappedArgument)) {
+          const extracted = readPatternsFromConfigObject(unwrappedArgument);
+          if (extracted !== undefined) {
+            patterns = extracted;
+            return;
+          }
+        }
       }
     }
 
@@ -294,7 +343,28 @@ function readRstestIncludePatterns(configFilePath: string): string[] {
   };
 
   visit(sourceFile);
-  return patterns;
+
+  if (patterns !== undefined) {
+    return patterns;
+  }
+
+  // Fallback for unusual config wrappers where include can only be located heuristically.
+  let fallbackPatterns: string[] = [];
+  const fallbackVisit = (node: ts.Node): void => {
+    if (
+      ts.isPropertyAssignment(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "include"
+    ) {
+      const extracted = readPatternsFromIncludeInitializer(node.initializer);
+      if (extracted !== undefined) {
+        fallbackPatterns = extracted;
+      }
+    }
+    ts.forEachChild(node, fallbackVisit);
+  };
+  fallbackVisit(sourceFile);
+  return fallbackPatterns;
 }
 
 function expectSuffixCoverage(
@@ -1085,6 +1155,8 @@ test("cts title", () => {});
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const arrayConfigPath = path.join(tempDirectory, "rstest-array.config.ts");
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
+    const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
+    const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
 
     fs.writeFileSync(
       arrayConfigPath,
@@ -1113,6 +1185,37 @@ export default defineConfig({
 `,
       "utf8"
     );
+    fs.writeFileSync(
+      preferredConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.should-not-be-read.ts"]
+};
+void unrelated;
+
+export default defineConfig({
+  include: ["test/**/*.preferred.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      propertyAccessConfigPath,
+      `
+const core = {
+  defineConfig(value) {
+    return value;
+  }
+};
+
+export default core.defineConfig({
+  include: ["test/**/*.property-access.test.ts"]
+});
+`,
+      "utf8"
+    );
 
     try {
       expect(readRstestIncludePatterns(arrayConfigPath)).toEqual([
@@ -1120,6 +1223,12 @@ export default defineConfig({
         "test/**/*.test.tsx"
       ]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
+      expect(readRstestIncludePatterns(preferredConfigPath)).toEqual([
+        "test/**/*.preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(propertyAccessConfigPath)).toEqual([
+        "test/**/*.property-access.test.ts"
+      ]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

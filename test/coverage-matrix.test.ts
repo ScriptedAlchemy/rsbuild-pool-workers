@@ -503,6 +503,33 @@ test.runIf(true)("run if", () => {});
     }
   });
 
+  test("ensures executable test titles are globally unique across guarded suites", () => {
+    const titleOrigins = new Map<string, string[]>();
+
+    for (const suiteFile of GUARDED_TEST_SUITES) {
+      const counts = readTestTitleCounts(path.join(process.cwd(), "test", suiteFile));
+      for (const [title, count] of counts.entries()) {
+        const origins = titleOrigins.get(title) ?? [];
+        for (let index = 0; index < count; index += 1) {
+          origins.push(suiteFile);
+        }
+        titleOrigins.set(title, origins);
+      }
+    }
+
+    const duplicates = Array.from(titleOrigins.entries())
+      .filter(([, origins]) => origins.length > 1)
+      .map(([title, origins]) => `${title} => ${origins.join(", ")}`);
+
+    expect(
+      duplicates,
+      [
+        "Duplicate executable test titles across guarded suites:",
+        ...duplicates.map((entry) => `- ${entry}`)
+      ].join("\n")
+    ).toEqual([]);
+  });
+
   test("guards every test suite file in the test directory", () => {
     const discovered = listDiscoveredTestSuites(path.join(process.cwd(), "test"));
     const guarded = [...GUARDED_TEST_SUITES].sort();

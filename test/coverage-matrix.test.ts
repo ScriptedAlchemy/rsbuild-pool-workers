@@ -965,6 +965,21 @@ test("cts title", () => {});
     ).toBe(unique.length);
   });
 
+  test("keeps guarded suite entries aligned with supported suffixes", () => {
+    const invalidEntries = GUARDED_TEST_SUITES.filter((suiteFile) => {
+      const baseName = path.basename(suiteFile);
+      return !isSupportedTestFileName(baseName);
+    });
+
+    expect(
+      invalidEntries,
+      [
+        "GUARDED_TEST_SUITES entries must use supported test file suffixes.",
+        ...invalidEntries.map((entry) => `- ${entry}`)
+      ].join("\n")
+    ).toEqual([]);
+  });
+
   test("keeps ignored discovery directory list sorted and unique", () => {
     const ignoredDirectories = [...IGNORED_TEST_DISCOVERY_DIRECTORIES];
     const sorted = [...ignoredDirectories].sort();

@@ -490,6 +490,7 @@ function readRstestIncludePatterns(
   };
 
   let patterns: string[] | undefined;
+  let sawDefineConfigCall = false;
 
   const visit = (node: ts.Node): void => {
     if (patterns !== undefined) {
@@ -497,6 +498,7 @@ function readRstestIncludePatterns(
     }
 
     if (ts.isCallExpression(node) && isDefineConfigCallExpression(node.expression)) {
+      sawDefineConfigCall = true;
       const [firstArgument] = node.arguments;
       if (firstArgument) {
         const unwrappedArgument = unwrapConfigExpression(firstArgument);
@@ -521,6 +523,14 @@ function readRstestIncludePatterns(
       value: [...patterns]
     });
     return [...patterns];
+  }
+
+  if (sawDefineConfigCall) {
+    RSTEST_INCLUDE_PATTERNS_CACHE.set(configFilePath, {
+      version,
+      value: []
+    });
+    return [];
   }
 
   // Fallback for unusual config wrappers where include can only be located heuristically.
@@ -1360,7 +1370,8 @@ test("cts title", () => {});
       "CommonJS `require(\"@rstest/core\")` namespace/destructured bindings",
       "scoped to symbols bound from `@rstest/core`",
       "array of string literals or a single string literal",
-      "dynamic/non-literal values are ignored"
+      "dynamic/non-literal values are ignored",
+      "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present"
     ];
     const missingSnippets = requiredSnippets.filter((snippet) => !readme.includes(snippet));
 
@@ -1946,6 +1957,10 @@ export default config;
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const missingIncludePath = path.join(tempDirectory, "rstest-missing-include.config.ts");
     const nonLiteralIncludePath = path.join(tempDirectory, "rstest-non-literal-include.config.ts");
+    const nonLiteralWithFallbackPath = path.join(
+      tempDirectory,
+      "rstest-non-literal-with-fallback.config.ts"
+    );
     const dynamicIncludeKeyPath = path.join(tempDirectory, "rstest-dynamic-include-key.config.ts");
 
     fs.writeFileSync(
@@ -1973,6 +1988,24 @@ export default defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      nonLiteralWithFallbackPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.fallback-should-not-be-read.ts"]
+};
+void unrelated;
+
+const includeValue = ["test/**/*.non-literal-with-fallback.test.ts"];
+
+export default defineConfig({
+  include: includeValue
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       dynamicIncludeKeyPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -1989,6 +2022,7 @@ export default defineConfig({
     try {
       expect(readRstestIncludePatterns(missingIncludePath)).toEqual([]);
       expect(readRstestIncludePatterns(nonLiteralIncludePath)).toEqual([]);
+      expect(readRstestIncludePatterns(nonLiteralWithFallbackPath)).toEqual([]);
       expect(readRstestIncludePatterns(dynamicIncludeKeyPath)).toEqual([]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });

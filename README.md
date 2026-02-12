@@ -157,7 +157,7 @@ import {
 - direct-env fallback (`inject("KEY")` reading from `KEY`) is supported across sync/async/promise/promise-like config export forms for both nested and top-level workers functions.
 - errors thrown or rejected from config exports or workers option functions (including promise, promise-like/thenable branches, and function export return variants) propagate with actionable messages.
 - invalid workers options shape validation is source-aware across all export forms:
-  - raw invalid objects are reported from `workers` or `test.poolOptions.workers` (for example: `Invalid workers options from workers: expected an object but received null.`).
+  - raw invalid values are reported from `workers` or `test.poolOptions.workers` (for example: `...received null|array|string|number|boolean`).
   - function-return invalid values are reported from `workers() return value` or `test.poolOptions.workers() return value` (for example: `...received undefined|string|number|boolean|array|null`).
 - if both top-level `workers` and `test.poolOptions.workers` are provided, top-level `workers` takes precedence (including sync/async/promise/promise-like config export forms), and nested function-valued workers options are not evaluated.
 - `defineWorkersConfig()` supports object, promise/promise-like, sync function, and async function config exports.

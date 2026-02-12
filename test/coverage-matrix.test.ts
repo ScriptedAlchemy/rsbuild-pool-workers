@@ -17,6 +17,7 @@ const GUARDED_TEST_SUITES = [
   "workers-plugin.test.ts"
 ] as const;
 
+const SUPPORTED_TEST_FILE_SUFFIXES = [".test.ts", ".test.tsx", ".test.mts", ".test.cts"];
 const TEST_MODIFIER_SEGMENTS = new Set(["only", "skip", "todo", "concurrent"]);
 type VersionedCacheEntry<T> = {
   version: string;
@@ -34,6 +35,23 @@ const PARSED_TEST_CALL_CACHE = new Map<string, VersionedCacheEntry<ParsedTestCal
 function getFileVersion(filePath: string): string {
   const stats = fs.statSync(filePath);
   return `${stats.mtimeMs}:${stats.ctimeMs}:${stats.size}:${stats.ino}`;
+}
+
+function getScriptKindFromFilePath(filePath: string): ts.ScriptKind {
+  if (filePath.endsWith(".tsx")) {
+    return ts.ScriptKind.TSX;
+  }
+  if (filePath.endsWith(".mts")) {
+    return ts.ScriptKind.TS;
+  }
+  if (filePath.endsWith(".cts")) {
+    return ts.ScriptKind.TS;
+  }
+  return ts.ScriptKind.TS;
+}
+
+function isSupportedTestFileName(fileName: string): boolean {
+  return SUPPORTED_TEST_FILE_SUFFIXES.some((suffix) => fileName.endsWith(suffix));
 }
 
 function cloneParsedTestCalls(calls: ParsedTestCall[]): ParsedTestCall[] {
@@ -102,7 +120,7 @@ function collectParsedTestCalls(
     source,
     ts.ScriptTarget.Latest,
     true,
-    ts.ScriptKind.TS
+    getScriptKindFromFilePath(filePath)
   );
 
   const calls: ParsedTestCall[] = [];
@@ -202,7 +220,7 @@ function listDiscoveredTestSuites(directory: string): string[] {
         continue;
       }
 
-      if (entry.isFile() && entry.name.endsWith(".test.ts")) {
+      if (entry.isFile() && isSupportedTestFileName(entry.name)) {
         discovered.push(path.relative(directory, absolutePath).replaceAll("\\", "/"));
       }
     }
@@ -459,6 +477,55 @@ test[dynamicModifier]("dynamic bracket run if", () => {});
         "nested/nested.test.ts",
         "root.test.ts"
       ]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("discovers supported test file extensions", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    fs.mkdirSync(path.join(tempDirectory, "nested"), { recursive: true });
+
+    fs.writeFileSync(path.join(tempDirectory, "alpha.test.ts"), "test(\"alpha\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "beta.test.tsx"), "test(\"beta\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "gamma.test.mts"), "test(\"gamma\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "delta.test.cts"), "test(\"delta\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "ignored.test.js"), "test(\"ignored\", () => {});", "utf8");
+    fs.writeFileSync(
+      path.join(tempDirectory, "nested", "nested.test.tsx"),
+      "test(\"nested\", () => {});",
+      "utf8"
+    );
+
+    try {
+      expect(listDiscoveredTestSuites(tempDirectory)).toEqual([
+        "alpha.test.ts",
+        "beta.test.tsx",
+        "delta.test.cts",
+        "gamma.test.mts",
+        "nested/nested.test.tsx"
+      ]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("parses executable test titles from tsx fixtures", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "tsx-fixture.test.tsx");
+
+    fs.writeFileSync(
+      fixturePath,
+      `
+const element = <div data-kind="fixture">hello</div>;
+void element;
+test("tsx title", () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(readTestTitles(fixturePath)).toEqual(["tsx title"]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

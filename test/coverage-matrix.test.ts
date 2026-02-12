@@ -1412,6 +1412,10 @@ test("cts title", () => {});
     const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
     const namespaceConfigPath = path.join(tempDirectory, "rstest-namespace.config.ts");
     const defaultImportConfigPath = path.join(tempDirectory, "rstest-default-import.config.ts");
+    const defaultImportElementConfigPath = path.join(
+      tempDirectory,
+      "rstest-default-import-element.config.ts"
+    );
     const namespaceElementAccessConfigPath = path.join(
       tempDirectory,
       "rstest-namespace-element-access.config.ts"
@@ -1651,6 +1655,22 @@ void unrelated;
 
 export default rstest.defineConfig({
   include: ["test/**/*.default-import.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      defaultImportElementConfigPath,
+      `
+import rstest from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.default-import-element-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default rstest["defineConfig"]({
+  include: ["test/**/*.default-import-element.test.ts"]
 });
 `,
       "utf8"
@@ -2099,6 +2119,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(defaultImportConfigPath)).toEqual([
         "test/**/*.default-import.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(defaultImportElementConfigPath)).toEqual([
+        "test/**/*.default-import-element.test.ts"
       ]);
       expect(readRstestIncludePatterns(namespaceElementAccessConfigPath)).toEqual([
         "test/**/*.namespace-element.test.ts"

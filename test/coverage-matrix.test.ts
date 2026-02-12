@@ -463,26 +463,28 @@ function readRstestIncludePatterns(
   const isModuleExportsAssignmentTarget = (expression: ts.Expression): boolean => {
     const unwrappedExpression = unwrapConfigExpression(expression);
     if (ts.isPropertyAccessExpression(unwrappedExpression)) {
+      const unwrappedBaseExpression = unwrapConfigExpression(unwrappedExpression.expression);
       if (
-        ts.isIdentifier(unwrappedExpression.expression) &&
-        unwrappedExpression.expression.text === "module" &&
+        ts.isIdentifier(unwrappedBaseExpression) &&
+        unwrappedBaseExpression.text === "module" &&
         unwrappedExpression.name.text === "exports"
       ) {
         return true;
       }
       if (
-        ts.isIdentifier(unwrappedExpression.expression) &&
-        unwrappedExpression.expression.text === "exports" &&
+        ts.isIdentifier(unwrappedBaseExpression) &&
+        unwrappedBaseExpression.text === "exports" &&
         unwrappedExpression.name.text === "default"
       ) {
         return true;
       }
     }
     if (ts.isElementAccessExpression(unwrappedExpression)) {
+      const unwrappedBaseExpression = unwrapConfigExpression(unwrappedExpression.expression);
       const argument = unwrappedExpression.argumentExpression;
       if (
-        ts.isIdentifier(unwrappedExpression.expression) &&
-        unwrappedExpression.expression.text === "module" &&
+        ts.isIdentifier(unwrappedBaseExpression) &&
+        unwrappedBaseExpression.text === "module" &&
         argument &&
         (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
         argument.text === "exports"
@@ -490,8 +492,8 @@ function readRstestIncludePatterns(
         return true;
       }
       if (
-        ts.isIdentifier(unwrappedExpression.expression) &&
-        unwrappedExpression.expression.text === "exports" &&
+        ts.isIdentifier(unwrappedBaseExpression) &&
+        unwrappedBaseExpression.text === "exports" &&
         argument &&
         (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
         argument.text === "default"
@@ -1547,6 +1549,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-element-preferred.config.js"
     );
+    const exportedWrappedModulePreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-wrapped-module-preferred.config.js"
+    );
+    const exportedWrappedDefaultPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-wrapped-default-preferred.config.js"
+    );
     const exportedEqualsPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-equals-preferred.config.ts"
@@ -1813,6 +1823,38 @@ void unrelated;
 
 module["exports"] = defineConfig({
   include: ["test/**/*.module-element-preferred.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedWrappedModulePreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.wrapped-module-preferred-should-not-be-read.ts"]
+});
+void unrelated;
+
+(module).exports = defineConfig({
+  include: ["test/**/*.wrapped-module-preferred.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedWrappedDefaultPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.wrapped-default-preferred-should-not-be-read.ts"]
+});
+void unrelated;
+
+(exports).default = defineConfig({
+  include: ["test/**/*.wrapped-default-preferred.test.ts"]
 });
 `,
       "utf8"
@@ -2451,6 +2493,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedModuleElementPreferredPath)).toEqual([
         "test/**/*.module-element-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedWrappedModulePreferredPath)).toEqual([
+        "test/**/*.wrapped-module-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedWrappedDefaultPreferredPath)).toEqual([
+        "test/**/*.wrapped-default-preferred.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedEqualsPreferredPath)).toEqual([
         "test/**/*.export-equals-preferred.test.ts"

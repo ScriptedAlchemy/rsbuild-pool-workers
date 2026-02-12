@@ -499,4 +499,56 @@ describe("invalid workers options diagnostics coverage matrix", () => {
       "project promise top-level workers scoped env wins over direct env"
     ]);
   });
+
+  test("covers argument forwarding and this-binding variants in unit suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
+    expectTitleCoverage(titles, [
+      "forwards sync config function arguments",
+      "forwards async config function arguments",
+      "forwards config function arguments when function returns a promise",
+      "forwards arguments for thenable-returning config function exports",
+      "preserves this binding for sync config function exports",
+      "preserves this binding for async config function exports",
+      "preserves this binding for promise-returning config function exports",
+      "preserves this binding for thenable-returning config function exports",
+      "defineWorkersProject forwards sync config function arguments",
+      "defineWorkersProject forwards async config function arguments",
+      "defineWorkersProject forwards arguments when config function returns a promise",
+      "defineWorkersProject forwards arguments for thenable-returning config function exports",
+      "defineWorkersProject preserves this binding for sync config function exports",
+      "defineWorkersProject preserves this binding for async config function exports",
+      "defineWorkersProject preserves this binding for promise-returning config function exports",
+      "defineWorkersProject preserves this binding for thenable-returning config function exports"
+    ]);
+  });
+
+  test("covers plugin dedup and relative-path resolution variants in unit suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
+    expectTitleCoverage(titles, [
+      "resolves relative workers.main from caller directory",
+      "resolves relative wrangler.configPath from caller directory",
+      "resolves relative wrangler.configPath for async top-level workers function",
+      "defineWorkersProject resolves relative workers.main in promise top-level workers function",
+      "defineWorkersProject resolves relative wrangler.configPath from caller directory",
+      "defineWorkersProject resolves relative wrangler.configPath in promise top-level workers function",
+      "does not inject duplicate workers plugin when already present",
+      "does not inject duplicate workers plugin in async config path",
+      "does not inject duplicate workers plugin in async config path when plugins is single value",
+      "does not inject duplicate workers plugin when plugins is a single value",
+      "defineWorkersProject deduplicates existing workers plugin",
+      "defineWorkersProject deduplicates workers plugin in async config path",
+      "defineWorkersProject deduplicates workers plugin in async config path when plugins is single value",
+      "defineWorkersProject deduplicates workers plugin when plugins is single value",
+      "keeps falsey plugin entries while deduping in sync config path",
+      "keeps falsey plugin entries while deduping in async config path",
+      "keeps falsey plugin entries while deduping in promise config exports",
+      "keeps falsey plugin entries while deduping in promise-like config exports",
+      "keeps falsey plugin entries while deduping thenable config function exports",
+      "defineWorkersProject keeps falsey plugin entries while deduping in sync config path",
+      "defineWorkersProject keeps falsey plugin entries while deduping in async config path",
+      "defineWorkersProject keeps falsey plugin entries while deduping in promise exports",
+      "defineWorkersProject keeps falsey plugin entries while deduping in promise-like config exports",
+      "defineWorkersProject keeps falsey plugin entries while deduping thenable config function exports"
+    ]);
+  });
 });

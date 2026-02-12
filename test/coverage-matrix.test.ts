@@ -617,6 +617,53 @@ test("cjs title", () => {});
     }
   });
 
+  test("parses executable test titles from mts and cts fixtures", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const mtsFixturePath = path.join(tempDirectory, "mts-fixture.test.mts");
+    const ctsFixturePath = path.join(tempDirectory, "cts-fixture.test.cts");
+
+    fs.writeFileSync(
+      mtsFixturePath,
+      `
+export const value = 1;
+test("mts title", () => {});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      ctsFixturePath,
+      `
+const value = 1;
+void value;
+test("cts title", () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(readTestTitles(mtsFixturePath)).toEqual(["mts title"]);
+      expect(readTestTitles(ctsFixturePath)).toEqual(["cts title"]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("accepts only supported test file suffixes", () => {
+    expect(isSupportedTestFileName("alpha.test.ts")).toBe(true);
+    expect(isSupportedTestFileName("beta.test.tsx")).toBe(true);
+    expect(isSupportedTestFileName("gamma.test.mts")).toBe(true);
+    expect(isSupportedTestFileName("delta.test.cts")).toBe(true);
+    expect(isSupportedTestFileName("epsilon.test.js")).toBe(true);
+    expect(isSupportedTestFileName("zeta.test.jsx")).toBe(true);
+    expect(isSupportedTestFileName("eta.test.mjs")).toBe(true);
+    expect(isSupportedTestFileName("theta.test.cjs")).toBe(true);
+
+    expect(isSupportedTestFileName("ignored.spec.ts")).toBe(false);
+    expect(isSupportedTestFileName("ignored.test.d.ts")).toBe(false);
+    expect(isSupportedTestFileName("ignored.ts")).toBe(false);
+    expect(isSupportedTestFileName("ignored.js")).toBe(false);
+  });
+
   test("invalidates cached titles when a fixture file changes", () => {
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const fixturePath = path.join(tempDirectory, "cache-invalidation-fixture.test.ts");

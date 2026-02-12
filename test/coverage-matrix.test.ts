@@ -17,7 +17,17 @@ const GUARDED_TEST_SUITES = [
   "workers-plugin.test.ts"
 ] as const;
 
+const TEST_MODIFIER_SEGMENTS = new Set(["only", "skip", "todo", "concurrent"]);
+const COLLECTED_TITLE_CACHE = new Map<string, string[]>();
+const UNIQUE_TITLE_CACHE = new Map<string, string[]>();
+const TITLE_COUNT_CACHE = new Map<string, Map<string, number>>();
+
 function collectTestTitles(filePath: string): string[] {
+  const cached = COLLECTED_TITLE_CACHE.get(filePath);
+  if (cached) {
+    return [...cached];
+  }
+
   const source = fs.readFileSync(filePath, "utf8");
   const sourceFile = ts.createSourceFile(
     filePath,
@@ -29,7 +39,6 @@ function collectTestTitles(filePath: string): string[] {
 
   const titles: string[] = [];
   const isSupportedTestExpression = (expression: ts.LeftHandSideExpression): boolean => {
-    const modifiers = new Set(["only", "skip", "todo", "concurrent"]);
     const chain: string[] = [];
     let current: ts.LeftHandSideExpression | ts.Expression = expression;
 
@@ -46,7 +55,7 @@ function collectTestTitles(filePath: string): string[] {
       return true;
     }
 
-    return chain.every((segment) => modifiers.has(segment));
+    return chain.every((segment) => TEST_MODIFIER_SEGMENTS.has(segment));
   };
 
   const visit = (node: ts.Node): void => {
@@ -65,18 +74,32 @@ function collectTestTitles(filePath: string): string[] {
 
   visit(sourceFile);
 
-  return titles;
+  COLLECTED_TITLE_CACHE.set(filePath, [...titles]);
+  return [...titles];
 }
 
 function readTestTitles(filePath: string): string[] {
-  return Array.from(new Set(collectTestTitles(filePath)));
+  const cached = UNIQUE_TITLE_CACHE.get(filePath);
+  if (cached) {
+    return [...cached];
+  }
+
+  const titles = Array.from(new Set(collectTestTitles(filePath)));
+  UNIQUE_TITLE_CACHE.set(filePath, [...titles]);
+  return [...titles];
 }
 
 function readTestTitleCounts(filePath: string): Map<string, number> {
+  const cached = TITLE_COUNT_CACHE.get(filePath);
+  if (cached) {
+    return new Map(cached);
+  }
+
   const counts = new Map<string, number>();
   for (const title of collectTestTitles(filePath)) {
     counts.set(title, (counts.get(title) ?? 0) + 1);
   }
+  TITLE_COUNT_CACHE.set(filePath, new Map(counts));
   return counts;
 }
 

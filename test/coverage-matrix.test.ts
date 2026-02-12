@@ -1539,6 +1539,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-exports-default-preferred.config.js"
     );
+    const exportedExportsDefaultElementPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-exports-default-element-preferred.config.js"
+    );
     const exportedModuleElementPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-module-element-preferred.config.js"
@@ -1777,6 +1781,22 @@ void unrelated;
 
 exports.default = defineConfig({
   include: ["test/**/*.exports-default-preferred.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedExportsDefaultElementPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exports-default-element-preferred-should-not-be-read.ts"]
+});
+void unrelated;
+
+exports["default"] = defineConfig({
+  include: ["test/**/*.exports-default-element-preferred.test.ts"]
 });
 `,
       "utf8"
@@ -2425,6 +2445,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedExportsDefaultPreferredPath)).toEqual([
         "test/**/*.exports-default-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedExportsDefaultElementPreferredPath)).toEqual([
+        "test/**/*.exports-default-element-preferred.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedModuleElementPreferredPath)).toEqual([
         "test/**/*.module-element-preferred.test.ts"

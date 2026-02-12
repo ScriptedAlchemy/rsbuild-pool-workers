@@ -94,4 +94,174 @@ describe("invalid workers options diagnostics coverage matrix", () => {
       expectSuffixCoverage(titles, prefix, expectedE2eSuffixes);
     }
   });
+
+  test("covers direct promise/promise-like invalid-return variants in unit suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
+
+    const expectations: Array<{ prefix: string; suffixes: string[] }> = [
+      {
+        prefix: "propagates actionable error when promise top-level workers function returns ",
+        suffixes: ["invalid options", "null", "undefined", "an array", "a boolean", "a number"]
+      },
+      {
+        prefix: "propagates actionable error when promise nested workers function returns ",
+        suffixes: ["invalid options", "an array", "a string", "a boolean", "a number", "null"]
+      },
+      {
+        prefix: "defineWorkersProject propagates actionable error when promise top-level workers function returns ",
+        suffixes: ["invalid options", "null", "undefined", "an array", "a boolean", "a number"]
+      },
+      {
+        prefix: "defineWorkersProject propagates actionable error when promise nested workers function returns ",
+        suffixes: ["invalid options", "an array", "a string", "a boolean", "a number", "null"]
+      },
+      {
+        prefix: "propagates actionable error from promise-like top-level workers function ",
+        suffixes: [
+          "invalid options",
+          "null return",
+          "boolean return",
+          "undefined return",
+          "array return",
+          "number return"
+        ]
+      },
+      {
+        prefix: "propagates actionable error from promise-like nested workers function ",
+        suffixes: [
+          "invalid options",
+          "array return",
+          "boolean return",
+          "string return",
+          "null return",
+          "number return"
+        ]
+      },
+      {
+        prefix: "defineWorkersProject propagates actionable error from promise-like top-level workers function ",
+        suffixes: [
+          "invalid options",
+          "null return",
+          "boolean return",
+          "undefined return",
+          "array return",
+          "number return"
+        ]
+      },
+      {
+        prefix: "defineWorkersProject propagates actionable error from promise-like nested workers function ",
+        suffixes: [
+          "invalid options",
+          "array return",
+          "boolean return",
+          "string return",
+          "null return",
+          "number return"
+        ]
+      }
+    ];
+
+    for (const { prefix, suffixes } of expectations) {
+      expectSuffixCoverage(titles, prefix, suffixes);
+    }
+  });
+
+  test("covers direct promise/promise-like invalid-return variants in e2e suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "e2e-cli.test.ts"));
+
+    const expectations: Array<{ prefix: string; suffixes: string[] }> = [
+      {
+        prefix: "surfaces promise config export top-level workers ",
+        suffixes: [
+          "invalid options errors end-to-end",
+          "null return invalid options errors end-to-end",
+          "undefined return invalid options errors end-to-end",
+          "array return invalid options errors end-to-end",
+          "boolean return invalid options errors end-to-end",
+          "number return invalid options errors end-to-end"
+        ]
+      },
+      {
+        prefix: "surfaces promise config export nested workers ",
+        suffixes: [
+          "invalid options errors end-to-end",
+          "array return invalid options errors end-to-end",
+          "string return invalid options errors end-to-end",
+          "boolean return invalid options errors end-to-end",
+          "number return invalid options errors end-to-end",
+          "null return invalid options errors end-to-end"
+        ]
+      },
+      {
+        prefix: "surfaces defineWorkersProject promise export top-level workers ",
+        suffixes: [
+          "invalid options errors end-to-end",
+          "null return invalid options errors end-to-end",
+          "undefined return invalid options errors end-to-end",
+          "array return invalid options errors end-to-end",
+          "boolean return invalid options errors end-to-end",
+          "number return invalid options errors end-to-end"
+        ]
+      },
+      {
+        prefix: "surfaces defineWorkersProject promise export nested workers ",
+        suffixes: [
+          "invalid options errors end-to-end",
+          "array return invalid options errors end-to-end",
+          "string return invalid options errors end-to-end",
+          "boolean return invalid options errors end-to-end",
+          "number return invalid options errors end-to-end",
+          "null return invalid options errors end-to-end"
+        ]
+      },
+      {
+        prefix: "surfaces promise-like top-level workers ",
+        suffixes: [
+          "invalid options errors end-to-end",
+          "null return invalid options errors end-to-end",
+          "undefined return invalid options errors end-to-end",
+          "array return invalid options errors end-to-end",
+          "boolean return invalid options errors end-to-end",
+          "number return invalid options errors end-to-end"
+        ]
+      },
+      {
+        prefix: "surfaces promise-like nested workers ",
+        suffixes: [
+          "invalid options errors end-to-end",
+          "array return invalid options errors end-to-end",
+          "string return invalid options errors end-to-end",
+          "boolean return invalid options errors end-to-end",
+          "number return invalid options errors end-to-end",
+          "null return invalid options errors end-to-end"
+        ]
+      },
+      {
+        prefix: "surfaces defineWorkersProject promise-like top-level workers ",
+        suffixes: [
+          "invalid options errors end-to-end",
+          "null return invalid options errors end-to-end",
+          "undefined return invalid options errors end-to-end",
+          "array return invalid options errors end-to-end",
+          "boolean return invalid options errors end-to-end",
+          "number return invalid options errors end-to-end"
+        ]
+      },
+      {
+        prefix: "surfaces defineWorkersProject promise-like nested workers ",
+        suffixes: [
+          "invalid options errors end-to-end",
+          "array return invalid options errors end-to-end",
+          "string return invalid options errors end-to-end",
+          "boolean return invalid options errors end-to-end",
+          "number return invalid options errors end-to-end",
+          "null return invalid options errors end-to-end"
+        ]
+      }
+    ];
+
+    for (const { prefix, suffixes } of expectations) {
+      expectSuffixCoverage(titles, prefix, suffixes);
+    }
+  });
 });

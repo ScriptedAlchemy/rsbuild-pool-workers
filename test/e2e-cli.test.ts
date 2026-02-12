@@ -2975,6 +2975,54 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("falls back to nested workers function for async config function exports when top-level workers is undefined end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          include: ["./async-config-function-undefined-function-fallback.test.ts"],
+          workers: undefined,
+          test: {
+            poolOptions: {
+              workers: () => ({
+                main: "./worker-nested.ts",
+                miniflare: {
+                  bindings: {
+                    ASYNC_CONFIG_UNDEFINED_FUNCTION_FALLBACK: "async-config-nested-function-fallback-selected"
+                  }
+                }
+              })
+            }
+          }
+        }));
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.ASYNC_CONFIG_UNDEFINED_FUNCTION_FALLBACK));
+          }
+        };
+      `,
+      "async-config-function-undefined-function-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("async config nested workers function selected when top-level workers is undefined", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("async-config-nested-function-fallback-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("async-config-function-undefined-function-fallback.test.ts");
+    });
+  });
+
   test("surfaces async config function export invalid nested workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3307,6 +3355,56 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("promise-config-function-undefined-fallback.test.ts");
+    });
+  });
+
+  test("falls back to nested workers function for promise-returning config function exports when top-level workers is undefined end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() =>
+          Promise.resolve({
+            include: ["./promise-config-function-undefined-function-fallback.test.ts"],
+            workers: undefined,
+            test: {
+              poolOptions: {
+                workers: () => ({
+                  main: "./worker-nested.ts",
+                  miniflare: {
+                    bindings: {
+                      PROMISE_CONFIG_UNDEFINED_FUNCTION_FALLBACK: "promise-config-nested-function-fallback-selected"
+                    }
+                  }
+                })
+              }
+            }
+          })
+        );
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_CONFIG_UNDEFINED_FUNCTION_FALLBACK));
+          }
+        };
+      `,
+      "promise-config-function-undefined-function-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise config-function nested workers function selected when top-level workers is undefined", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-config-nested-function-fallback-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("promise-config-function-undefined-function-fallback.test.ts");
     });
   });
 
@@ -3764,6 +3862,74 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("thenable-config-function-undefined-fallback.test.ts");
+    });
+  });
+
+  test("falls back to nested workers function for thenable config function exports when top-level workers is undefined end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          then(resolve) {
+            resolve({
+              include: ["./thenable-config-function-undefined-function-fallback.test.ts"],
+              workers: undefined,
+              test: {
+                poolOptions: {
+                  workers: () => ({
+                    main: "./worker-nested.ts",
+                    miniflare: {
+                      bindings: {
+                        THENABLE_CONFIG_UNDEFINED_FUNCTION_FALLBACK: "thenable-config-nested-function-fallback-selected"
+                      }
+                    }
+                  })
+                }
+              }
+            });
+            return Promise.resolve({
+              include: ["./thenable-config-function-undefined-function-fallback.test.ts"],
+              workers: undefined,
+              test: {
+                poolOptions: {
+                  workers: () => ({
+                    main: "./worker-nested.ts",
+                    miniflare: {
+                      bindings: {
+                        THENABLE_CONFIG_UNDEFINED_FUNCTION_FALLBACK: "thenable-config-nested-function-fallback-selected"
+                      }
+                    }
+                  })
+                }
+              }
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.THENABLE_CONFIG_UNDEFINED_FUNCTION_FALLBACK));
+          }
+        };
+      `,
+      "thenable-config-function-undefined-function-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("thenable config-function nested workers function selected when top-level workers is undefined", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("thenable-config-nested-function-fallback-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("thenable-config-function-undefined-function-fallback.test.ts");
     });
   });
 
@@ -12014,6 +12180,54 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("falls back to nested workers function for defineWorkersProject async config function exports when top-level workers is undefined end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          include: ["./project-async-config-function-undefined-function-fallback.test.ts"],
+          workers: undefined,
+          test: {
+            poolOptions: {
+              workers: () => ({
+                main: "./worker-nested.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_ASYNC_CONFIG_UNDEFINED_FUNCTION_FALLBACK: "project-async-config-nested-function-fallback-selected"
+                  }
+                }
+              })
+            }
+          }
+        }));
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_ASYNC_CONFIG_UNDEFINED_FUNCTION_FALLBACK));
+          }
+        };
+      `,
+      "project-async-config-function-undefined-function-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project async config nested workers function selected when top-level workers is undefined", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-async-config-nested-function-fallback-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-async-config-function-undefined-function-fallback.test.ts");
+    });
+  });
+
   test("surfaces defineWorkersProject async config function export invalid nested workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -12346,6 +12560,58 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise-config-function-undefined-fallback.test.ts");
+    });
+  });
+
+  test("falls back to nested workers function for defineWorkersProject promise-returning config function exports when top-level workers is undefined end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() =>
+          Promise.resolve({
+            include: ["./project-promise-config-function-undefined-function-fallback.test.ts"],
+            workers: undefined,
+            test: {
+              poolOptions: {
+                workers: () => ({
+                  main: "./worker-nested.ts",
+                  miniflare: {
+                    bindings: {
+                      PROJECT_PROMISE_CONFIG_UNDEFINED_FUNCTION_FALLBACK: "project-promise-config-nested-function-fallback-selected"
+                    }
+                  }
+                })
+              }
+            }
+          })
+        );
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_CONFIG_UNDEFINED_FUNCTION_FALLBACK));
+          }
+        };
+      `,
+      "project-promise-config-function-undefined-function-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise config-function nested workers function selected when top-level workers is undefined", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-config-nested-function-fallback-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain(
+        "project-promise-config-function-undefined-function-fallback.test.ts"
+      );
     });
   });
 
@@ -12803,6 +13069,76 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-thenable-config-function-undefined-fallback.test.ts");
+    });
+  });
+
+  test("falls back to nested workers function for defineWorkersProject thenable config function exports when top-level workers is undefined end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          then(resolve) {
+            resolve({
+              include: ["./project-thenable-config-function-undefined-function-fallback.test.ts"],
+              workers: undefined,
+              test: {
+                poolOptions: {
+                  workers: () => ({
+                    main: "./worker-nested.ts",
+                    miniflare: {
+                      bindings: {
+                        PROJECT_THENABLE_CONFIG_UNDEFINED_FUNCTION_FALLBACK: "project-thenable-config-nested-function-fallback-selected"
+                      }
+                    }
+                  })
+                }
+              }
+            });
+            return Promise.resolve({
+              include: ["./project-thenable-config-function-undefined-function-fallback.test.ts"],
+              workers: undefined,
+              test: {
+                poolOptions: {
+                  workers: () => ({
+                    main: "./worker-nested.ts",
+                    miniflare: {
+                      bindings: {
+                        PROJECT_THENABLE_CONFIG_UNDEFINED_FUNCTION_FALLBACK: "project-thenable-config-nested-function-fallback-selected"
+                      }
+                    }
+                  })
+                }
+              }
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "worker-nested.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_THENABLE_CONFIG_UNDEFINED_FUNCTION_FALLBACK));
+          }
+        };
+      `,
+      "project-thenable-config-function-undefined-function-fallback.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project thenable config-function nested workers function selected when top-level workers is undefined", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-thenable-config-nested-function-fallback-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain(
+        "project-thenable-config-function-undefined-function-fallback.test.ts"
+      );
     });
   });
 

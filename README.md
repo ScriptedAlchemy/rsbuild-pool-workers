@@ -148,7 +148,7 @@ import {
 - The package exports `WORKERS_RSBUILD_PLUGIN_NAME` for plugin detection/deduplication scenarios.
 - if you preinstall `workersRsbuildPlugin()` yourself, config helpers dedupe it across sync/async/promise/promise-like exports (including function exports returning thenables), with `plugins` provided as a single value or mixed arrays (for example with falsey entries).
 - `test.poolOptions.workers` can be an object or function. Function mode supports:
-  - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables (including promise-like export paths and thenable workers-function returns).
+  - `inject(key)` via `RSTEST_INJECT_<key>` / `<key>` environment variables (including promise/promise-like export paths and thenable workers-function returns).
   - when both forms are set, scoped `RSTEST_INJECT_<key>` values take precedence over direct `<key>` fallback values.
   - async workers functions when `defineWorkersConfig()` or `defineWorkersProject()` is used with an async config export.
   - Promise-like return values (thenables), which are normalized like async results.

@@ -1258,6 +1258,44 @@ export default config;
     }
   });
 
+  test("returns empty include patterns for missing or non-literal include values", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const missingIncludePath = path.join(tempDirectory, "rstest-missing-include.config.ts");
+    const nonLiteralIncludePath = path.join(tempDirectory, "rstest-non-literal-include.config.ts");
+
+    fs.writeFileSync(
+      missingIncludePath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  testEnvironment: "node"
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      nonLiteralIncludePath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const includePatterns = ["test/**/*.dynamic.test.ts"];
+
+export default defineConfig({
+  include: includePatterns
+});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(readRstestIncludePatterns(missingIncludePath)).toEqual([]);
+      expect(readRstestIncludePatterns(nonLiteralIncludePath)).toEqual([]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
   test("keeps rstest include patterns aligned with supported test suffixes", () => {
     const rstestConfigPath = path.join(process.cwd(), "rstest.config.ts");
     const configuredPatterns = readRstestIncludePatterns(rstestConfigPath);

@@ -369,6 +369,55 @@ test("literal title", () => {});
     }
   });
 
+  test("invalidates cached titles when a fixture file changes", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "cache-invalidation-fixture.test.ts");
+
+    fs.writeFileSync(fixturePath, `test("before update", () => {});\n`, "utf8");
+
+    try {
+      expect(readTestTitles(fixturePath)).toEqual(["before update"]);
+
+      fs.writeFileSync(fixturePath, `test("after update", () => {});\n`, "utf8");
+      const now = Date.now();
+      fs.utimesSync(fixturePath, now / 1000, (now + 1000) / 1000);
+
+      expect(readTestTitles(fixturePath)).toEqual(["after update"]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("invalidates cached title counts when a fixture file changes", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "count-cache-invalidation-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `test("duplicate", () => {});\ntest("duplicate", () => {});\n`,
+      "utf8"
+    );
+
+    try {
+      expect(Array.from(readTestTitleCounts(fixturePath).entries())).toEqual([["duplicate", 2]]);
+
+      fs.writeFileSync(
+        fixturePath,
+        `test("first", () => {});\ntest("second", () => {});\n`,
+        "utf8"
+      );
+      const now = Date.now();
+      fs.utimesSync(fixturePath, now / 1000, (now + 1000) / 1000);
+
+      expect(Array.from(readTestTitleCounts(fixturePath).entries())).toEqual([
+        ["first", 1],
+        ["second", 1]
+      ]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
   test("ensures guarded suites have unique executable test titles", () => {
     for (const suiteFile of GUARDED_TEST_SUITES) {
       const counts = readTestTitleCounts(path.join(process.cwd(), "test", suiteFile));

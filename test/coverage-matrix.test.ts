@@ -331,4 +331,46 @@ describe("invalid workers options diagnostics coverage matrix", () => {
       "falls back to nested workers function in defineWorkersProject promise export when top-level workers is undefined end-to-end"
     ]);
   });
+
+  test("covers top-level precedence guard variants in unit suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
+    expectTitleCoverage(titles, [
+      "does not evaluate nested workers function when top-level workers function exists",
+      "does not evaluate nested workers function in async config export when top-level async function exists",
+      "does not evaluate nested workers function in promise-like export when top-level function exists",
+      "does not evaluate nested workers function in promise-like export when top-level async function exists",
+      "does not evaluate nested workers function in promise-like export when top-level thenable function exists",
+      "does not evaluate nested workers function in promise export when top-level function exists",
+      "does not evaluate nested workers function in promise export when top-level async function exists",
+      "does not evaluate nested workers function in promise export when top-level thenable function exists",
+      "defineWorkersProject does not evaluate nested workers function when top-level function exists",
+      "defineWorkersProject does not evaluate nested workers function in async config export when top-level async function exists",
+      "defineWorkersProject does not evaluate nested workers function in promise-like export when top-level function exists",
+      "defineWorkersProject does not evaluate nested workers function in promise-like export when top-level async function exists",
+      "defineWorkersProject does not evaluate nested workers function in promise-like export when top-level thenable function exists",
+      "defineWorkersProject does not evaluate nested workers function in promise export when top-level function exists",
+      "defineWorkersProject does not evaluate nested workers function in promise export when top-level async function exists",
+      "defineWorkersProject does not evaluate nested workers function in promise export when top-level thenable function exists"
+    ]);
+  });
+
+  test("covers top-level precedence guard variants in e2e suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "e2e-cli.test.ts"));
+    expectTitleCoverage(titles, [
+      "does not evaluate nested workers function when defineWorkersConfig top-level function is set end-to-end",
+      "does not evaluate nested workers function in async config export when top-level async function is set end-to-end",
+      "does not evaluate nested workers function when promise-like top-level async workers function is set end-to-end",
+      "does not evaluate nested workers function when promise-like top-level thenable workers function is set end-to-end",
+      "does not evaluate nested workers function in promise config export when top-level function is set end-to-end",
+      "does not evaluate nested workers function in promise config export when top-level async function is set end-to-end",
+      "does not evaluate nested workers function in promise config export when top-level thenable function is set end-to-end",
+      "does not evaluate nested workers function when defineWorkersProject top-level function is set end-to-end",
+      "does not evaluate nested workers function in defineWorkersProject async config export when top-level async function is set end-to-end",
+      "does not evaluate nested workers function when defineWorkersProject promise-like top-level async workers function is set end-to-end",
+      "does not evaluate nested workers function when defineWorkersProject promise-like top-level thenable workers function is set end-to-end",
+      "does not evaluate nested workers function in defineWorkersProject promise export when top-level function is set end-to-end",
+      "does not evaluate nested workers function in defineWorkersProject promise export when top-level async function is set end-to-end",
+      "does not evaluate nested workers function in defineWorkersProject promise export when top-level thenable function is set end-to-end"
+    ]);
+  });
 });

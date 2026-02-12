@@ -1720,6 +1720,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-default-property-preferred.config.js"
     );
+    const exportedModuleDefaultMixedElementPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-default-mixed-element-preferred.config.js"
+    );
     const exportedModuleDefaultElementPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-module-default-element-preferred.config.js"
@@ -2258,6 +2262,22 @@ void unrelated;
 
 module.exports.default = defineConfig({
   include: ["test/**/*.module-default-property.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleDefaultMixedElementPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.module-default-mixed-element-should-not-be-read.ts"]
+});
+void unrelated;
+
+module.exports["default"] = defineConfig({
+  include: ["test/**/*.module-default-mixed-element.test.ts"]
 });
 `,
       "utf8"
@@ -3193,6 +3213,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedModuleDefaultPropertyPreferredPath)).toEqual([
         "test/**/*.module-default-property.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleDefaultMixedElementPreferredPath)).toEqual([
+        "test/**/*.module-default-mixed-element.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedModuleDefaultElementPreferredPath)).toEqual([
         "test/**/*.module-default-element.test.ts"

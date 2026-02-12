@@ -1972,6 +1972,27 @@ describe("defineWorkersConfig", () => {
     await expect(configPromise).rejects.toThrow(errorMessage);
   });
 
+  test("propagates thrown errors from promise nested workers function", async () => {
+    const errorMessage = "promise nested workers throw";
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: () => {
+              throw new Error(errorMessage);
+            }
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(errorMessage);
+  });
+
   test("propagates rejection from promise nested thenable workers function", async () => {
     const errorMessage = "promise nested thenable workers rejection";
     const configPromise = defineWorkersConfig(
@@ -5050,6 +5071,27 @@ describe("defineWorkersConfig", () => {
         test: {
           poolOptions: {
             workers: () => Promise.reject(new Error(errorMessage))
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates thrown errors from promise nested workers function", async () => {
+    const errorMessage = "project promise nested workers throw";
+    const value = defineWorkersProject(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: () => {
+              throw new Error(errorMessage);
+            }
           }
         }
       })

@@ -1680,6 +1680,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-include-getter-before-literal.config.ts"
     );
+    const includeComputedGetterOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-computed-getter-override.config.ts"
+    );
+    const includeComputedGetterBeforeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-computed-getter-before-literal.config.ts"
+    );
     const includeMethodOverrideConfigPath = path.join(
       tempDirectory,
       "rstest-include-method-override.config.ts"
@@ -1700,9 +1708,17 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-include-setter-override.config.ts"
     );
+    const includeComputedSetterOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-computed-setter-override.config.ts"
+    );
     const includeSetterBeforeLiteralConfigPath = path.join(
       tempDirectory,
       "rstest-include-setter-before-literal.config.ts"
+    );
+    const includeComputedSetterBeforeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-computed-setter-before-literal.config.ts"
     );
     const exportedDefineConfigPreferredPath = path.join(
       tempDirectory,
@@ -2187,6 +2203,34 @@ export default defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      includeComputedGetterOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.include-computed-getter-override-should-not-be-read.test.ts"],
+  get ["include"]() {
+    return ["test/**/*.include-computed-getter-override.test.ts"];
+  }
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeComputedGetterBeforeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  get [\`include\`]() {
+    return ["test/**/*.include-computed-getter-before-literal-should-not-be-read.test.ts"];
+  },
+  include: ["test/**/*.include-computed-getter-before-literal.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       includeMethodOverrideConfigPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -2257,6 +2301,20 @@ export default defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      includeComputedSetterOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.include-computed-setter-override-should-not-be-read.test.ts"],
+  set ["include"](value) {
+    void value;
+  }
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       includeSetterBeforeLiteralConfigPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -2266,6 +2324,20 @@ export default defineConfig({
     void value;
   },
   include: ["test/**/*.include-setter-before-literal.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeComputedSetterBeforeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  set [\`include\`](value) {
+    void value;
+  },
+  include: ["test/**/*.include-computed-setter-before-literal.test.ts"]
 });
 `,
       "utf8"
@@ -3584,6 +3656,10 @@ export default config;
       expect(readRstestIncludePatterns(includeGetterBeforeLiteralConfigPath)).toEqual([
         "test/**/*.include-getter-before-literal.test.ts"
       ]);
+      expect(readRstestIncludePatterns(includeComputedGetterOverrideConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(includeComputedGetterBeforeLiteralConfigPath)).toEqual([
+        "test/**/*.include-computed-getter-before-literal.test.ts"
+      ]);
       expect(readRstestIncludePatterns(includeMethodOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(includeMethodBeforeLiteralConfigPath)).toEqual([
         "test/**/*.include-method-before-literal.test.ts"
@@ -3593,8 +3669,12 @@ export default config;
         "test/**/*.include-computed-method-before-literal.test.ts"
       ]);
       expect(readRstestIncludePatterns(includeSetterOverrideConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(includeComputedSetterOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(includeSetterBeforeLiteralConfigPath)).toEqual([
         "test/**/*.include-setter-before-literal.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(includeComputedSetterBeforeLiteralConfigPath)).toEqual([
+        "test/**/*.include-computed-setter-before-literal.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedDefineConfigPreferredPath)).toEqual([
         "test/**/*.exported-define-preferred.test.ts"

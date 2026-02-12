@@ -3893,6 +3893,70 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("propagates actionable error when promise top-level workers function returns undefined", async () => {
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: () => undefined as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received undefined."
+    );
+  });
+
+  test("propagates actionable error when promise top-level workers function returns an array", async () => {
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: () => [] as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received array."
+    );
+  });
+
+  test("propagates actionable error when promise top-level workers function returns a boolean", async () => {
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: () => false as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received boolean."
+    );
+  });
+
+  test("propagates actionable error when promise top-level workers function returns a number", async () => {
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: () => 123 as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received number."
+    );
+  });
+
   test("propagates rejection from promise top-level async workers function", async () => {
     const errorMessage = "promise top-level async workers rejection";
     const configPromise = defineWorkersConfig(
@@ -8025,6 +8089,70 @@ describe("defineWorkersConfig", () => {
 
     await expect(value).rejects.toThrow(
       "Invalid workers options from workers() return value: expected an object but received null."
+    );
+  });
+
+  test("defineWorkersProject propagates actionable error when promise top-level workers function returns undefined", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () => undefined as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received undefined."
+    );
+  });
+
+  test("defineWorkersProject propagates actionable error when promise top-level workers function returns an array", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () => [] as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received array."
+    );
+  });
+
+  test("defineWorkersProject propagates actionable error when promise top-level workers function returns a boolean", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () => false as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received boolean."
+    );
+  });
+
+  test("defineWorkersProject propagates actionable error when promise top-level workers function returns a number", async () => {
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () => 123 as unknown as WorkersPoolOptions
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received number."
     );
   });
 

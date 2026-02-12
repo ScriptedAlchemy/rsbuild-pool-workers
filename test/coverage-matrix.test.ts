@@ -72,6 +72,17 @@ function expectSuffixCoverage(
   prefix: string,
   expectedSuffixes: string[]
 ): void {
+  const duplicateExpectedSuffixes = expectedSuffixes.filter(
+    (suffix, index) => expectedSuffixes.indexOf(suffix) !== index
+  );
+  expect(
+    duplicateExpectedSuffixes,
+    [
+      `Duplicate expected suffix entries for prefix: ${prefix}`,
+      ...duplicateExpectedSuffixes.map((suffix) => `- ${suffix}`)
+    ].join("\n")
+  ).toEqual([]);
+
   const found = new Set(
     titles.filter((title) => title.startsWith(prefix)).map((title) => title.slice(prefix.length))
   );
@@ -88,6 +99,17 @@ function expectSuffixCoverage(
 }
 
 function expectTitleCoverage(titles: string[], expectedTitles: string[]): void {
+  const duplicateExpectedTitles = expectedTitles.filter(
+    (title, index) => expectedTitles.indexOf(title) !== index
+  );
+  expect(
+    duplicateExpectedTitles,
+    [
+      "Duplicate expected test title entries:",
+      ...duplicateExpectedTitles.map((title) => `- ${title}`)
+    ].join("\n")
+  ).toEqual([]);
+
   const titleSet = new Set(titles);
   const missing = expectedTitles.filter((title) => !titleSet.has(title));
   expect(

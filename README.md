@@ -156,7 +156,7 @@ import {
 - when top-level `workers` is explicitly `undefined`, it is treated as absent and nested `test.poolOptions.workers` (object or function, if provided) is used.
 - direct-env fallback (`inject("KEY")` reading from `KEY`) is supported across sync/async/promise/promise-like config export forms for both nested and top-level workers functions.
 - errors thrown or rejected from config exports or workers option functions (including promise, promise-like/thenable branches, and function export return variants) propagate with actionable messages.
-- invalid workers options shape validation is source-aware across all export forms:
+- invalid workers options shape validation is source-aware across all export forms (object, promise/promise-like, and sync/async/promise/thenable function exports):
   - raw invalid values are reported from `workers` or `test.poolOptions.workers` (for example: `...received null|array|string|number|boolean`).
   - function-return invalid values are reported from `workers() return value` or `test.poolOptions.workers() return value` (for example: `...received undefined|string|number|boolean|array|null`).
 - if both top-level `workers` and `test.poolOptions.workers` are provided, top-level `workers` takes precedence (including sync/async/promise/promise-like config export forms), and nested function-valued workers options are not evaluated.

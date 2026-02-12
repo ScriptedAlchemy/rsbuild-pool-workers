@@ -575,6 +575,48 @@ test("jsx title", () => {});
     }
   });
 
+  test("parses executable test titles from js, mjs, and cjs fixtures", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const jsFixturePath = path.join(tempDirectory, "js-fixture.test.js");
+    const mjsFixturePath = path.join(tempDirectory, "mjs-fixture.test.mjs");
+    const cjsFixturePath = path.join(tempDirectory, "cjs-fixture.test.cjs");
+
+    fs.writeFileSync(
+      jsFixturePath,
+      `
+const payload = { kind: "js" };
+void payload;
+test("js title", () => {});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      mjsFixturePath,
+      `
+export const payload = { kind: "mjs" };
+test("mjs title", () => {});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      cjsFixturePath,
+      `
+const payload = { kind: "cjs" };
+module.exports = payload;
+test("cjs title", () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(readTestTitles(jsFixturePath)).toEqual(["js title"]);
+      expect(readTestTitles(mjsFixturePath)).toEqual(["mjs title"]);
+      expect(readTestTitles(cjsFixturePath)).toEqual(["cjs title"]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
   test("invalidates cached titles when a fixture file changes", () => {
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const fixturePath = path.join(tempDirectory, "cache-invalidation-fixture.test.ts");

@@ -170,6 +170,7 @@ import {
 - `defineConfig` call matching is scoped to symbols bound from `@rstest/core`, preventing unrelated local helpers from overriding include extraction.
 - include extraction is intentionally literal-only: `include` may be an array of string literals (including static spread array literals) or a single string literal (including quoted/computed `"include"` property keys); dynamic/non-literal values are ignored.
 - object spread entries in recognized config objects are handled conservatively: static object-literal spreads can override `include`, while dynamic spreads overriding `include` produce an empty extraction result unless later explicit `include` assignments appear.
+- non-assignment `include` members (for example getters/setters/methods) are treated as non-literal overrides unless a later explicit assignment replaces them.
 - when `include` is assigned multiple times inside a recognized `defineConfig({...})` object, extraction follows last-assignment object-literal semantics.
 - heuristic include fallback scanning is only used when no recognized `defineConfig` call is present, preventing unrelated `include` literals from shadowing authoritative `defineConfig(...)` parsing.
 - parser regression fixtures explicitly cover config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`) for consistent include extraction behavior.

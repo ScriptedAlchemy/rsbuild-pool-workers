@@ -450,6 +450,15 @@ function readRstestIncludePatterns(
           continue;
         }
 
+        if (
+          !ts.isSpreadAssignment(property) &&
+          isPropertyNameText(property.name, "include")
+        ) {
+          includeInitializer = undefined;
+          includeOverriddenByUnknownSpread = true;
+          continue;
+        }
+
         if (ts.isSpreadAssignment(property)) {
           const unwrappedSpreadExpression = unwrapConfigExpression(property.expression);
           if (ts.isObjectLiteralExpression(unwrappedSpreadExpression)) {
@@ -1564,6 +1573,7 @@ test("cts title", () => {});
       "including static spread array literals",
       "dynamic/non-literal values are ignored",
       "object spread entries in recognized config objects are handled conservatively",
+      "non-assignment `include` members (for example getters/setters/methods) are treated as non-literal overrides",
       "follows last-assignment object-literal semantics",
       "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present",
       "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)",
@@ -1619,6 +1629,14 @@ test("cts title", () => {});
     const objectSpreadDynamicBeforeLiteralConfigPath = path.join(
       tempDirectory,
       "rstest-object-spread-dynamic-before-literal.config.ts"
+    );
+    const includeGetterOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-getter-override.config.ts"
+    );
+    const includeGetterBeforeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-getter-before-literal.config.ts"
     );
     const exportedDefineConfigPreferredPath = path.join(
       tempDirectory,
@@ -1926,6 +1944,34 @@ const overrides = {
 export default defineConfig({
   ...overrides,
   include: ["test/**/*.object-spread-dynamic-before-literal.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeGetterOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.include-getter-override-should-not-be-read.test.ts"],
+  get include() {
+    return ["test/**/*.include-getter-override.test.ts"];
+  }
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeGetterBeforeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  get include() {
+    return ["test/**/*.include-getter-before-literal-should-not-be-read.test.ts"];
+  },
+  include: ["test/**/*.include-getter-before-literal.test.ts"]
 });
 `,
       "utf8"
@@ -2798,6 +2844,10 @@ export default config;
       expect(readRstestIncludePatterns(objectSpreadDynamicOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(objectSpreadDynamicBeforeLiteralConfigPath)).toEqual([
         "test/**/*.object-spread-dynamic-before-literal.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(includeGetterOverrideConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(includeGetterBeforeLiteralConfigPath)).toEqual([
+        "test/**/*.include-getter-before-literal.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedDefineConfigPreferredPath)).toEqual([
         "test/**/*.exported-define-preferred.test.ts"

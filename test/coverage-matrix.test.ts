@@ -62,8 +62,10 @@ function extractSupportedModifierChain(
   return chain;
 }
 
-function collectParsedTestCalls(filePath: string): ParsedTestCall[] {
-  const version = getFileVersion(filePath);
+function collectParsedTestCalls(
+  filePath: string,
+  version = getFileVersion(filePath)
+): ParsedTestCall[] {
   const cached = PARSED_TEST_CALL_CACHE.get(filePath);
   if (cached && cached.version === version) {
     return [...cached.value];
@@ -111,14 +113,16 @@ function collectParsedTestCalls(filePath: string): ParsedTestCall[] {
   return [...calls];
 }
 
-function collectTestTitles(filePath: string): string[] {
-  const version = getFileVersion(filePath);
+function collectTestTitles(
+  filePath: string,
+  version = getFileVersion(filePath)
+): string[] {
   const cached = COLLECTED_TITLE_CACHE.get(filePath);
   if (cached && cached.version === version) {
     return [...cached.value];
   }
 
-  const titles = collectParsedTestCalls(filePath)
+  const titles = collectParsedTestCalls(filePath, version)
     .map((call) => call.title)
     .filter((title): title is string => title !== undefined);
 
@@ -136,7 +140,7 @@ function readTestTitles(filePath: string): string[] {
     return [...cached.value];
   }
 
-  const titles = Array.from(new Set(collectTestTitles(filePath)));
+  const titles = Array.from(new Set(collectTestTitles(filePath, version)));
   UNIQUE_TITLE_CACHE.set(filePath, {
     version,
     value: [...titles]
@@ -152,7 +156,7 @@ function readTestTitleCounts(filePath: string): Map<string, number> {
   }
 
   const counts = new Map<string, number>();
-  for (const title of collectTestTitles(filePath)) {
+  for (const title of collectTestTitles(filePath, version)) {
     counts.set(title, (counts.get(title) ?? 0) + 1);
   }
   TITLE_COUNT_CACHE.set(filePath, {
@@ -333,6 +337,33 @@ test("literal title", () => {});
       expect(titles.includes("dynamic title")).toBe(false);
       expect(titles.includes("interpolated segment")).toBe(false);
       expect(titles.includes("computed")).toBe(false);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("extracts supported modifier chains and ignores unsupported call forms", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "modifier-chain-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `
+test("plain", () => {});
+test.only("only", () => {});
+test.concurrent.skip("concurrent skip", () => {});
+test.each([1])("parameterized %i", () => {});
+test.runIf(true)("run if", () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(collectParsedTestCalls(fixturePath)).toEqual([
+        { title: "plain", modifiers: [] },
+        { title: "only", modifiers: ["only"] },
+        { title: "concurrent skip", modifiers: ["concurrent", "skip"] }
+      ]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

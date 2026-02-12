@@ -1411,6 +1411,10 @@ test("cts title", () => {});
       "rstest-wrapped-namespace-element.config.ts"
     );
     const requireNamespaceConfigPath = path.join(tempDirectory, "rstest-require-namespace.config.ts");
+    const requireAssertedNamespaceConfigPath = path.join(
+      tempDirectory,
+      "rstest-require-asserted-namespace.config.ts"
+    );
     const requireTemplateConfigPath = path.join(tempDirectory, "rstest-require-template.config.ts");
     const requireAliasConfigPath = path.join(tempDirectory, "rstest-require-alias.config.ts");
     const requireShorthandConfigPath = path.join(
@@ -1658,6 +1662,22 @@ void unrelated;
 
 export default rstest.defineConfig({
   include: ["test/**/*.require-namespace.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      requireAssertedNamespaceConfigPath,
+      `
+const rstest = require("@rstest/core") as typeof import("@rstest/core");
+
+const unrelated = {
+  include: ["test/**/*.require-asserted-namespace-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default rstest.defineConfig({
+  include: ["test/**/*.require-asserted-namespace.test.ts"]
 });
 `,
       "utf8"
@@ -1926,6 +1946,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(requireNamespaceConfigPath)).toEqual([
         "test/**/*.require-namespace.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(requireAssertedNamespaceConfigPath)).toEqual([
+        "test/**/*.require-asserted-namespace.test.ts"
       ]);
       expect(readRstestIncludePatterns(requireTemplateConfigPath)).toEqual([
         "test/**/*.require-template.test.ts"

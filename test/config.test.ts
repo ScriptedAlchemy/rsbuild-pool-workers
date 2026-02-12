@@ -1972,6 +1972,37 @@ describe("defineWorkersConfig", () => {
     await expect(configPromise).rejects.toThrow(errorMessage);
   });
 
+  test("propagates rejection from promise nested thenable workers function", async () => {
+    const errorMessage = "promise nested thenable workers rejection";
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: () =>
+              ({
+                then(
+                  _onfulfilled?: ((value: WorkersPoolOptions) => unknown) | null,
+                  onrejected?: ((reason: unknown) => unknown) | null
+                ) {
+                  const error = new Error(errorMessage);
+                  if (typeof onrejected === "function") {
+                    onrejected(error);
+                  }
+                  return Promise.reject(error);
+                }
+              }) as PromiseLike<WorkersPoolOptions>
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(errorMessage);
+  });
+
   test("propagates thrown errors from promise top-level workers function", async () => {
     const errorMessage = "promise top-level workers throw";
     const configPromise = defineWorkersConfig(
@@ -5019,6 +5050,37 @@ describe("defineWorkersConfig", () => {
         test: {
           poolOptions: {
             workers: () => Promise.reject(new Error(errorMessage))
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates rejection from promise nested thenable workers function", async () => {
+    const errorMessage = "project promise nested thenable workers rejection";
+    const value = defineWorkersProject(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: () =>
+              ({
+                then(
+                  _onfulfilled?: ((resolved: WorkersPoolOptions) => unknown) | null,
+                  onrejected?: ((reason: unknown) => unknown) | null
+                ) {
+                  const error = new Error(errorMessage);
+                  if (typeof onrejected === "function") {
+                    onrejected(error);
+                  }
+                  return Promise.reject(error);
+                }
+              }) as PromiseLike<WorkersPoolOptions>
           }
         }
       })

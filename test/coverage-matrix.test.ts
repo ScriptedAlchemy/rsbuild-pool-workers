@@ -1499,6 +1499,7 @@ export default config;
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const missingIncludePath = path.join(tempDirectory, "rstest-missing-include.config.ts");
     const nonLiteralIncludePath = path.join(tempDirectory, "rstest-non-literal-include.config.ts");
+    const dynamicIncludeKeyPath = path.join(tempDirectory, "rstest-dynamic-include-key.config.ts");
 
     fs.writeFileSync(
       missingIncludePath,
@@ -1524,10 +1525,24 @@ export default defineConfig({
 `,
       "utf8"
     );
+    fs.writeFileSync(
+      dynamicIncludeKeyPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const includeKey = "include";
+
+export default defineConfig({
+  [includeKey]: ["test/**/*.dynamic-include-key.test.ts"]
+});
+`,
+      "utf8"
+    );
 
     try {
       expect(readRstestIncludePatterns(missingIncludePath)).toEqual([]);
       expect(readRstestIncludePatterns(nonLiteralIncludePath)).toEqual([]);
+      expect(readRstestIncludePatterns(dynamicIncludeKeyPath)).toEqual([]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

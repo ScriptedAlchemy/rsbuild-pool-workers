@@ -21,6 +21,21 @@ describe("mapAnyConfigExport", () => {
     expect(mapped.include).toEqual(["original-object.test.ts", "mapped-object.test.ts"]);
   });
 
+  test("throws when mapper throws for object config exports", () => {
+    const errorMessage = "mapper object throw";
+
+    expect(() =>
+      mapAnyConfigExport(
+        () => {
+          throw new Error(errorMessage);
+        },
+        {
+          include: ["original-object.test.ts"]
+        } satisfies RstestConfig
+      )
+    ).toThrow(errorMessage);
+  });
+
   test("maps promise config exports", async () => {
     const mapped = mapAnyConfigExport(
       (value) => ({
@@ -66,6 +81,24 @@ describe("mapAnyConfigExport", () => {
       "original-promise-like.test.ts",
       "mapped-promise-like.test.ts"
     ]);
+  });
+
+  test("propagates mapper throws for promise-like config exports", async () => {
+    const errorMessage = "mapper promise-like throw";
+    const mapped = mapAnyConfigExport(
+      () => {
+        throw new Error(errorMessage);
+      },
+      Promise.resolve({
+        include: ["base-promise-like.test.ts"]
+      } satisfies RstestConfig) as PromiseLike<RstestConfig>
+    );
+
+    if (!(mapped instanceof Promise)) {
+      throw new Error("Expected mapped promise-like export");
+    }
+
+    await expect(mapped).rejects.toThrow(errorMessage);
   });
 
   test("propagates rejection for promise-like config exports", async () => {
@@ -211,6 +244,26 @@ describe("mapAnyConfigExport", () => {
 
     const resolved = await mapped.call({ mode: "thenable-ctx" }, "thenable-arg");
     expect(resolved.include).toEqual(["thenable-ctx-thenable-arg", "mapped-thenable-function.test.ts"]);
+  });
+
+  test("propagates mapper throws for mapped config function exports", async () => {
+    const errorMessage = "mapper function throw";
+    const mapped = mapAnyConfigExport(
+      () => {
+        throw new Error(errorMessage);
+      },
+      function (this: { mode?: string }) {
+        return {
+          include: [this.mode ?? "unknown"]
+        } satisfies RstestConfig;
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped function export");
+    }
+
+    await expect(mapped.call({ mode: "mapped-throw" })).rejects.toThrow(errorMessage);
   });
 
   test("propagates rejection for thenable-returning mapped config functions", async () => {

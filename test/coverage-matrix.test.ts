@@ -441,4 +441,62 @@ describe("invalid workers options diagnostics coverage matrix", () => {
       "surfaces defineWorkersProject promise export top-level workers thrown errors end-to-end"
     ]);
   });
+
+  test("covers inject direct-env and scoped-precedence variants in unit suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
+    expectTitleCoverage(titles, [
+      "supports sync function-valued workers options with inject()",
+      "supports top-level workers function with inject()",
+      "supports direct env fallback for inject()",
+      "supports direct env fallback for top-level workers function inject()",
+      "defineWorkersProject supports sync function-valued workers options with inject()",
+      "defineWorkersProject supports top-level workers function with inject()",
+      "defineWorkersProject supports direct env fallback for inject()",
+      "supports direct env fallback for promise-like nested workers function",
+      "prefers scoped env over direct env for promise-like nested workers function",
+      "supports direct env fallback for promise-like top-level workers function",
+      "prefers scoped env over direct env for promise-like top-level workers function",
+      "defineWorkersProject supports direct env fallback for promise-like nested workers function",
+      "defineWorkersProject prefers scoped env over direct env for promise-like nested workers function",
+      "defineWorkersProject supports direct env fallback for promise-like top-level workers function",
+      "defineWorkersProject prefers scoped env over direct env for promise-like top-level workers function",
+      "supports direct env fallback for promise nested workers function",
+      "prefers scoped env over direct env for promise nested workers function",
+      "supports direct env fallback for promise top-level workers function",
+      "prefers scoped env over direct env for promise top-level workers function",
+      "defineWorkersProject supports direct env fallback for promise nested workers function",
+      "defineWorkersProject prefers scoped env over direct env for promise nested workers function",
+      "defineWorkersProject supports direct env fallback for promise top-level workers function",
+      "defineWorkersProject prefers scoped env over direct env for promise top-level workers function"
+    ]);
+  });
+
+  test("covers inject direct-env and scoped-precedence variants in e2e suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "e2e-cli.test.ts"));
+    expectTitleCoverage(titles, [
+      "supports function-valued workers options with inject() end-to-end",
+      "supports top-level workers function with inject() end-to-end",
+      "supports inject() direct-env fallback end-to-end",
+      "supports top-level workers function inject() direct-env fallback end-to-end",
+      "supports defineWorkersProject sync workers function with inject() end-to-end",
+      "supports defineWorkersProject top-level workers function with inject() end-to-end",
+      "supports defineWorkersProject inject() direct-env fallback end-to-end",
+      "supports promise-like config exports nested workers function direct-env fallback end-to-end",
+      "promise-like nested workers scoped env wins over direct env",
+      "supports promise-like config exports top-level workers direct-env fallback end-to-end",
+      "promise-like top-level workers scoped env wins over direct env",
+      "supports defineWorkersProject promise-like export nested workers direct-env fallback end-to-end",
+      "project promise-like nested workers scoped env wins over direct env",
+      "supports defineWorkersProject promise-like export top-level workers direct-env fallback end-to-end",
+      "project promise-like top-level workers scoped env wins over direct env",
+      "supports promise config export nested workers function direct-env fallback end-to-end",
+      "promise nested workers scoped env wins over direct env",
+      "supports promise config export top-level workers function direct-env fallback end-to-end",
+      "promise top-level workers scoped env wins over direct env",
+      "supports defineWorkersProject promise nested workers direct-env fallback end-to-end",
+      "project promise nested workers scoped env wins over direct env",
+      "supports defineWorkersProject promise export top-level workers direct-env fallback end-to-end",
+      "project promise top-level workers scoped env wins over direct env"
+    ]);
+  });
 });

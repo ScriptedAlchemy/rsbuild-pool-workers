@@ -702,6 +702,18 @@ test[dynamicModifier]("dynamic bracket run if", () => {});
     ).toEqual([]);
   });
 
+  test("documents and wires the matrix guard command", () => {
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+
+    expect(packageJson.scripts?.["test:matrix"]).toBe("rstest run test/coverage-matrix.test.ts");
+
+    const readme = fs.readFileSync(path.join(process.cwd(), "README.md"), "utf8");
+    expect(readme.includes("pnpm test:matrix")).toBe(true);
+  });
+
   test("ensures guarded suites do not contain focused/skipped/todo executable tests", () => {
     const violations: string[] = [];
 

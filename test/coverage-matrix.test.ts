@@ -1702,6 +1702,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-to-exports-element-chain-preferred.config.js"
     );
+    const exportedDefaultToModuleChainPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-default-to-module-chain-preferred.config.js"
+    );
     const exportedModuleDuplicateLiteralPath = path.join(
       tempDirectory,
       "rstest-exported-module-duplicate-literal.config.js"
@@ -2246,6 +2250,22 @@ void unrelated;
 
 module.exports = exports["default"] = defineConfig({
   include: ["test/**/*.exported-chain-element.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedDefaultToModuleChainPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-default-to-module-should-not-be-read.ts"]
+});
+void unrelated;
+
+exports.default = module.exports = defineConfig({
+  include: ["test/**/*.exported-default-to-module.test.ts"]
 });
 `,
       "utf8"
@@ -2938,6 +2958,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedModuleToExportsElementChainPreferredPath)).toEqual([
         "test/**/*.exported-chain-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedDefaultToModuleChainPreferredPath)).toEqual([
+        "test/**/*.exported-default-to-module.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedModuleDuplicateLiteralPath)).toEqual([
         "test/**/*.exported-module-duplicate-last.test.ts"

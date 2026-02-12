@@ -4907,6 +4907,39 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces promise config export nested async workers rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            test: {
+              include: ["./promise-nested-async-rejection.test.ts"],
+              poolOptions: {
+                workers: async () => {
+                  throw new Error("promise nested async workers rejection e2e");
+                }
+              }
+            }
+          })
+        );
+      `,
+      "promise-nested-async-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("promise nested async workers rejection e2e");
+    });
+  });
+
   test("surfaces promise config export nested workers thrown errors end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -8850,6 +8883,39 @@ describe("rstest CLI integration", () => {
 
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain("project promise nested workers rejection e2e");
+    });
+  });
+
+  test("surfaces defineWorkersProject promise export nested async workers rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            test: {
+              include: ["./project-promise-nested-async-rejection.test.ts"],
+              poolOptions: {
+                workers: async () => {
+                  throw new Error("project promise nested async workers rejection e2e");
+                }
+              }
+            }
+          })
+        );
+      `,
+      "project-promise-nested-async-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("project promise nested async workers rejection e2e");
     });
   });
 

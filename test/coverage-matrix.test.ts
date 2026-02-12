@@ -2,20 +2,51 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
+import ts from "typescript";
 
 function readTestTitles(filePath: string): string[] {
   const source = fs.readFileSync(filePath, "utf8");
-  const patterns = [
-    /test(?:\.(?:only|skip|todo))?\(\s*"([^"]+)"/g,
-    /test(?:\.(?:only|skip|todo))?\(\s*'([^']+)'/g,
-    /test(?:\.(?:only|skip|todo))?\(\s*`([^`]+)`/g
-  ];
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+
   const titles = new Set<string>();
-  for (const pattern of patterns) {
-    for (const match of source.matchAll(pattern)) {
-      titles.add(match[1]);
+  const isSupportedTestExpression = (expression: ts.LeftHandSideExpression): boolean => {
+    if (ts.isIdentifier(expression)) {
+      return expression.text === "test";
     }
-  }
+
+    if (
+      ts.isPropertyAccessExpression(expression) &&
+      ts.isIdentifier(expression.expression) &&
+      expression.expression.text === "test"
+    ) {
+      return ["only", "skip", "todo"].includes(expression.name.text);
+    }
+
+    return false;
+  };
+
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && isSupportedTestExpression(node.expression)) {
+      const [titleNode] = node.arguments;
+      if (
+        titleNode &&
+        (ts.isStringLiteral(titleNode) || ts.isNoSubstitutionTemplateLiteral(titleNode))
+      ) {
+        titles.add(titleNode.text);
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+
   return Array.from(titles);
 }
 
@@ -49,8 +80,11 @@ describe("regression coverage matrix", () => {
       fixturePath,
       `
 test("double quote", () => {});
+test("escaped \\"double\\" quote", () => {});
 test('single quote', () => {});
+test('single \\'quote\\' value', () => {});
 test(\`template literal\`, () => {});
+test(\`template \\\`quote\\\`\`, () => {});
 test.only("only variant", () => {});
 test.skip('skip variant', () => {});
 test.todo(\`todo variant\`, () => {});
@@ -62,8 +96,11 @@ test.todo(\`todo variant\`, () => {});
       const titles = readTestTitles(fixturePath);
       expectTitleCoverage(titles, [
         "double quote",
+        'escaped "double" quote',
         "single quote",
+        "single 'quote' value",
         "template literal",
+        "template `quote`",
         "only variant",
         "skip variant",
         "todo variant"
@@ -525,21 +562,29 @@ test.todo(\`todo variant\`, () => {});
       "supports defineWorkersProject top-level workers function with inject() end-to-end",
       "supports defineWorkersProject inject() direct-env fallback end-to-end",
       "supports promise-like config exports nested workers function direct-env fallback end-to-end",
-      "promise-like nested workers scoped env wins over direct env",
+      "supports promise-like config exports nested async workers direct-env fallback end-to-end",
+      "supports promise-like config exports nested thenable workers direct-env fallback end-to-end",
       "supports promise-like config exports top-level workers direct-env fallback end-to-end",
-      "promise-like top-level workers scoped env wins over direct env",
+      "supports promise-like config exports async top-level workers direct-env fallback end-to-end",
+      "supports promise-like config exports top-level thenable workers direct-env fallback end-to-end",
       "supports defineWorkersProject promise-like export nested workers direct-env fallback end-to-end",
-      "project promise-like nested workers scoped env wins over direct env",
+      "supports defineWorkersProject promise-like export nested async workers direct-env fallback end-to-end",
+      "supports defineWorkersProject promise-like export nested thenable workers direct-env fallback end-to-end",
       "supports defineWorkersProject promise-like export top-level workers direct-env fallback end-to-end",
-      "project promise-like top-level workers scoped env wins over direct env",
+      "supports defineWorkersProject promise-like export async top-level workers direct-env fallback end-to-end",
+      "supports defineWorkersProject promise-like export top-level thenable workers direct-env fallback end-to-end",
       "supports promise config export nested workers function direct-env fallback end-to-end",
-      "promise nested workers scoped env wins over direct env",
+      "supports promise config export nested async workers function direct-env fallback end-to-end",
+      "supports promise config export nested thenable workers direct-env fallback end-to-end",
       "supports promise config export top-level workers function direct-env fallback end-to-end",
-      "promise top-level workers scoped env wins over direct env",
+      "supports promise config export async top-level workers direct-env fallback end-to-end",
+      "supports promise config export top-level thenable workers direct-env fallback end-to-end",
       "supports defineWorkersProject promise nested workers direct-env fallback end-to-end",
-      "project promise nested workers scoped env wins over direct env",
+      "supports defineWorkersProject promise nested async workers direct-env fallback end-to-end",
+      "supports defineWorkersProject promise nested thenable workers direct-env fallback end-to-end",
       "supports defineWorkersProject promise export top-level workers direct-env fallback end-to-end",
-      "project promise top-level workers scoped env wins over direct env"
+      "supports defineWorkersProject promise export async top-level workers direct-env fallback end-to-end",
+      "supports defineWorkersProject promise export top-level thenable workers direct-env fallback end-to-end"
     ]);
   });
 

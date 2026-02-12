@@ -4,8 +4,18 @@ import { describe, expect, test } from "@rstest/core";
 
 function readTestTitles(filePath: string): string[] {
   const source = fs.readFileSync(filePath, "utf8");
-  const matches = source.matchAll(/test\("([^"]+)"/g);
-  return Array.from(matches, (match) => match[1]);
+  const patterns = [
+    /test(?:\.(?:only|skip|todo))?\(\s*"([^"]+)"/g,
+    /test(?:\.(?:only|skip|todo))?\(\s*'([^']+)'/g,
+    /test(?:\.(?:only|skip|todo))?\(\s*`([^`]+)`/g
+  ];
+  const titles = new Set<string>();
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      titles.add(match[1]);
+    }
+  }
+  return Array.from(titles);
 }
 
 function expectSuffixCoverage(

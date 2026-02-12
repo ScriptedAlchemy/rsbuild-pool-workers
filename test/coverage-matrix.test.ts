@@ -1441,6 +1441,8 @@ test("cts title", () => {});
     const jsConfigPath = path.join(tempDirectory, "rstest-js.config.js");
     const cjsConfigPath = path.join(tempDirectory, "rstest-cjs.config.cjs");
     const mjsConfigPath = path.join(tempDirectory, "rstest-mjs.config.mjs");
+    const mtsConfigPath = path.join(tempDirectory, "rstest-mts.config.mts");
+    const ctsConfigPath = path.join(tempDirectory, "rstest-cts.config.cts");
     const localShadowConfigPath = path.join(tempDirectory, "rstest-local-shadow.config.ts");
     const wrappedCalleeConfigPath = path.join(tempDirectory, "rstest-wrapped-callee.config.ts");
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
@@ -1856,6 +1858,38 @@ export default defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      mtsConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.mts-config-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default defineConfig({
+  include: ["test/**/*.mts-config.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      ctsConfigPath,
+      `
+import core = require("@rstest/core");
+
+const unrelated = {
+  include: ["test/**/*.cts-config-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default core.defineConfig({
+  include: ["test/**/*.cts-config.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       localShadowConfigPath,
       `
 import { defineConfig as makeConfig } from "@rstest/core";
@@ -2049,6 +2083,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(mjsConfigPath)).toEqual([
         "test/**/*.mjs-config.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(mtsConfigPath)).toEqual([
+        "test/**/*.mts-config.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(ctsConfigPath)).toEqual([
+        "test/**/*.cts-config.test.ts"
       ]);
       expect(readRstestIncludePatterns(localShadowConfigPath)).toEqual([
         "test/**/*.shadow.test.ts"

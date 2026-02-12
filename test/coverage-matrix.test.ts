@@ -17,7 +17,16 @@ const GUARDED_TEST_SUITES = [
   "workers-plugin.test.ts"
 ] as const;
 
-const SUPPORTED_TEST_FILE_SUFFIXES = [".test.ts", ".test.tsx", ".test.mts", ".test.cts"];
+const SUPPORTED_TEST_FILE_SUFFIXES = [
+  ".test.cjs",
+  ".test.cts",
+  ".test.js",
+  ".test.jsx",
+  ".test.mjs",
+  ".test.mts",
+  ".test.ts",
+  ".test.tsx"
+];
 const TEST_MODIFIER_SEGMENTS = new Set(["only", "skip", "todo", "concurrent"]);
 type VersionedCacheEntry<T> = {
   version: string;
@@ -40,6 +49,12 @@ function getFileVersion(filePath: string): string {
 function getScriptKindFromFilePath(filePath: string): ts.ScriptKind {
   if (filePath.endsWith(".tsx")) {
     return ts.ScriptKind.TSX;
+  }
+  if (filePath.endsWith(".jsx")) {
+    return ts.ScriptKind.JSX;
+  }
+  if (filePath.endsWith(".mjs") || filePath.endsWith(".cjs") || filePath.endsWith(".js")) {
+    return ts.ScriptKind.JS;
   }
   if (filePath.endsWith(".mts")) {
     return ts.ScriptKind.TS;
@@ -490,7 +505,11 @@ test[dynamicModifier]("dynamic bracket run if", () => {});
     fs.writeFileSync(path.join(tempDirectory, "beta.test.tsx"), "test(\"beta\", () => {});", "utf8");
     fs.writeFileSync(path.join(tempDirectory, "gamma.test.mts"), "test(\"gamma\", () => {});", "utf8");
     fs.writeFileSync(path.join(tempDirectory, "delta.test.cts"), "test(\"delta\", () => {});", "utf8");
-    fs.writeFileSync(path.join(tempDirectory, "ignored.test.js"), "test(\"ignored\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "epsilon.test.js"), "test(\"epsilon\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "zeta.test.jsx"), "test(\"zeta\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "eta.test.mjs"), "test(\"eta\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "theta.test.cjs"), "test(\"theta\", () => {});", "utf8");
+    fs.writeFileSync(path.join(tempDirectory, "ignored.spec.js"), "test(\"ignored\", () => {});", "utf8");
     fs.writeFileSync(
       path.join(tempDirectory, "nested", "nested.test.tsx"),
       "test(\"nested\", () => {});",
@@ -502,8 +521,12 @@ test[dynamicModifier]("dynamic bracket run if", () => {});
         "alpha.test.ts",
         "beta.test.tsx",
         "delta.test.cts",
+        "epsilon.test.js",
+        "eta.test.mjs",
         "gamma.test.mts",
-        "nested/nested.test.tsx"
+        "nested/nested.test.tsx",
+        "theta.test.cjs",
+        "zeta.test.jsx"
       ]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
@@ -526,6 +549,27 @@ test("tsx title", () => {});
 
     try {
       expect(readTestTitles(fixturePath)).toEqual(["tsx title"]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("parses executable test titles from jsx fixtures", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "jsx-fixture.test.jsx");
+
+    fs.writeFileSync(
+      fixturePath,
+      `
+const element = <section data-kind="fixture">hello</section>;
+void element;
+test("jsx title", () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(readTestTitles(fixturePath)).toEqual(["jsx title"]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }
@@ -741,6 +785,28 @@ test("tsx title", () => {});
       [
         "GUARDED_TEST_SUITES must not contain duplicate entries.",
         `Unique count: ${unique.length}, actual count: ${guardedSuites.length}`
+      ].join("\n")
+    ).toBe(unique.length);
+  });
+
+  test("keeps SUPPORTED_TEST_FILE_SUFFIXES sorted and unique", () => {
+    const suffixes = [...SUPPORTED_TEST_FILE_SUFFIXES];
+    const sorted = [...suffixes].sort();
+    const unique = Array.from(new Set(suffixes));
+
+    expect(
+      suffixes,
+      [
+        "SUPPORTED_TEST_FILE_SUFFIXES must remain sorted for readability and stable discovery behavior.",
+        `Expected sorted order: ${sorted.join(", ")}`
+      ].join("\n")
+    ).toEqual(sorted);
+
+    expect(
+      suffixes.length,
+      [
+        "SUPPORTED_TEST_FILE_SUFFIXES must not contain duplicate entries.",
+        `Unique count: ${unique.length}, actual count: ${suffixes.length}`
       ].join("\n")
     ).toBe(unique.length);
   });

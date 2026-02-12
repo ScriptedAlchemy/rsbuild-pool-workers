@@ -217,9 +217,7 @@ function expectSuffixCoverage(
   prefix: string,
   expectedSuffixes: string[]
 ): void {
-  const duplicateExpectedSuffixes = expectedSuffixes.filter(
-    (suffix, index) => expectedSuffixes.indexOf(suffix) !== index
-  );
+  const duplicateExpectedSuffixes = findDuplicateEntries(expectedSuffixes);
   expect(
     duplicateExpectedSuffixes,
     [
@@ -244,9 +242,7 @@ function expectSuffixCoverage(
 }
 
 function expectTitleCoverage(titles: string[], expectedTitles: string[]): void {
-  const duplicateExpectedTitles = expectedTitles.filter(
-    (title, index) => expectedTitles.indexOf(title) !== index
-  );
+  const duplicateExpectedTitles = findDuplicateEntries(expectedTitles);
   expect(
     duplicateExpectedTitles,
     [
@@ -264,6 +260,16 @@ function expectTitleCoverage(titles: string[], expectedTitles: string[]): void {
       ...missing.map((title) => `- ${title}`)
     ].join("\n")
   ).toEqual([]);
+}
+
+function findDuplicateEntries(values: string[]): string[] {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .filter(([, count]) => count > 1)
+    .map(([value, count]) => `${value} (${count}x)`);
 }
 
 describe("regression coverage matrix", () => {

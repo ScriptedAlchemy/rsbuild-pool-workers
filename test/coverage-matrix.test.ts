@@ -515,6 +515,30 @@ function readRstestIncludePatterns(
     return readPatternsFromConfigObject(unwrappedArgument);
   };
 
+  const isModuleExportsNamespaceExpression = (expression: ts.Expression): boolean => {
+    const unwrappedExpression = unwrapConfigExpression(expression);
+    if (ts.isPropertyAccessExpression(unwrappedExpression)) {
+      const unwrappedBaseExpression = unwrapConfigExpression(unwrappedExpression.expression);
+      return (
+        ts.isIdentifier(unwrappedBaseExpression) &&
+        unwrappedBaseExpression.text === "module" &&
+        unwrappedExpression.name.text === "exports"
+      );
+    }
+    if (ts.isElementAccessExpression(unwrappedExpression)) {
+      const unwrappedBaseExpression = unwrapConfigExpression(unwrappedExpression.expression);
+      const argument = unwrappedExpression.argumentExpression;
+      return (
+        ts.isIdentifier(unwrappedBaseExpression) &&
+        unwrappedBaseExpression.text === "module" &&
+        argument !== undefined &&
+        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
+        argument.text === "exports"
+      );
+    }
+    return false;
+  };
+
   const isModuleExportsAssignmentTarget = (expression: ts.Expression): boolean => {
     const unwrappedExpression = unwrapConfigExpression(expression);
     if (ts.isPropertyAccessExpression(unwrappedExpression)) {
@@ -530,6 +554,12 @@ function readRstestIncludePatterns(
         ts.isIdentifier(unwrappedBaseExpression) &&
         unwrappedBaseExpression.text === "exports" &&
         unwrappedExpression.name.text === "default"
+      ) {
+        return true;
+      }
+      if (
+        unwrappedExpression.name.text === "default" &&
+        isModuleExportsNamespaceExpression(unwrappedBaseExpression)
       ) {
         return true;
       }
@@ -549,6 +579,14 @@ function readRstestIncludePatterns(
       if (
         ts.isIdentifier(unwrappedBaseExpression) &&
         unwrappedBaseExpression.text === "exports" &&
+        argument &&
+        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
+        argument.text === "default"
+      ) {
+        return true;
+      }
+      if (
+        isModuleExportsNamespaceExpression(unwrappedBaseExpression) &&
         argument &&
         (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
         argument.text === "default"
@@ -1577,7 +1615,7 @@ test("cts title", () => {});
       "follows last-assignment object-literal semantics",
       "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present",
       "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)",
-      "top-level exports (`export default`, `module.exports`, `exports.default`), those exported call sites (including simple identifier references to top-level `defineConfig(...)` results and chained assignment forms) are preferred over non-export helper calls",
+      "top-level exports (`export default`, `module.exports`, `exports.default`, `module.exports.default`), those exported call sites (including simple identifier references to top-level `defineConfig(...)` results and chained assignment forms) are preferred over non-export helper calls",
       "repeated top-level export assignments, include extraction follows last-assignment statement order"
     ];
     const missingSnippets = requiredSnippets.filter((snippet) => !readme.includes(snippet));
@@ -1665,6 +1703,14 @@ test("cts title", () => {});
     const exportedWrappedDefaultPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-wrapped-default-preferred.config.js"
+    );
+    const exportedModuleDefaultPropertyPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-default-property-preferred.config.js"
+    );
+    const exportedModuleDefaultElementPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-default-element-preferred.config.js"
     );
     const exportedEqualsPreferredPath = path.join(
       tempDirectory,
@@ -2100,6 +2146,38 @@ void unrelated;
 
 (exports).default = defineConfig({
   include: ["test/**/*.wrapped-default-preferred.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleDefaultPropertyPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.module-default-property-should-not-be-read.ts"]
+});
+void unrelated;
+
+module.exports.default = defineConfig({
+  include: ["test/**/*.module-default-property.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleDefaultElementPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.module-default-element-should-not-be-read.ts"]
+});
+void unrelated;
+
+module["exports"]["default"] = defineConfig({
+  include: ["test/**/*.module-default-element.test.ts"]
 });
 `,
       "utf8"
@@ -2953,6 +3031,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedWrappedDefaultPreferredPath)).toEqual([
         "test/**/*.wrapped-default-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleDefaultPropertyPreferredPath)).toEqual([
+        "test/**/*.module-default-property.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleDefaultElementPreferredPath)).toEqual([
+        "test/**/*.module-default-element.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedEqualsPreferredPath)).toEqual([
         "test/**/*.export-equals-preferred.test.ts"

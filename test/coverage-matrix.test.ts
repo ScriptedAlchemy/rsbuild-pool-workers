@@ -1716,6 +1716,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-default-element-preferred.config.js"
     );
+    const exportedModuleDefaultPropertyIdentifierPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-default-property-identifier-preferred.config.js"
+    );
+    const exportedModuleDefaultElementIdentifierPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-default-element-identifier-preferred.config.js"
+    );
     const exportedEqualsPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-equals-preferred.config.ts"
@@ -2223,6 +2231,42 @@ void unrelated;
 module["exports"]["default"] = defineConfig({
   include: ["test/**/*.module-default-element.test.ts"]
 });
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleDefaultPropertyIdentifierPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.module-default-property-identifier-should-not-be-read.ts"]
+});
+void unrelated;
+
+const config = defineConfig({
+  include: ["test/**/*.module-default-property-identifier.test.ts"]
+});
+
+module.exports.default = config;
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleDefaultElementIdentifierPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.module-default-element-identifier-should-not-be-read.ts"]
+});
+void unrelated;
+
+const config = defineConfig({
+  include: ["test/**/*.module-default-element-identifier.test.ts"]
+});
+
+module["exports"]["default"] = config;
 `,
       "utf8"
     );
@@ -3102,6 +3146,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedModuleDefaultElementPreferredPath)).toEqual([
         "test/**/*.module-default-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleDefaultPropertyIdentifierPreferredPath)).toEqual([
+        "test/**/*.module-default-property-identifier.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleDefaultElementIdentifierPreferredPath)).toEqual([
+        "test/**/*.module-default-element-identifier.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedEqualsPreferredPath)).toEqual([
         "test/**/*.export-equals-preferred.test.ts"

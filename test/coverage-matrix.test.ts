@@ -1820,6 +1820,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-mixed-target-reassignment-preferred.config.js"
     );
+    const exportedMixedTargetNonLiteralLastPath = path.join(
+      tempDirectory,
+      "rstest-exported-mixed-target-non-literal-last.config.js"
+    );
+    const exportedMixedTargetLiteralLastPath = path.join(
+      tempDirectory,
+      "rstest-exported-mixed-target-literal-last.config.js"
+    );
     const exportedModuleDuplicateLiteralPath = path.join(
       tempDirectory,
       "rstest-exported-module-duplicate-literal.config.js"
@@ -2698,6 +2706,40 @@ module.exports = defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      exportedMixedTargetNonLiteralLastPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const dynamicInclude = ["test/**/*.exported-mixed-target-non-literal-last.test.ts"];
+
+exports.default = defineConfig({
+  include: ["test/**/*.exported-mixed-target-non-literal-first.test.ts"]
+});
+
+module.exports = defineConfig({
+  include: dynamicInclude
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedMixedTargetLiteralLastPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const dynamicInclude = ["test/**/*.exported-mixed-target-literal-first.test.ts"];
+
+exports.default = defineConfig({
+  include: dynamicInclude
+});
+
+module.exports = defineConfig({
+  include: ["test/**/*.exported-mixed-target-literal-last.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       exportedModuleDuplicateLiteralPath,
       `
 const { defineConfig } = require("@rstest/core");
@@ -3439,6 +3481,10 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedMixedTargetReassignmentPreferredPath)).toEqual([
         "test/**/*.exported-mixed-target-second.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedMixedTargetNonLiteralLastPath)).toEqual([]);
+      expect(readRstestIncludePatterns(exportedMixedTargetLiteralLastPath)).toEqual([
+        "test/**/*.exported-mixed-target-literal-last.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedModuleDuplicateLiteralPath)).toEqual([
         "test/**/*.exported-module-duplicate-last.test.ts"

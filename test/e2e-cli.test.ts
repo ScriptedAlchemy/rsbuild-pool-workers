@@ -4216,6 +4216,49 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces thenable config function export invalid nested workers undefined return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          then(resolve) {
+            resolve({
+              test: {
+                include: ["./thenable-config-function-invalid-nested-workers-undefined-return.test.ts"],
+                poolOptions: {
+                  workers: () => undefined
+                }
+              }
+            });
+            return Promise.resolve({
+              test: {
+                include: ["./thenable-config-function-invalid-nested-workers-undefined-return.test.ts"],
+                poolOptions: {
+                  workers: () => undefined
+                }
+              }
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "thenable-config-function-invalid-nested-workers-undefined-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received undefined."
+      );
+    });
+  });
+
   test("surfaces thenable config function export invalid nested workers string return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -4255,6 +4298,49 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+      );
+    });
+  });
+
+  test("surfaces thenable config function export invalid nested workers null return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          then(resolve) {
+            resolve({
+              test: {
+                include: ["./thenable-config-function-invalid-nested-workers-null-return.test.ts"],
+                poolOptions: {
+                  workers: () => null
+                }
+              }
+            });
+            return Promise.resolve({
+              test: {
+                include: ["./thenable-config-function-invalid-nested-workers-null-return.test.ts"],
+                poolOptions: {
+                  workers: () => null
+                }
+              }
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "thenable-config-function-invalid-nested-workers-null-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received null."
       );
     });
   });
@@ -4376,6 +4462,76 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers() return value: expected an object but received null."
+      );
+    });
+  });
+
+  test("surfaces thenable config function export invalid top-level workers string return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          then(resolve) {
+            resolve({
+              include: ["./thenable-config-function-invalid-top-level-workers-string-return.test.ts"],
+              workers: () => "invalid-workers-options"
+            });
+            return Promise.resolve({
+              include: ["./thenable-config-function-invalid-top-level-workers-string-return.test.ts"],
+              workers: () => "invalid-workers-options"
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "thenable-config-function-invalid-top-level-workers-string-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received string."
+      );
+    });
+  });
+
+  test("surfaces thenable config function export invalid top-level workers array return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          then(resolve) {
+            resolve({
+              include: ["./thenable-config-function-invalid-top-level-workers-array-return.test.ts"],
+              workers: () => []
+            });
+            return Promise.resolve({
+              include: ["./thenable-config-function-invalid-top-level-workers-array-return.test.ts"],
+              workers: () => []
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "thenable-config-function-invalid-top-level-workers-array-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received array."
       );
     });
   });
@@ -14214,6 +14370,49 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject thenable config function export invalid nested workers undefined return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          then(resolve) {
+            resolve({
+              test: {
+                include: ["./project-thenable-config-function-invalid-nested-workers-undefined-return.test.ts"],
+                poolOptions: {
+                  workers: () => undefined
+                }
+              }
+            });
+            return Promise.resolve({
+              test: {
+                include: ["./project-thenable-config-function-invalid-nested-workers-undefined-return.test.ts"],
+                poolOptions: {
+                  workers: () => undefined
+                }
+              }
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "project-thenable-config-function-invalid-nested-workers-undefined-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received undefined."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject thenable config function export invalid nested workers string return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -14253,6 +14452,49 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject thenable config function export invalid nested workers null return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          then(resolve) {
+            resolve({
+              test: {
+                include: ["./project-thenable-config-function-invalid-nested-workers-null-return.test.ts"],
+                poolOptions: {
+                  workers: () => null
+                }
+              }
+            });
+            return Promise.resolve({
+              test: {
+                include: ["./project-thenable-config-function-invalid-nested-workers-null-return.test.ts"],
+                poolOptions: {
+                  workers: () => null
+                }
+              }
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "project-thenable-config-function-invalid-nested-workers-null-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received null."
       );
     });
   });
@@ -14374,6 +14616,76 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers() return value: expected an object but received null."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject thenable config function export invalid top-level workers string return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          then(resolve) {
+            resolve({
+              include: ["./project-thenable-config-function-invalid-top-level-workers-string-return.test.ts"],
+              workers: () => "invalid-workers-options"
+            });
+            return Promise.resolve({
+              include: ["./project-thenable-config-function-invalid-top-level-workers-string-return.test.ts"],
+              workers: () => "invalid-workers-options"
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "project-thenable-config-function-invalid-top-level-workers-string-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received string."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject thenable config function export invalid top-level workers array return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          then(resolve) {
+            resolve({
+              include: ["./project-thenable-config-function-invalid-top-level-workers-array-return.test.ts"],
+              workers: () => []
+            });
+            return Promise.resolve({
+              include: ["./project-thenable-config-function-invalid-top-level-workers-array-return.test.ts"],
+              workers: () => []
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "project-thenable-config-function-invalid-top-level-workers-array-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received array."
       );
     });
   });

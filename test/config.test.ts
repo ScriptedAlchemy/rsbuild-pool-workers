@@ -1989,6 +1989,21 @@ describe("defineWorkersConfig", () => {
     await expect(configPromise).rejects.toThrow(errorMessage);
   });
 
+  test("propagates rejection from promise top-level workers function", async () => {
+    const errorMessage = "promise top-level workers rejection";
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: () => Promise.reject(new Error(errorMessage))
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(errorMessage);
+  });
+
   test("supports promise config exports with nested workers function", async () => {
     process.env.RSTEST_INJECT_PROMISE_NESTED = "\"promise-nested\"";
 
@@ -4996,6 +5011,21 @@ describe("defineWorkersConfig", () => {
         workers: () => {
           throw new Error(errorMessage);
         }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates rejection from promise top-level workers function", async () => {
+    const errorMessage = "project promise top-level workers rejection";
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () => Promise.reject(new Error(errorMessage))
       })
     );
 

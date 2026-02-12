@@ -604,13 +604,17 @@ test.runIf(true)("run if", () => {});
     ).toEqual([]);
   });
 
-  test("ensures guarded suites do not contain focused or skipped executable tests", () => {
+  test("ensures guarded suites do not contain focused/skipped/todo executable tests", () => {
     const violations: string[] = [];
 
     for (const suiteFile of GUARDED_TEST_SUITES) {
       const filePath = path.join(process.cwd(), "test", suiteFile);
       for (const testCall of collectParsedTestCalls(filePath)) {
-        if (!testCall.modifiers.some((modifier) => modifier === "only" || modifier === "skip")) {
+        if (
+          !testCall.modifiers.some(
+            (modifier) => modifier === "only" || modifier === "skip" || modifier === "todo"
+          )
+        ) {
           continue;
         }
 
@@ -625,7 +629,7 @@ test.runIf(true)("run if", () => {});
     expect(
       violations,
       [
-        "Focused/skipped executable tests are not allowed in guarded suites:",
+        "Focused/skipped/todo executable tests are not allowed in guarded suites:",
         ...violations.map((violation) => `- ${violation}`)
       ].join("\n")
     ).toEqual([]);

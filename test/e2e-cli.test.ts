@@ -8329,6 +8329,64 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersProject promise nested workers direct-env fallback end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            test: {
+              include: ["./project-promise-nested-workers-direct-env.test.ts"],
+              poolOptions: {
+                workers: ({ inject }) => ({
+                  main: "./worker.ts",
+                  miniflare: {
+                    bindings: {
+                      PROJECT_PROMISE_NESTED_WORKERS_DIRECT_ENV: inject("PROJECT_PROMISE_NESTED_WORKERS_DIRECT_ENV")
+                    }
+                  }
+                })
+              }
+            }
+          })
+        );
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_NESTED_WORKERS_DIRECT_ENV));
+          }
+        };
+      `,
+      "project-promise-nested-workers-direct-env.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise nested workers direct-env fallback wiring works", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-nested-workers-direct-env-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-nested-workers-direct-env.test.ts");
+      },
+      {
+        env: {
+          PROJECT_PROMISE_NESTED_WORKERS_DIRECT_ENV: "project-promise-nested-workers-direct-env-ok"
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject promise nested async workers direct-env fallback end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

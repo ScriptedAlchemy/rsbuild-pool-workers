@@ -4576,6 +4576,38 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_NESTED_THENABLE;
   });
 
+  test("defineWorkersProject supports direct env fallback for promise nested workers function", async () => {
+    process.env.PROJECT_PROMISE_NESTED_FALLBACK = "\"project-promise-nested-fallback\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: ({ inject }: WorkerPoolOptionsContext) => ({
+              main: "./src/project-promise-nested-fallback-entry.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_NESTED_FALLBACK: inject<string>("PROJECT_PROMISE_NESTED_FALLBACK")
+                }
+              }
+            })
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-nested-fallback");
+
+    delete process.env.PROJECT_PROMISE_NESTED_FALLBACK;
+  });
+
   test("defineWorkersProject supports direct env fallback for promise nested async workers function", async () => {
     process.env.PROJECT_PROMISE_NESTED_ASYNC_FALLBACK =
       "\"project-promise-nested-async-fallback\"";

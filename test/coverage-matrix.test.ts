@@ -36,6 +36,13 @@ function getFileVersion(filePath: string): string {
   return `${stats.mtimeMs}:${stats.size}`;
 }
 
+function cloneParsedTestCalls(calls: ParsedTestCall[]): ParsedTestCall[] {
+  return calls.map((call) => ({
+    title: call.title,
+    modifiers: [...call.modifiers]
+  }));
+}
+
 function extractSupportedModifierChain(
   expression: ts.LeftHandSideExpression
 ): string[] | undefined {
@@ -68,7 +75,7 @@ function collectParsedTestCalls(
 ): ParsedTestCall[] {
   const cached = PARSED_TEST_CALL_CACHE.get(filePath);
   if (cached && cached.version === version) {
-    return [...cached.value];
+    return cloneParsedTestCalls(cached.value);
   }
 
   const source = fs.readFileSync(filePath, "utf8");
@@ -98,7 +105,7 @@ function collectParsedTestCalls(
       ) {
         title = titleNode.text;
       }
-      calls.push({ title, modifiers });
+      calls.push({ title, modifiers: [...modifiers] });
     }
 
     ts.forEachChild(node, visit);
@@ -108,9 +115,9 @@ function collectParsedTestCalls(
 
   PARSED_TEST_CALL_CACHE.set(filePath, {
     version,
-    value: [...calls]
+    value: cloneParsedTestCalls(calls)
   });
-  return [...calls];
+  return cloneParsedTestCalls(calls);
 }
 
 function collectTestTitles(
@@ -481,6 +488,49 @@ test.runIf(true)("run if", () => {});
       firstRead.set("injected", 1);
 
       expect(Array.from(readTestTitleCounts(fixturePath).entries())).toEqual([["same", 2]]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("returns defensive copies for parsed executable test call metadata", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "parsed-call-copy-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `test.concurrent.only("stable title", () => {});\n`,
+      "utf8"
+    );
+
+    try {
+      const firstRead = collectParsedTestCalls(fixturePath);
+      firstRead[0].title = "mutated title";
+      firstRead[0].modifiers.push("skip");
+
+      expect(collectParsedTestCalls(fixturePath)).toEqual([
+        { title: "stable title", modifiers: ["concurrent", "only"] }
+      ]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("returns defensive copies for cached unique title arrays", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "title-array-copy-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `test("first", () => {});\ntest("second", () => {});\n`,
+      "utf8"
+    );
+
+    try {
+      const firstRead = readTestTitles(fixturePath);
+      firstRead.push("injected");
+
+      expect(readTestTitles(fixturePath)).toEqual(["first", "second"]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

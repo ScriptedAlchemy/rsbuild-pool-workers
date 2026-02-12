@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
 import ts from "typescript";
 
-function readTestTitles(filePath: string): string[] {
+function collectTestTitles(filePath: string): string[] {
   const source = fs.readFileSync(filePath, "utf8");
   const sourceFile = ts.createSourceFile(
     filePath,
@@ -14,7 +14,7 @@ function readTestTitles(filePath: string): string[] {
     ts.ScriptKind.TS
   );
 
-  const titles = new Set<string>();
+  const titles: string[] = [];
   const isSupportedTestExpression = (expression: ts.LeftHandSideExpression): boolean => {
     const modifiers = new Set(["only", "skip", "todo", "concurrent"]);
     const chain: string[] = [];
@@ -43,7 +43,7 @@ function readTestTitles(filePath: string): string[] {
         titleNode &&
         (ts.isStringLiteral(titleNode) || ts.isNoSubstitutionTemplateLiteral(titleNode))
       ) {
-        titles.add(titleNode.text);
+        titles.push(titleNode.text);
       }
     }
 
@@ -52,7 +52,19 @@ function readTestTitles(filePath: string): string[] {
 
   visit(sourceFile);
 
-  return Array.from(titles);
+  return titles;
+}
+
+function readTestTitles(filePath: string): string[] {
+  return Array.from(new Set(collectTestTitles(filePath)));
+}
+
+function readTestTitleCounts(filePath: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const title of collectTestTitles(filePath)) {
+    counts.set(title, (counts.get(title) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function expectSuffixCoverage(
@@ -154,6 +166,36 @@ test("actual executable title", () => {});
       expect(titles.includes("embedded only fixture title")).toBe(false);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("ensures guarded suites have unique executable test titles", () => {
+    const guardedSuites = [
+      "config.test.ts",
+      "e2e-cli.test.ts",
+      "workers-plugin.test.ts",
+      "runtime-options.test.ts",
+      "runtime-state.test.ts",
+      "cloudflare-test-helpers.test.ts",
+      "cloudflare-test-unsupported.test.ts",
+      "config-utilities.test.ts",
+      "config-types.test.ts",
+      "coverage-matrix.test.ts"
+    ];
+
+    for (const suiteFile of guardedSuites) {
+      const counts = readTestTitleCounts(path.join(process.cwd(), "test", suiteFile));
+      const duplicates = Array.from(counts.entries())
+        .filter(([, count]) => count > 1)
+        .map(([title, count]) => `${count}x ${title}`);
+
+      expect(
+        duplicates,
+        [
+          `Duplicate executable test titles in ${suiteFile}:`,
+          ...duplicates.map((entry) => `- ${entry}`)
+        ].join("\n")
+      ).toEqual([]);
     }
   });
 

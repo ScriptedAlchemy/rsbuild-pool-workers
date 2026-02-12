@@ -576,6 +576,21 @@ describe("defineWorkersConfig", () => {
     await expect(configPromiseLike).rejects.toThrow(errorMessage);
   });
 
+  test("propagates thrown errors from promise-like config exports", async () => {
+    const errorMessage = "promise-like config export throw";
+    const configPromiseLike = defineWorkersConfig({
+      then() {
+        throw new Error(errorMessage);
+      }
+    } as unknown as PromiseLike<WorkersUserConfig>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(errorMessage);
+  });
+
   test("dedupes workers plugin for promise-like config exports", async () => {
     const existingPlugin = {
       name: WORKERS_RSBUILD_PLUGIN_NAME,
@@ -2835,6 +2850,21 @@ describe("defineWorkersConfig", () => {
           onrejected(error);
         }
         return Promise.reject(error);
+      }
+    } as unknown as PromiseLike<WorkersUserConfig>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates thrown errors from promise-like config exports", async () => {
+    const errorMessage = "project promise-like config export throw";
+    const value = defineWorkersProject({
+      then() {
+        throw new Error(errorMessage);
       }
     } as unknown as PromiseLike<WorkersUserConfig>);
 

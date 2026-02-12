@@ -285,6 +285,7 @@ function readRstestIncludePatterns(
     ts.ScriptKind.TS
   );
   const defineConfigIdentifiers = new Set(["defineConfig"]);
+  const defineConfigNamespaceIdentifiers = new Set<string>();
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement)) {
       continue;
@@ -297,14 +298,21 @@ function readRstestIncludePatterns(
     }
 
     const namedBindings = statement.importClause?.namedBindings;
-    if (!namedBindings || !ts.isNamedImports(namedBindings)) {
+    if (!namedBindings) {
       continue;
     }
 
-    for (const element of namedBindings.elements) {
-      const importedName = element.propertyName?.text ?? element.name.text;
-      if (importedName === "defineConfig") {
-        defineConfigIdentifiers.add(element.name.text);
+    if (ts.isNamespaceImport(namedBindings)) {
+      defineConfigNamespaceIdentifiers.add(namedBindings.name.text);
+      continue;
+    }
+
+    if (ts.isNamedImports(namedBindings)) {
+      for (const element of namedBindings.elements) {
+        const importedName = element.propertyName?.text ?? element.name.text;
+        if (importedName === "defineConfig") {
+          defineConfigIdentifiers.add(element.name.text);
+        }
       }
     }
   }
@@ -346,15 +354,22 @@ function readRstestIncludePatterns(
       return defineConfigIdentifiers.has(expression.text);
     }
     if (ts.isPropertyAccessExpression(expression)) {
-      return expression.name.text === "defineConfig";
+      return (
+        expression.name.text === "defineConfig" &&
+        ts.isIdentifier(expression.expression) &&
+        defineConfigNamespaceIdentifiers.has(expression.expression.text)
+      );
     }
     if (ts.isElementAccessExpression(expression)) {
       const argument = expression.argumentExpression;
       if (
         argument &&
-        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))
+        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
+        argument.text === "defineConfig" &&
+        ts.isIdentifier(expression.expression) &&
+        defineConfigNamespaceIdentifiers.has(expression.expression.text)
       ) {
-        return argument.text === "defineConfig";
+        return true;
       }
     }
     return false;
@@ -1211,6 +1226,7 @@ test("cts title", () => {});
     const arrayConfigPath = path.join(tempDirectory, "rstest-array.config.ts");
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
+    const namespaceConfigPath = path.join(tempDirectory, "rstest-namespace.config.ts");
     const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
     const elementAccessConfigPath = path.join(tempDirectory, "rstest-element-access.config.ts");
     const aliasConfigPath = path.join(tempDirectory, "rstest-alias.config.ts");
@@ -1255,6 +1271,22 @@ void unrelated;
 
 export default defineConfig({
   include: ["test/**/*.preferred.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      namespaceConfigPath,
+      `
+import * as rstest from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.namespace-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default rstest.defineConfig({
+  include: ["test/**/*.namespace.test.ts"]
 });
 `,
       "utf8"
@@ -1325,6 +1357,9 @@ export default config;
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
       expect(readRstestIncludePatterns(preferredConfigPath)).toEqual([
         "test/**/*.preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(namespaceConfigPath)).toEqual([
+        "test/**/*.namespace.test.ts"
       ]);
       expect(readRstestIncludePatterns(propertyAccessConfigPath)).toEqual([
         "test/**/*.property-access.test.ts"

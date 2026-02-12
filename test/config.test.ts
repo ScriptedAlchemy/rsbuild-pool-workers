@@ -2164,6 +2164,30 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("propagates actionable error from promise-like nested workers function null return", async () => {
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: () => null as unknown as WorkersPoolOptions
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received null."
+    );
+  });
+
   test("propagates actionable error from promise-like nested workers function number return", async () => {
     const promiseLikeValue = {
       test: {
@@ -6322,6 +6346,30 @@ describe("defineWorkersConfig", () => {
 
     await expect(value).rejects.toThrow(
       "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+    );
+  });
+
+  test("defineWorkersProject propagates actionable error from promise-like nested workers function null return", async () => {
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: () => null as unknown as WorkersPoolOptions
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received null."
     );
   });
 

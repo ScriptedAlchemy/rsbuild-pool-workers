@@ -347,6 +347,26 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("propagates rejection for promise-returning config function exports when nested workers function returns invalid options", async () => {
+    const configFactory = defineWorkersConfig(() =>
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: () => [] as unknown as WorkersPoolOptions
+          }
+        }
+      })
+    );
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received array."
+    );
+  });
+
   test("supports config functions returning thenables", async () => {
     const configFactory = defineWorkersConfig((...args: unknown[]) => {
       const context = args[0] as { mode?: string } | undefined;
@@ -460,6 +480,28 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from test.poolOptions.workers() return value: expected an object but received array."
+    );
+  });
+
+  test("propagates rejection for thenable-returning config function exports when top-level workers function returns invalid options", async () => {
+    const configFactory = defineWorkersConfig(() => {
+      const value = {
+        workers: () => null as unknown as WorkersPoolOptions
+      };
+      return {
+        then(resolve: (resolved: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received null."
     );
   });
 
@@ -7189,6 +7231,26 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("defineWorkersProject propagates rejection for promise-returning config function exports when nested workers function returns invalid options", async () => {
+    const configFactory = defineWorkersProject(() =>
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: () => [] as unknown as WorkersPoolOptions
+          }
+        }
+      })
+    );
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received array."
+    );
+  });
+
   test("defineWorkersProject supports config functions returning thenables", async () => {
     const configFactory = defineWorkersProject((...args: unknown[]) => {
       const context = args[0] as { mode?: string } | undefined;
@@ -7303,6 +7365,28 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from test.poolOptions.workers() return value: expected an object but received array."
+    );
+  });
+
+  test("defineWorkersProject propagates rejection for thenable-returning config function exports when top-level workers function returns invalid options", async () => {
+    const configFactory = defineWorkersProject(() => {
+      const value = {
+        workers: () => null as unknown as WorkersPoolOptions
+      };
+      return {
+        then(resolve: (resolved: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received null."
     );
   });
 

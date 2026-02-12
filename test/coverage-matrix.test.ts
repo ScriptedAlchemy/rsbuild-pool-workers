@@ -398,8 +398,26 @@ function readRstestIncludePatterns(
     const unwrappedInitializer = unwrapConfigExpression(initializer);
     if (ts.isArrayLiteralExpression(unwrappedInitializer)) {
       const patterns: string[] = [];
+      const collectArrayLiteralStrings = (
+        arrayExpression: ts.ArrayLiteralExpression
+      ): void => {
+        for (const nestedElement of arrayExpression.elements) {
+          if (ts.isSpreadElement(nestedElement)) {
+            continue;
+          }
+          const unwrappedNestedElement = unwrapConfigExpression(nestedElement);
+          if (ts.isStringLiteralLike(unwrappedNestedElement)) {
+            patterns.push(unwrappedNestedElement.text);
+          }
+        }
+      };
+
       for (const element of unwrappedInitializer.elements) {
         if (ts.isSpreadElement(element)) {
+          const unwrappedSpreadExpression = unwrapConfigExpression(element.expression);
+          if (ts.isArrayLiteralExpression(unwrappedSpreadExpression)) {
+            collectArrayLiteralStrings(unwrappedSpreadExpression);
+          }
           continue;
         }
         const unwrappedElement = unwrapConfigExpression(element);
@@ -1356,6 +1374,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-wrapped-array-elements.config.ts"
     );
+    const spreadArrayElementsConfigPath = path.join(
+      tempDirectory,
+      "rstest-spread-array-elements.config.ts"
+    );
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const typeAssertionConfigPath = path.join(tempDirectory, "rstest-type-assertion.config.ts");
     const nonNullConfigPath = path.join(tempDirectory, "rstest-non-null.config.ts");
@@ -1423,6 +1445,26 @@ export default defineConfig({
     ("test/**/*.wrapped-array-parenthesized.test.ts"),
     "test/**/*.wrapped-array-asserted.test.ts" as const,
     \`test/**/*.wrapped-array-template.test.ts\`
+  ]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      spreadArrayElementsConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const dynamicPatterns = ["test/**/*.spread-array-dynamic-should-not-be-read.ts"];
+
+export default defineConfig({
+  include: [
+    "test/**/*.spread-array-direct.test.ts",
+    ...[
+      "test/**/*.spread-array-static-a.test.ts" as const,
+      \`test/**/*.spread-array-static-b.test.ts\`
+    ],
+    ...dynamicPatterns
   ]
 });
 `,
@@ -1755,6 +1797,11 @@ export default config;
         "test/**/*.wrapped-array-parenthesized.test.ts",
         "test/**/*.wrapped-array-asserted.test.ts",
         "test/**/*.wrapped-array-template.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(spreadArrayElementsConfigPath)).toEqual([
+        "test/**/*.spread-array-direct.test.ts",
+        "test/**/*.spread-array-static-a.test.ts",
+        "test/**/*.spread-array-static-b.test.ts"
       ]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
       expect(readRstestIncludePatterns(typeAssertionConfigPath)).toEqual([

@@ -33,7 +33,7 @@ const PARSED_TEST_CALL_CACHE = new Map<string, VersionedCacheEntry<ParsedTestCal
 
 function getFileVersion(filePath: string): string {
   const stats = fs.statSync(filePath);
-  return `${stats.mtimeMs}:${stats.size}`;
+  return `${stats.mtimeMs}:${stats.ctimeMs}:${stats.size}:${stats.ino}`;
 }
 
 function cloneParsedTestCalls(calls: ParsedTestCall[]): ParsedTestCall[] {
@@ -451,6 +451,25 @@ test.runIf(true)("run if", () => {});
         ["first", 1],
         ["second", 1]
       ]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("invalidates caches when content changes with preserved mtime and size", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "mtime-size-preserved-fixture.test.ts");
+
+    fs.writeFileSync(fixturePath, `test("before!", () => {});\n`, "utf8");
+    const initialStats = fs.statSync(fixturePath);
+
+    try {
+      expect(readTestTitles(fixturePath)).toEqual(["before!"]);
+
+      fs.writeFileSync(fixturePath, `test("after!!", () => {});\n`, "utf8");
+      fs.utimesSync(fixturePath, initialStats.atime, initialStats.mtime);
+
+      expect(readTestTitles(fixturePath)).toEqual(["after!!"]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

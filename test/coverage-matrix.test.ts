@@ -22,6 +22,13 @@ function expectSuffixCoverage(
   }
 }
 
+function expectTitleCoverage(titles: string[], expectedTitles: string[]): void {
+  const titleSet = new Set(titles);
+  for (const title of expectedTitles) {
+    expect(titleSet.has(title)).toBe(true);
+  }
+}
+
 describe("invalid workers options diagnostics coverage matrix", () => {
   test("covers config-function invalid-return variants in unit suite", () => {
     const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
@@ -263,5 +270,65 @@ describe("invalid workers options diagnostics coverage matrix", () => {
     for (const { prefix, suffixes } of expectations) {
       expectSuffixCoverage(titles, prefix, suffixes);
     }
+  });
+
+  test("covers undefined-top-level fallback variants in unit suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
+    expectTitleCoverage(titles, [
+      "sync config function falls back to nested workers when top-level workers is undefined",
+      "sync config function falls back to nested workers function when top-level workers is undefined",
+      "async config function exports fall back to nested workers when top-level workers is undefined",
+      "async config function exports fall back to nested workers function when top-level workers is undefined",
+      "promise-returning config function exports fall back to nested workers when top-level workers is undefined",
+      "promise-returning config function exports fall back to nested workers function when top-level workers is undefined",
+      "thenable-returning config function exports fall back to nested workers when top-level workers is undefined",
+      "thenable-returning config function exports fall back to nested workers function when top-level workers is undefined",
+      "promise-like exports fall back to nested workers when top-level workers is undefined",
+      "promise-like exports fall back to nested workers function when top-level workers is undefined",
+      "promise exports fall back to nested workers when top-level workers is undefined",
+      "promise exports fall back to nested workers function when top-level workers is undefined",
+      "defineWorkersProject sync config function falls back to nested workers when top-level workers is undefined",
+      "defineWorkersProject sync config function falls back to nested workers function when top-level workers is undefined",
+      "defineWorkersProject async config exports fall back to nested workers when top-level workers is undefined",
+      "defineWorkersProject async config exports fall back to nested workers function when top-level workers is undefined",
+      "defineWorkersProject promise-returning config function exports fall back to nested workers when top-level workers is undefined",
+      "defineWorkersProject promise-returning config function exports fall back to nested workers function when top-level workers is undefined",
+      "defineWorkersProject thenable-returning config function exports fall back to nested workers when top-level workers is undefined",
+      "defineWorkersProject thenable-returning config function exports fall back to nested workers function when top-level workers is undefined",
+      "defineWorkersProject promise-like exports fall back to nested workers when top-level workers is undefined",
+      "defineWorkersProject promise-like exports fall back to nested workers function when top-level workers is undefined",
+      "defineWorkersProject promise exports fall back to nested workers when top-level workers is undefined",
+      "defineWorkersProject promise exports fall back to nested workers function when top-level workers is undefined"
+    ]);
+  });
+
+  test("covers undefined-top-level fallback variants in e2e suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "e2e-cli.test.ts"));
+    expectTitleCoverage(titles, [
+      "falls back to nested workers when defineWorkersConfig top-level workers is undefined end-to-end",
+      "falls back to nested workers function when defineWorkersConfig top-level workers is undefined end-to-end",
+      "falls back to nested workers for async config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function for async config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers for promise-returning config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function for promise-returning config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers for thenable config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function for thenable config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers in promise-like config exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function in promise-like config exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers in promise config exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function in promise config exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers when defineWorkersProject top-level workers is undefined end-to-end",
+      "falls back to nested workers function when defineWorkersProject top-level workers is undefined end-to-end",
+      "falls back to nested workers for defineWorkersProject async config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function for defineWorkersProject async config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers for defineWorkersProject promise-returning config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function for defineWorkersProject promise-returning config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers for defineWorkersProject thenable config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function for defineWorkersProject thenable config function exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers in defineWorkersProject promise-like exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers function in defineWorkersProject promise-like exports when top-level workers is undefined end-to-end",
+      "falls back to nested workers in defineWorkersProject promise export when top-level workers is undefined end-to-end",
+      "falls back to nested workers function in defineWorkersProject promise export when top-level workers is undefined end-to-end"
+    ]);
   });
 });

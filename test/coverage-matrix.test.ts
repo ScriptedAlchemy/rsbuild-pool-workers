@@ -304,32 +304,66 @@ function readRstestIncludePatterns(
   );
   const defineConfigIdentifiers = new Set(["defineConfig"]);
   const defineConfigNamespaceIdentifiers = new Set<string>();
-  for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement)) {
-      continue;
-    }
-    if (
-      !ts.isStringLiteral(statement.moduleSpecifier) ||
-      statement.moduleSpecifier.text !== "@rstest/core"
-    ) {
-      continue;
+  const registerDefineConfigRequireBinding = (declarationName: ts.BindingName): void => {
+    if (ts.isIdentifier(declarationName)) {
+      defineConfigNamespaceIdentifiers.add(declarationName.text);
+      return;
     }
 
-    const namedBindings = statement.importClause?.namedBindings;
-    if (!namedBindings) {
-      continue;
-    }
-
-    if (ts.isNamespaceImport(namedBindings)) {
-      defineConfigNamespaceIdentifiers.add(namedBindings.name.text);
-      continue;
-    }
-
-    if (ts.isNamedImports(namedBindings)) {
-      for (const element of namedBindings.elements) {
-        const importedName = element.propertyName?.text ?? element.name.text;
-        if (importedName === "defineConfig") {
+    if (ts.isObjectBindingPattern(declarationName)) {
+      for (const element of declarationName.elements) {
+        const importedName = element.propertyName
+          ? ts.isIdentifier(element.propertyName) || ts.isStringLiteral(element.propertyName)
+            ? element.propertyName.text
+            : undefined
+          : ts.isIdentifier(element.name)
+            ? element.name.text
+            : undefined;
+        if (importedName === "defineConfig" && ts.isIdentifier(element.name)) {
           defineConfigIdentifiers.add(element.name.text);
+        }
+      }
+    }
+  };
+
+  const isRequireFromRstestCore = (expression: ts.Expression | undefined): boolean => {
+    if (!expression || !ts.isCallExpression(expression)) {
+      return false;
+    }
+    if (!ts.isIdentifier(expression.expression) || expression.expression.text !== "require") {
+      return false;
+    }
+    const [firstArgument] = expression.arguments;
+    return ts.isStringLiteral(firstArgument) && firstArgument.text === "@rstest/core";
+  };
+
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement)) {
+      if (
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.moduleSpecifier.text === "@rstest/core"
+      ) {
+        const namedBindings = statement.importClause?.namedBindings;
+        if (namedBindings) {
+          if (ts.isNamespaceImport(namedBindings)) {
+            defineConfigNamespaceIdentifiers.add(namedBindings.name.text);
+          } else if (ts.isNamedImports(namedBindings)) {
+            for (const element of namedBindings.elements) {
+              const importedName = element.propertyName?.text ?? element.name.text;
+              if (importedName === "defineConfig") {
+                defineConfigIdentifiers.add(element.name.text);
+              }
+            }
+          }
+        }
+      }
+      continue;
+    }
+
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (isRequireFromRstestCore(declaration.initializer)) {
+          registerDefineConfigRequireBinding(declaration.name);
         }
       }
     }
@@ -1264,6 +1298,8 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-namespace-element-access.config.ts"
     );
+    const requireNamespaceConfigPath = path.join(tempDirectory, "rstest-require-namespace.config.ts");
+    const requireAliasConfigPath = path.join(tempDirectory, "rstest-require-alias.config.ts");
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
     const templateIncludeKeyConfigPath = path.join(
       tempDirectory,
@@ -1374,6 +1410,38 @@ export default rstest["defineConfig"]({
       "utf8"
     );
     fs.writeFileSync(
+      requireNamespaceConfigPath,
+      `
+const rstest = require("@rstest/core");
+
+const unrelated = {
+  include: ["test/**/*.require-namespace-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default rstest.defineConfig({
+  include: ["test/**/*.require-namespace.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      requireAliasConfigPath,
+      `
+const { defineConfig: makeConfig } = require("@rstest/core");
+
+const unrelated = {
+  include: ["test/**/*.require-alias-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default makeConfig({
+  include: ["test/**/*.require-alias.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       quotedIncludeKeyConfigPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -1471,6 +1539,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(namespaceElementAccessConfigPath)).toEqual([
         "test/**/*.namespace-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(requireNamespaceConfigPath)).toEqual([
+        "test/**/*.require-namespace.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(requireAliasConfigPath)).toEqual([
+        "test/**/*.require-alias.test.ts"
       ]);
       expect(readRstestIncludePatterns(quotedIncludeKeyConfigPath)).toEqual([
         "test/**/*.quoted-include.test.ts"

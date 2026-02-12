@@ -414,6 +414,24 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("propagates rejection for async config function exports when nested workers function returns undefined", async () => {
+    const configFactory = defineWorkersConfig(async () => ({
+      test: {
+        poolOptions: {
+          workers: () => undefined as unknown as WorkersPoolOptions
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received undefined."
+    );
+  });
+
   test("propagates rejection for async config function exports when nested workers function returns string", async () => {
     const configFactory = defineWorkersConfig(async () => ({
       test: {
@@ -429,6 +447,24 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+    );
+  });
+
+  test("propagates rejection for async config function exports when nested workers function returns null", async () => {
+    const configFactory = defineWorkersConfig(async () => ({
+      test: {
+        poolOptions: {
+          workers: () => null as unknown as WorkersPoolOptions
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received null."
     );
   });
 
@@ -479,6 +515,34 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from workers() return value: expected an object but received null."
+    );
+  });
+
+  test("propagates rejection for async config function exports when top-level workers function returns string", async () => {
+    const configFactory = defineWorkersConfig(async () => ({
+      workers: () => "invalid-workers-options" as unknown as WorkersPoolOptions
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received string."
+    );
+  });
+
+  test("propagates rejection for async config function exports when top-level workers function returns array", async () => {
+    const configFactory = defineWorkersConfig(async () => ({
+      workers: () => [] as unknown as WorkersPoolOptions
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received array."
     );
   });
 
@@ -9278,6 +9342,24 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("defineWorkersProject propagates rejection for async config function exports when nested workers function returns undefined", async () => {
+    const configFactory = defineWorkersProject(async () => ({
+      test: {
+        poolOptions: {
+          workers: () => undefined as unknown as WorkersPoolOptions
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received undefined."
+    );
+  });
+
   test("defineWorkersProject propagates rejection for async config function exports when nested workers function returns string", async () => {
     const configFactory = defineWorkersProject(async () => ({
       test: {
@@ -9293,6 +9375,24 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+    );
+  });
+
+  test("defineWorkersProject propagates rejection for async config function exports when nested workers function returns null", async () => {
+    const configFactory = defineWorkersProject(async () => ({
+      test: {
+        poolOptions: {
+          workers: () => null as unknown as WorkersPoolOptions
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers() return value: expected an object but received null."
     );
   });
 
@@ -9343,6 +9443,34 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from workers() return value: expected an object but received null."
+    );
+  });
+
+  test("defineWorkersProject propagates rejection for async config function exports when top-level workers function returns string", async () => {
+    const configFactory = defineWorkersProject(async () => ({
+      workers: () => "invalid-workers-options" as unknown as WorkersPoolOptions
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received string."
+    );
+  });
+
+  test("defineWorkersProject propagates rejection for async config function exports when top-level workers function returns array", async () => {
+    const configFactory = defineWorkersProject(async () => ({
+      workers: () => [] as unknown as WorkersPoolOptions
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers() return value: expected an object but received array."
     );
   });
 

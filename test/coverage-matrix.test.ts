@@ -446,6 +446,62 @@ function readRstestIncludePatterns(
     return readPatternsFromIncludeInitializer(includeInitializer);
   };
 
+  const readPatternsFromDefineConfigCall = (
+    callExpression: ts.CallExpression
+  ): string[] | undefined => {
+    const [firstArgument] = callExpression.arguments;
+    if (!firstArgument) {
+      return undefined;
+    }
+    const unwrappedArgument = unwrapConfigExpression(firstArgument);
+    if (!ts.isObjectLiteralExpression(unwrappedArgument)) {
+      return undefined;
+    }
+    return readPatternsFromConfigObject(unwrappedArgument);
+  };
+
+  const isModuleExportsAssignmentTarget = (expression: ts.Expression): boolean => {
+    const unwrappedExpression = unwrapConfigExpression(expression);
+    if (ts.isPropertyAccessExpression(unwrappedExpression)) {
+      if (
+        ts.isIdentifier(unwrappedExpression.expression) &&
+        unwrappedExpression.expression.text === "module" &&
+        unwrappedExpression.name.text === "exports"
+      ) {
+        return true;
+      }
+      if (
+        ts.isIdentifier(unwrappedExpression.expression) &&
+        unwrappedExpression.expression.text === "exports" &&
+        unwrappedExpression.name.text === "default"
+      ) {
+        return true;
+      }
+    }
+    if (ts.isElementAccessExpression(unwrappedExpression)) {
+      const argument = unwrappedExpression.argumentExpression;
+      if (
+        ts.isIdentifier(unwrappedExpression.expression) &&
+        unwrappedExpression.expression.text === "module" &&
+        argument &&
+        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
+        argument.text === "exports"
+      ) {
+        return true;
+      }
+      if (
+        ts.isIdentifier(unwrappedExpression.expression) &&
+        unwrappedExpression.expression.text === "exports" &&
+        argument &&
+        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
+        argument.text === "default"
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const isRstestNamespaceExpression = (
     expression: ts.LeftHandSideExpression
   ): boolean => {
@@ -484,6 +540,45 @@ function readRstestIncludePatterns(
     return false;
   };
 
+  let exportedPatterns: string[] | undefined;
+  let sawExportedDefineConfigCall = false;
+  for (const statement of sourceFile.statements) {
+    let candidateExpression: ts.Expression | undefined;
+
+    if (ts.isExportAssignment(statement)) {
+      candidateExpression = statement.expression;
+    } else if (
+      ts.isExpressionStatement(statement) &&
+      ts.isBinaryExpression(statement.expression) &&
+      statement.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      isModuleExportsAssignmentTarget(statement.expression.left)
+    ) {
+      candidateExpression = statement.expression.right;
+    }
+
+    if (!candidateExpression) {
+      continue;
+    }
+
+    const unwrappedCandidate = unwrapConfigExpression(candidateExpression);
+    if (
+      ts.isCallExpression(unwrappedCandidate) &&
+      isDefineConfigCallExpression(unwrappedCandidate.expression)
+    ) {
+      sawExportedDefineConfigCall = true;
+      exportedPatterns = readPatternsFromDefineConfigCall(unwrappedCandidate) ?? [];
+    }
+  }
+
+  if (sawExportedDefineConfigCall) {
+    const finalPatterns = exportedPatterns ?? [];
+    RSTEST_INCLUDE_PATTERNS_CACHE.set(configFilePath, {
+      version,
+      value: [...finalPatterns]
+    });
+    return [...finalPatterns];
+  }
+
   let patterns: string[] | undefined;
   let sawDefineConfigCall = false;
 
@@ -494,16 +589,10 @@ function readRstestIncludePatterns(
 
     if (ts.isCallExpression(node) && isDefineConfigCallExpression(node.expression)) {
       sawDefineConfigCall = true;
-      const [firstArgument] = node.arguments;
-      if (firstArgument) {
-        const unwrappedArgument = unwrapConfigExpression(firstArgument);
-        if (ts.isObjectLiteralExpression(unwrappedArgument)) {
-          const extracted = readPatternsFromConfigObject(unwrappedArgument);
-          if (extracted !== undefined) {
-            patterns = extracted;
-            return;
-          }
-        }
+      const extracted = readPatternsFromDefineConfigCall(node);
+      if (extracted !== undefined) {
+        patterns = extracted;
+        return;
       }
     }
 
@@ -1370,7 +1459,8 @@ test("cts title", () => {});
       "dynamic/non-literal values are ignored",
       "follows last-assignment object-literal semantics",
       "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present",
-      "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)"
+      "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)",
+      "top-level exports (`export default`, `module.exports`, `exports.default`), those exported call sites are preferred over non-export helper calls"
     ];
     const missingSnippets = requiredSnippets.filter((snippet) => !readme.includes(snippet));
 
@@ -1405,6 +1495,14 @@ test("cts title", () => {});
     const duplicateIncludeNonLiteralConfigPath = path.join(
       tempDirectory,
       "rstest-duplicate-include-non-literal.config.ts"
+    );
+    const exportedDefineConfigPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-define-config-preferred.config.ts"
+    );
+    const exportedModuleExportsPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-exports-preferred.config.js"
     );
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const typeAssertionConfigPath = path.join(tempDirectory, "rstest-type-assertion.config.ts");
@@ -1572,6 +1670,38 @@ const nonLiteralInclude = ["test/**/*.duplicate-include-non-literal-last.test.ts
 export default defineConfig({
   include: ["test/**/*.duplicate-include-should-not-be-read.test.ts"],
   include: nonLiteralInclude
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedDefineConfigPreferredPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-define-preferred-should-not-be-read.ts"]
+});
+void unrelated;
+
+export default defineConfig({
+  include: ["test/**/*.exported-define-preferred.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleExportsPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.module-exports-preferred-should-not-be-read.ts"]
+});
+void unrelated;
+
+module.exports = defineConfig({
+  include: ["test/**/*.module-exports-preferred.test.ts"]
 });
 `,
       "utf8"
@@ -2106,6 +2236,12 @@ export default config;
         "test/**/*.duplicate-include-last.test.ts"
       ]);
       expect(readRstestIncludePatterns(duplicateIncludeNonLiteralConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(exportedDefineConfigPreferredPath)).toEqual([
+        "test/**/*.exported-define-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleExportsPreferredPath)).toEqual([
+        "test/**/*.module-exports-preferred.test.ts"
+      ]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
       expect(readRstestIncludePatterns(typeAssertionConfigPath)).toEqual([
         "test/**/*.type-asserted.test.ts"

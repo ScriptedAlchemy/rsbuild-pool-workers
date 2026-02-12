@@ -464,10 +464,8 @@ function readRstestIncludePatterns(
           if (ts.isObjectLiteralExpression(unwrappedSpreadExpression)) {
             const nestedInitializer = readIncludeInitializerFromConfigObject(unwrappedSpreadExpression);
             if (nestedInitializer === "unknown") {
-              if (includeInitializer !== undefined) {
-                includeInitializer = undefined;
-                includeOverriddenByUnknownSpread = true;
-              }
+              includeInitializer = undefined;
+              includeOverriddenByUnknownSpread = true;
             } else if (nestedInitializer !== undefined) {
               includeInitializer = nestedInitializer;
               includeOverriddenByUnknownSpread = false;
@@ -475,10 +473,8 @@ function readRstestIncludePatterns(
             continue;
           }
 
-          if (includeInitializer !== undefined) {
-            includeInitializer = undefined;
-            includeOverriddenByUnknownSpread = true;
-          }
+          includeInitializer = undefined;
+          includeOverriddenByUnknownSpread = true;
         }
       }
 
@@ -1664,9 +1660,17 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-object-spread-dynamic-override.config.ts"
     );
+    const objectSpreadNestedDynamicOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-object-spread-nested-dynamic-override.config.ts"
+    );
     const objectSpreadDynamicBeforeLiteralConfigPath = path.join(
       tempDirectory,
       "rstest-object-spread-dynamic-before-literal.config.ts"
+    );
+    const objectSpreadNestedDynamicBeforeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-object-spread-nested-dynamic-before-literal.config.ts"
     );
     const includeGetterOverrideConfigPath = path.join(
       tempDirectory,
@@ -1995,6 +1999,24 @@ export default defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      objectSpreadNestedDynamicOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const overrides = {
+  include: ["test/**/*.object-spread-nested-dynamic-last.test.ts"]
+};
+
+export default defineConfig({
+  include: ["test/**/*.object-spread-nested-dynamic-should-not-be-read.test.ts"],
+  ...({
+    ...overrides
+  })
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       objectSpreadDynamicBeforeLiteralConfigPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -2006,6 +2028,24 @@ const overrides = {
 export default defineConfig({
   ...overrides,
   include: ["test/**/*.object-spread-dynamic-before-literal.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      objectSpreadNestedDynamicBeforeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const overrides = {
+  include: ["test/**/*.object-spread-nested-dynamic-before-literal-should-not-be-read.test.ts"]
+};
+
+export default defineConfig({
+  ...({
+    ...overrides
+  }),
+  include: ["test/**/*.object-spread-nested-dynamic-before-literal.test.ts"]
 });
 `,
       "utf8"
@@ -3004,8 +3044,12 @@ export default config;
         "test/**/*.object-spread-literal-last.test.ts"
       ]);
       expect(readRstestIncludePatterns(objectSpreadDynamicOverrideConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(objectSpreadNestedDynamicOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(objectSpreadDynamicBeforeLiteralConfigPath)).toEqual([
         "test/**/*.object-spread-dynamic-before-literal.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(objectSpreadNestedDynamicBeforeLiteralConfigPath)).toEqual([
+        "test/**/*.object-spread-nested-dynamic-before-literal.test.ts"
       ]);
       expect(readRstestIncludePatterns(includeGetterOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(includeGetterBeforeLiteralConfigPath)).toEqual([

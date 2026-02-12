@@ -3436,6 +3436,71 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports promise-like config exports nested async workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          then(resolve) {
+            const value = {
+              test: {
+                include: ["./promise-like-nested-async-workers-scoped-precedence.test.ts"],
+                poolOptions: {
+                  workers: async ({ inject }) => ({
+                    main: "./worker.ts",
+                    miniflare: {
+                      bindings: {
+                        PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE: inject("PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE")
+                      }
+                    }
+                  })
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "promise-like-nested-async-workers-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise-like nested async workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-like-nested-async-workers-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-like-nested-async-workers-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE:
+            "\"promise-like-nested-async-workers-scoped-precedence-ok\"",
+          PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE:
+            "\"promise-like-nested-async-workers-direct-should-not-win\""
+        }
+      }
+    );
+  });
+
   test("supports promise-like config exports with nested thenable workers function end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3573,6 +3638,79 @@ describe("rstest CLI integration", () => {
         env: {
           PROMISE_LIKE_NESTED_THENABLE_WORKERS_DIRECT_ENV:
             "\"promise-like-nested-thenable-workers-direct-env-ok\""
+        }
+      }
+    );
+  });
+
+  test("supports promise-like config exports nested thenable workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          then(resolve) {
+            const value = {
+              test: {
+                include: ["./promise-like-nested-thenable-workers-scoped-precedence.test.ts"],
+                poolOptions: {
+                  workers: ({ inject }) => {
+                    const workersValue = {
+                      main: "./worker.ts",
+                      miniflare: {
+                        bindings: {
+                          PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE: inject("PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE")
+                        }
+                      }
+                    };
+                    return {
+                      then(nextResolve) {
+                        nextResolve(workersValue);
+                        return Promise.resolve(workersValue);
+                      }
+                    };
+                  }
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "promise-like-nested-thenable-workers-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise-like nested thenable workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-like-nested-thenable-workers-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("promise-like-nested-thenable-workers-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE:
+            "\"promise-like-nested-thenable-workers-scoped-precedence-ok\"",
+          PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE:
+            "\"promise-like-nested-thenable-workers-direct-should-not-win\""
         }
       }
     );
@@ -6092,6 +6230,71 @@ describe("rstest CLI integration", () => {
     );
   });
 
+  test("supports defineWorkersProject promise-like export nested async workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          then(resolve) {
+            const value = {
+              test: {
+                include: ["./project-promise-like-nested-async-workers-scoped-precedence.test.ts"],
+                poolOptions: {
+                  workers: async ({ inject }) => ({
+                    main: "./worker.ts",
+                    miniflare: {
+                      bindings: {
+                        PROJECT_PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE: inject("PROJECT_PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE")
+                      }
+                    }
+                  })
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "project-promise-like-nested-async-workers-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise-like nested async workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-like-nested-async-workers-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-like-nested-async-workers-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE:
+            "\"project-promise-like-nested-async-workers-scoped-precedence-ok\"",
+          PROJECT_PROMISE_LIKE_NESTED_ASYNC_WORKERS_SCOPED_PRECEDENCE:
+            "\"project-promise-like-nested-async-workers-direct-should-not-win\""
+        }
+      }
+    );
+  });
+
   test("supports defineWorkersProject promise-like export with nested thenable workers function end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -6229,6 +6432,79 @@ describe("rstest CLI integration", () => {
         env: {
           PROJECT_PROMISE_LIKE_NESTED_THENABLE_WORKERS_DIRECT_ENV:
             "\"project-promise-like-nested-thenable-workers-direct-env-ok\""
+        }
+      }
+    );
+  });
+
+  test("supports defineWorkersProject promise-like export nested thenable workers scoped-env precedence end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          then(resolve) {
+            const value = {
+              test: {
+                include: ["./project-promise-like-nested-thenable-workers-scoped-precedence.test.ts"],
+                poolOptions: {
+                  workers: ({ inject }) => {
+                    const workersValue = {
+                      main: "./worker.ts",
+                      miniflare: {
+                        bindings: {
+                          PROJECT_PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE: inject("PROJECT_PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE")
+                        }
+                      }
+                    };
+                    return {
+                      then(nextResolve) {
+                        nextResolve(workersValue);
+                        return Promise.resolve(workersValue);
+                      }
+                    };
+                  }
+                }
+              }
+            };
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as PromiseLike<any>);
+      `,
+      "worker.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE));
+          }
+        };
+      `,
+      "project-promise-like-nested-thenable-workers-scoped-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise-like nested thenable workers scoped env wins over direct env", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-like-nested-thenable-workers-scoped-precedence-ok");
+        });
+      `
+    };
+
+    await runFixture(
+      files,
+      ({ stdout, stderr }) => {
+        expect(stderr).toBe("");
+        expect(stdout).toContain('"status": "pass"');
+        expect(stdout).toContain("project-promise-like-nested-thenable-workers-scoped-precedence.test.ts");
+      },
+      {
+        env: {
+          RSTEST_INJECT_PROJECT_PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE:
+            "\"project-promise-like-nested-thenable-workers-scoped-precedence-ok\"",
+          PROJECT_PROMISE_LIKE_NESTED_THENABLE_WORKERS_SCOPED_PRECEDENCE:
+            "\"project-promise-like-nested-thenable-workers-direct-should-not-win\""
         }
       }
     );

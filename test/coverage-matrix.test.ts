@@ -1038,6 +1038,25 @@ test("cts title", () => {});
     expect(readme.includes("pnpm test:matrix")).toBe(true);
   });
 
+  test("keeps rstest include patterns aligned with supported test suffixes", () => {
+    const rstestConfigSource = fs.readFileSync(path.join(process.cwd(), "rstest.config.ts"), "utf8");
+    const expectedPatterns = SUPPORTED_TEST_FILE_SUFFIXES.map(
+      (suffix) => `test/**/*${suffix}`
+    );
+
+    const missingPatterns = expectedPatterns.filter(
+      (pattern) => !rstestConfigSource.includes(`"${pattern}"`)
+    );
+
+    expect(
+      missingPatterns,
+      [
+        "rstest.config.ts is missing include patterns for supported test suffixes:",
+        ...missingPatterns.map((pattern) => `- ${pattern}`)
+      ].join("\n")
+    ).toEqual([]);
+  });
+
   test("ensures guarded suites do not contain focused/skipped/todo executable tests", () => {
     const violations: string[] = [];
 

@@ -22,18 +22,49 @@ type VersionedCacheEntry<T> = {
   version: string;
   value: T;
 };
+type ParsedTestCall = {
+  title?: string;
+  modifiers: string[];
+};
 const COLLECTED_TITLE_CACHE = new Map<string, VersionedCacheEntry<string[]>>();
 const UNIQUE_TITLE_CACHE = new Map<string, VersionedCacheEntry<string[]>>();
 const TITLE_COUNT_CACHE = new Map<string, VersionedCacheEntry<Map<string, number>>>();
+const PARSED_TEST_CALL_CACHE = new Map<string, VersionedCacheEntry<ParsedTestCall[]>>();
 
 function getFileVersion(filePath: string): string {
   const stats = fs.statSync(filePath);
   return `${stats.mtimeMs}:${stats.size}`;
 }
 
-function collectTestTitles(filePath: string): string[] {
+function extractSupportedModifierChain(
+  expression: ts.LeftHandSideExpression
+): string[] | undefined {
+  const chain: string[] = [];
+  let current: ts.LeftHandSideExpression | ts.Expression = expression;
+
+  while (ts.isPropertyAccessExpression(current)) {
+    chain.unshift(current.name.text);
+    current = current.expression;
+  }
+
+  if (!ts.isIdentifier(current) || current.text !== "test") {
+    return undefined;
+  }
+
+  if (chain.length === 0) {
+    return [];
+  }
+
+  if (!chain.every((segment) => TEST_MODIFIER_SEGMENTS.has(segment))) {
+    return undefined;
+  }
+
+  return chain;
+}
+
+function collectParsedTestCalls(filePath: string): ParsedTestCall[] {
   const version = getFileVersion(filePath);
-  const cached = COLLECTED_TITLE_CACHE.get(filePath);
+  const cached = PARSED_TEST_CALL_CACHE.get(filePath);
   if (cached && cached.version === version) {
     return [...cached.value];
   }
@@ -47,42 +78,49 @@ function collectTestTitles(filePath: string): string[] {
     ts.ScriptKind.TS
   );
 
-  const titles: string[] = [];
-  const isSupportedTestExpression = (expression: ts.LeftHandSideExpression): boolean => {
-    const chain: string[] = [];
-    let current: ts.LeftHandSideExpression | ts.Expression = expression;
-
-    while (ts.isPropertyAccessExpression(current)) {
-      chain.unshift(current.name.text);
-      current = current.expression;
-    }
-
-    if (!ts.isIdentifier(current) || current.text !== "test") {
-      return false;
-    }
-
-    if (chain.length === 0) {
-      return true;
-    }
-
-    return chain.every((segment) => TEST_MODIFIER_SEGMENTS.has(segment));
-  };
+  const calls: ParsedTestCall[] = [];
 
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && isSupportedTestExpression(node.expression)) {
+    if (ts.isCallExpression(node)) {
+      const modifiers = extractSupportedModifierChain(node.expression);
+      if (modifiers === undefined) {
+        ts.forEachChild(node, visit);
+        return;
+      }
+
       const [titleNode] = node.arguments;
+      let title: string | undefined;
       if (
         titleNode &&
         (ts.isStringLiteral(titleNode) || ts.isNoSubstitutionTemplateLiteral(titleNode))
       ) {
-        titles.push(titleNode.text);
+        title = titleNode.text;
       }
+      calls.push({ title, modifiers });
     }
 
     ts.forEachChild(node, visit);
   };
 
   visit(sourceFile);
+
+  PARSED_TEST_CALL_CACHE.set(filePath, {
+    version,
+    value: [...calls]
+  });
+  return [...calls];
+}
+
+function collectTestTitles(filePath: string): string[] {
+  const version = getFileVersion(filePath);
+  const cached = COLLECTED_TITLE_CACHE.get(filePath);
+  if (cached && cached.version === version) {
+    return [...cached.value];
+  }
+
+  const titles = collectParsedTestCalls(filePath)
+    .map((call) => call.title)
+    .filter((title): title is string => title !== undefined);
 
   COLLECTED_TITLE_CACHE.set(filePath, {
     version,
@@ -368,6 +406,33 @@ test("literal title", () => {});
       [
         "GUARDED_TEST_SUITES entries without matching discovered test suite files:",
         ...unexpectedInGuard.map((suiteFile) => `- ${suiteFile}`)
+      ].join("\n")
+    ).toEqual([]);
+  });
+
+  test("ensures guarded suites do not contain focused or skipped executable tests", () => {
+    const violations: string[] = [];
+
+    for (const suiteFile of GUARDED_TEST_SUITES) {
+      const filePath = path.join(process.cwd(), "test", suiteFile);
+      for (const testCall of collectParsedTestCalls(filePath)) {
+        if (!testCall.modifiers.some((modifier) => modifier === "only" || modifier === "skip")) {
+          continue;
+        }
+
+        violations.push(
+          `${suiteFile}: test.${testCall.modifiers.join(".")}(${JSON.stringify(
+            testCall.title ?? "<non-literal title>"
+          )})`
+        );
+      }
+    }
+
+    expect(
+      violations,
+      [
+        "Focused/skipped executable tests are not allowed in guarded suites:",
+        ...violations.map((violation) => `- ${violation}`)
       ].join("\n")
     ).toEqual([]);
   });

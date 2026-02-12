@@ -1682,6 +1682,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-identifier-preferred.config.js"
     );
+    const exportedModuleElementIdentifierPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-element-identifier-preferred.config.js"
+    );
     const exportedDefaultIdentifierPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-default-identifier-preferred.config.js"
@@ -2168,6 +2172,24 @@ const config = defineConfig({
 });
 
 module.exports = config;
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleElementIdentifierPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-module-element-identifier-should-not-be-read.ts"]
+});
+void unrelated;
+
+const config = defineConfig({
+  include: ["test/**/*.exported-module-element-identifier.test.ts"]
+});
+
+module["exports"] = config;
 `,
       "utf8"
     );
@@ -2943,6 +2965,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedModuleIdentifierPreferredPath)).toEqual([
         "test/**/*.exported-module-identifier-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleElementIdentifierPreferredPath)).toEqual([
+        "test/**/*.exported-module-element-identifier.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedDefaultIdentifierPreferredPath)).toEqual([
         "test/**/*.exported-default-identifier.test.ts"

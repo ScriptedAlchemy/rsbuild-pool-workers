@@ -1680,6 +1680,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-include-getter-before-literal.config.ts"
     );
+    const includeMethodOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-method-override.config.ts"
+    );
+    const includeMethodBeforeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-method-before-literal.config.ts"
+    );
     const exportedDefineConfigPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-define-config-preferred.config.ts"
@@ -1735,6 +1743,10 @@ test("cts title", () => {});
     const exportedModuleDefaultPropertyIdentifierPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-module-default-property-identifier-preferred.config.js"
+    );
+    const exportedModuleDefaultMixedElementIdentifierPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-default-mixed-element-identifier-preferred.config.js"
     );
     const exportedModuleDefaultElementIdentifierPreferredPath = path.join(
       tempDirectory,
@@ -2106,6 +2118,34 @@ export default defineConfig({
     return ["test/**/*.include-getter-before-literal-should-not-be-read.test.ts"];
   },
   include: ["test/**/*.include-getter-before-literal.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeMethodOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.include-method-override-should-not-be-read.test.ts"],
+  include() {
+    return ["test/**/*.include-method-override.test.ts"];
+  }
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeMethodBeforeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include() {
+    return ["test/**/*.include-method-before-literal-should-not-be-read.test.ts"];
+  },
+  include: ["test/**/*.include-method-before-literal.test.ts"]
 });
 `,
       "utf8"
@@ -3225,6 +3265,10 @@ export default config;
       expect(readRstestIncludePatterns(includeGetterOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(includeGetterBeforeLiteralConfigPath)).toEqual([
         "test/**/*.include-getter-before-literal.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(includeMethodOverrideConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(includeMethodBeforeLiteralConfigPath)).toEqual([
+        "test/**/*.include-method-before-literal.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedDefineConfigPreferredPath)).toEqual([
         "test/**/*.exported-define-preferred.test.ts"

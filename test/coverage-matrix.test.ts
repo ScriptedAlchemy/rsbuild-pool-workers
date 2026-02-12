@@ -4,6 +4,19 @@ import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
 import ts from "typescript";
 
+const GUARDED_TEST_SUITES = [
+  "cloudflare-test-helpers.test.ts",
+  "cloudflare-test-unsupported.test.ts",
+  "config-types.test.ts",
+  "config-utilities.test.ts",
+  "config.test.ts",
+  "coverage-matrix.test.ts",
+  "e2e-cli.test.ts",
+  "runtime-options.test.ts",
+  "runtime-state.test.ts",
+  "workers-plugin.test.ts"
+] as const;
+
 function collectTestTitles(filePath: string): string[] {
   const source = fs.readFileSync(filePath, "utf8");
   const sourceFile = ts.createSourceFile(
@@ -65,6 +78,27 @@ function readTestTitleCounts(filePath: string): Map<string, number> {
     counts.set(title, (counts.get(title) ?? 0) + 1);
   }
   return counts;
+}
+
+function listDiscoveredTestSuites(directory: string): string[] {
+  const discovered: string[] = [];
+
+  const visit = (currentDirectory: string): void => {
+    for (const entry of fs.readdirSync(currentDirectory, { withFileTypes: true })) {
+      const absolutePath = path.join(currentDirectory, entry.name);
+      if (entry.isDirectory()) {
+        visit(absolutePath);
+        continue;
+      }
+
+      if (entry.isFile() && entry.name.endsWith(".test.ts")) {
+        discovered.push(path.relative(directory, absolutePath).replaceAll("\\", "/"));
+      }
+    }
+  };
+
+  visit(directory);
+  return discovered.sort();
 }
 
 function expectSuffixCoverage(
@@ -192,20 +226,7 @@ test("actual executable title", () => {});
   });
 
   test("ensures guarded suites have unique executable test titles", () => {
-    const guardedSuites = [
-      "config.test.ts",
-      "e2e-cli.test.ts",
-      "workers-plugin.test.ts",
-      "runtime-options.test.ts",
-      "runtime-state.test.ts",
-      "cloudflare-test-helpers.test.ts",
-      "cloudflare-test-unsupported.test.ts",
-      "config-utilities.test.ts",
-      "config-types.test.ts",
-      "coverage-matrix.test.ts"
-    ];
-
-    for (const suiteFile of guardedSuites) {
+    for (const suiteFile of GUARDED_TEST_SUITES) {
       const counts = readTestTitleCounts(path.join(process.cwd(), "test", suiteFile));
       const duplicates = Array.from(counts.entries())
         .filter(([, count]) => count > 1)
@@ -219,6 +240,30 @@ test("actual executable title", () => {});
         ].join("\n")
       ).toEqual([]);
     }
+  });
+
+  test("guards every test suite file in the test directory", () => {
+    const discovered = listDiscoveredTestSuites(path.join(process.cwd(), "test"));
+    const guarded = [...GUARDED_TEST_SUITES].sort();
+
+    const missingFromGuard = discovered.filter((suiteFile) => !guarded.includes(suiteFile));
+    const unexpectedInGuard = guarded.filter((suiteFile) => !discovered.includes(suiteFile));
+
+    expect(
+      missingFromGuard,
+      [
+        "Discovered test suites missing from GUARDED_TEST_SUITES:",
+        ...missingFromGuard.map((suiteFile) => `- ${suiteFile}`)
+      ].join("\n")
+    ).toEqual([]);
+
+    expect(
+      unexpectedInGuard,
+      [
+        "GUARDED_TEST_SUITES entries without matching discovered test suite files:",
+        ...unexpectedInGuard.map((suiteFile) => `- ${suiteFile}`)
+      ].join("\n")
+    ).toEqual([]);
   });
 
   test("covers config-function invalid-return variants in unit suite", () => {

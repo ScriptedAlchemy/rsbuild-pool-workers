@@ -155,6 +155,9 @@ import {
 - top-level `workers` supports the same object/function forms and `inject()` behavior, including scoped `RSTEST_INJECT_<key>` precedence over direct `<key>` fallback values.
 - direct-env fallback (`inject("KEY")` reading from `KEY`) is supported across sync/async/promise/promise-like config export forms for both nested and top-level workers functions.
 - errors thrown or rejected from config exports or workers option functions (including promise, promise-like/thenable branches, and function export return variants) propagate with actionable messages.
+- invalid workers options shape validation is source-aware across all export forms:
+  - raw invalid objects are reported from `workers` or `test.poolOptions.workers` (for example: `Invalid workers options from workers: expected an object but received null.`).
+  - function-return invalid values are reported from `workers() return value` or `test.poolOptions.workers() return value` (for example: `...received undefined|string|boolean|array|null`).
 - if both top-level `workers` and `test.poolOptions.workers` are provided, top-level `workers` takes precedence (including sync/async/promise/promise-like config export forms), and nested function-valued workers options are not evaluated.
 - `defineWorkersConfig()` supports object, promise/promise-like, sync function, and async function config exports.
 - when using function exports (sync, async, or sync functions returning promises/promise-like values), config function arguments and invocation context (`this`) from rstest/rsbuild are forwarded unchanged.

@@ -4618,6 +4618,16 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("throws actionable error when top-level workers options is boolean", () => {
+    expect(() =>
+      defineWorkersConfig({
+        workers: false as unknown as WorkersPoolOptions
+      })
+    ).toThrow(
+      "Invalid workers options from workers: expected an object but received boolean."
+    );
+  });
+
   test("throws actionable error when nested workers options is not an object", () => {
     expect(() =>
       defineWorkersConfig({
@@ -4629,6 +4639,20 @@ describe("defineWorkersConfig", () => {
       })
     ).toThrow(
       "Invalid workers options from test.poolOptions.workers: expected an object but received number."
+    );
+  });
+
+  test("throws actionable error when nested workers options is string", () => {
+    expect(() =>
+      defineWorkersConfig({
+        test: {
+          poolOptions: {
+            workers: "invalid-workers-options" as unknown as WorkersPoolOptions
+          }
+        }
+      })
+    ).toThrow(
+      "Invalid workers options from test.poolOptions.workers: expected an object but received string."
     );
   });
 
@@ -9578,6 +9602,16 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("defineWorkersProject throws actionable error when top-level workers options is boolean", () => {
+    expect(() =>
+      defineWorkersProject({
+        workers: false as unknown as WorkersPoolOptions
+      })
+    ).toThrow(
+      "Invalid workers options from workers: expected an object but received boolean."
+    );
+  });
+
   test("defineWorkersProject throws actionable error when nested workers options is not an object", () => {
     expect(() =>
       defineWorkersProject({
@@ -9589,6 +9623,20 @@ describe("defineWorkersConfig", () => {
       })
     ).toThrow(
       "Invalid workers options from test.poolOptions.workers: expected an object but received boolean."
+    );
+  });
+
+  test("defineWorkersProject throws actionable error when nested workers options is string", () => {
+    expect(() =>
+      defineWorkersProject({
+        test: {
+          poolOptions: {
+            workers: "invalid-workers-options" as unknown as WorkersPoolOptions
+          }
+        }
+      })
+    ).toThrow(
+      "Invalid workers options from test.poolOptions.workers: expected an object but received string."
     );
   });
 

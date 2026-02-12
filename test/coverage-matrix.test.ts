@@ -1812,6 +1812,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-to-exports-element-chain-preferred.config.js"
     );
+    const exportedExportsElementToModuleChainPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-exports-element-to-module-chain-preferred.config.js"
+    );
     const exportedTemplateElementChainPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-template-element-chain-preferred.config.js"
@@ -1819,6 +1823,10 @@ test("cts title", () => {});
     const exportedModuleToExportsElementIdentifierChainPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-module-to-exports-element-identifier-chain-preferred.config.js"
+    );
+    const exportedExportsElementToModuleIdentifierChainPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-exports-element-to-module-identifier-chain-preferred.config.js"
     );
     const exportedTemplateElementIdentifierChainPreferredPath = path.join(
       tempDirectory,
@@ -2689,6 +2697,22 @@ module.exports = exports["default"] = defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      exportedExportsElementToModuleChainPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-element-to-module-should-not-be-read.ts"]
+});
+void unrelated;
+
+exports["default"] = module.exports = defineConfig({
+  include: ["test/**/*.exported-element-to-module.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       exportedTemplateElementChainPreferredPath,
       `
 const { defineConfig } = require("@rstest/core");
@@ -2717,6 +2741,23 @@ void unrelated;
 let config;
 module.exports = exports["default"] = config = defineConfig({
   include: ["test/**/*.exported-chain-element-identifier.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedExportsElementToModuleIdentifierChainPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-element-to-module-identifier-should-not-be-read.ts"]
+});
+void unrelated;
+
+let config;
+exports["default"] = module.exports = config = defineConfig({
+  include: ["test/**/*.exported-element-to-module-identifier.test.ts"]
 });
 `,
       "utf8"
@@ -3557,12 +3598,18 @@ export default config;
       expect(readRstestIncludePatterns(exportedModuleToExportsElementChainPreferredPath)).toEqual([
         "test/**/*.exported-chain-element.test.ts"
       ]);
+      expect(readRstestIncludePatterns(exportedExportsElementToModuleChainPreferredPath)).toEqual([
+        "test/**/*.exported-element-to-module.test.ts"
+      ]);
       expect(readRstestIncludePatterns(exportedTemplateElementChainPreferredPath)).toEqual([
         "test/**/*.exported-template-chain.test.ts"
       ]);
       expect(
         readRstestIncludePatterns(exportedModuleToExportsElementIdentifierChainPreferredPath)
       ).toEqual(["test/**/*.exported-chain-element-identifier.test.ts"]);
+      expect(
+        readRstestIncludePatterns(exportedExportsElementToModuleIdentifierChainPreferredPath)
+      ).toEqual(["test/**/*.exported-element-to-module-identifier.test.ts"]);
       expect(readRstestIncludePatterns(exportedTemplateElementIdentifierChainPreferredPath)).toEqual(
         ["test/**/*.exported-template-chain-identifier.test.ts"]
       );

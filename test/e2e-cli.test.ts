@@ -4762,6 +4762,120 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("does not evaluate nested workers function in promise config export when top-level async function is set end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-async-function-precedence.test.ts"],
+            workers: async () => ({
+              main: "./worker-top-level.ts",
+              miniflare: {
+                bindings: {
+                  PROMISE_ASYNC_FUNCTION_PRECEDENCE_VALUE: "promise-top-level-async-function-selected"
+                }
+              }
+            }),
+            test: {
+              poolOptions: {
+                workers: () => {
+                  throw new Error("nested promise workers function should not execute");
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_ASYNC_FUNCTION_PRECEDENCE_VALUE));
+          }
+        };
+      `,
+      "promise-async-function-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise top-level async workers function value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-async-function-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("promise-async-function-precedence.test.ts");
+    });
+  });
+
+  test("does not evaluate nested workers function in promise config export when top-level thenable function is set end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-thenable-function-precedence.test.ts"],
+            workers: () => {
+              const workersValue = {
+                main: "./worker-top-level.ts",
+                miniflare: {
+                  bindings: {
+                    PROMISE_THENABLE_FUNCTION_PRECEDENCE_VALUE: "promise-top-level-thenable-function-selected"
+                  }
+                }
+              };
+              return {
+                then(resolve) {
+                  resolve(workersValue);
+                  return Promise.resolve(workersValue);
+                }
+              };
+            },
+            test: {
+              poolOptions: {
+                workers: () => {
+                  throw new Error("nested promise workers function should not execute");
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROMISE_THENABLE_FUNCTION_PRECEDENCE_VALUE));
+          }
+        };
+      `,
+      "promise-thenable-function-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("promise top-level thenable workers function value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("promise-top-level-thenable-function-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("promise-thenable-function-precedence.test.ts");
+    });
+  });
+
   test("supports promise config export with nested workers function end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -8368,6 +8482,120 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise-function-precedence.test.ts");
+    });
+  });
+
+  test("does not evaluate nested workers function in defineWorkersProject promise export when top-level async function is set end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-async-function-precedence.test.ts"],
+            workers: async () => ({
+              main: "./worker-top-level.ts",
+              miniflare: {
+                bindings: {
+                  PROJECT_PROMISE_ASYNC_FUNCTION_PRECEDENCE_VALUE: "project-promise-top-level-async-function-selected"
+                }
+              }
+            }),
+            test: {
+              poolOptions: {
+                workers: () => {
+                  throw new Error("project nested promise workers function should not execute");
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_ASYNC_FUNCTION_PRECEDENCE_VALUE));
+          }
+        };
+      `,
+      "project-promise-async-function-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise top-level async workers function value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-async-function-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise-async-function-precedence.test.ts");
+    });
+  });
+
+  test("does not evaluate nested workers function in defineWorkersProject promise export when top-level thenable function is set end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-thenable-function-precedence.test.ts"],
+            workers: () => {
+              const workersValue = {
+                main: "./worker-top-level.ts",
+                miniflare: {
+                  bindings: {
+                    PROJECT_PROMISE_THENABLE_FUNCTION_PRECEDENCE_VALUE: "project-promise-top-level-thenable-function-selected"
+                  }
+                }
+              };
+              return {
+                then(resolve) {
+                  resolve(workersValue);
+                  return Promise.resolve(workersValue);
+                }
+              };
+            },
+            test: {
+              poolOptions: {
+                workers: () => {
+                  throw new Error("project nested promise workers function should not execute");
+                }
+              }
+            }
+          })
+        );
+      `,
+      "worker-top-level.ts": `
+        export default {
+          fetch(_request, env) {
+            return new Response(String(env.PROJECT_PROMISE_THENABLE_FUNCTION_PRECEDENCE_VALUE));
+          }
+        };
+      `,
+      "project-promise-thenable-function-precedence.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("project promise top-level thenable workers function value wins", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("project-promise-top-level-thenable-function-selected");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("project-promise-thenable-function-precedence.test.ts");
     });
   });
 

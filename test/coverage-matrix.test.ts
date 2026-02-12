@@ -254,6 +254,18 @@ function listDiscoveredTestSuites(directory: string): string[] {
   return discovered.sort();
 }
 
+function unwrapConfigExpression(expression: ts.Expression): ts.Expression {
+  let current = expression;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current)
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
 function readRstestIncludePatterns(configFilePath: string): string[] {
   const source = fs.readFileSync(configFilePath, "utf8");
   const sourceFile = ts.createSourceFile(
@@ -268,11 +280,13 @@ function readRstestIncludePatterns(configFilePath: string): string[] {
 
   const visit = (node: ts.Node): void => {
     if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name) && node.name.text === "include") {
-      const initializer = node.initializer;
+      const initializer = unwrapConfigExpression(node.initializer);
       if (ts.isArrayLiteralExpression(initializer)) {
         patterns = initializer.elements
           .filter((element): element is ts.StringLiteralLike => ts.isStringLiteralLike(element))
           .map((element) => element.text);
+      } else if (ts.isStringLiteralLike(initializer)) {
+        patterns = [initializer.text];
       }
     }
 
@@ -1065,6 +1079,50 @@ test("cts title", () => {});
 
     const readme = fs.readFileSync(path.join(process.cwd(), "README.md"), "utf8");
     expect(readme.includes("pnpm test:matrix")).toBe(true);
+  });
+
+  test("reads rstest include patterns from array and single-string forms", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const arrayConfigPath = path.join(tempDirectory, "rstest-array.config.ts");
+    const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
+
+    fs.writeFileSync(
+      arrayConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+const dynamic = "test/**/*.ignored.ts";
+
+export default defineConfig({
+  include: ([
+    "test/**/*.test.ts",
+    \`test/**/*.test.tsx\`,
+    dynamic
+  ] satisfies string[])
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      stringConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ("test/**/*.test.js")
+});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(readRstestIncludePatterns(arrayConfigPath)).toEqual([
+        "test/**/*.test.ts",
+        "test/**/*.test.tsx"
+      ]);
+      expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
   });
 
   test("keeps rstest include patterns aligned with supported test suffixes", () => {

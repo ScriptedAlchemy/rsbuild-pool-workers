@@ -68,6 +68,34 @@ describe("mapAnyConfigExport", () => {
     ]);
   });
 
+  test("propagates rejection for promise-like config exports", async () => {
+    const errorMessage = "mapped promise-like rejection";
+    const mapped = mapAnyConfigExport(
+      (config) => ({
+        ...config,
+        include: [...(config.include ?? []), "mapped-should-not-run.test.ts"]
+      }),
+      {
+        then(
+          _onfulfilled?: ((value: RstestConfig) => unknown) | null,
+          onrejected?: ((reason: unknown) => unknown) | null
+        ) {
+          const error = new Error(errorMessage);
+          if (typeof onrejected === "function") {
+            onrejected(error);
+          }
+          return Promise.reject(error);
+        }
+      } as PromiseLike<RstestConfig>
+    );
+
+    if (!(mapped instanceof Promise)) {
+      throw new Error("Expected mapped rejected promise-like export");
+    }
+
+    await expect(mapped).rejects.toThrow(errorMessage);
+  });
+
   test("forwards config function export arguments through mapper", async () => {
     const mapped = mapAnyConfigExport(
       (value) => ({
@@ -183,5 +211,35 @@ describe("mapAnyConfigExport", () => {
 
     const resolved = await mapped.call({ mode: "thenable-ctx" }, "thenable-arg");
     expect(resolved.include).toEqual(["thenable-ctx-thenable-arg", "mapped-thenable-function.test.ts"]);
+  });
+
+  test("propagates rejection for thenable-returning mapped config functions", async () => {
+    const errorMessage = "mapped thenable function rejection";
+    const mapped = mapAnyConfigExport(
+      (value) => ({
+        ...value,
+        include: [...(value.include ?? []), "mapped-should-not-run.test.ts"]
+      }),
+      function () {
+        return {
+          then(
+            _onfulfilled?: ((value: RstestConfig) => unknown) | null,
+            onrejected?: ((reason: unknown) => unknown) | null
+          ) {
+            const error = new Error(errorMessage);
+            if (typeof onrejected === "function") {
+              onrejected(error);
+            }
+            return Promise.reject(error);
+          }
+        } as PromiseLike<RstestConfig>;
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped thenable function export");
+    }
+
+    await expect(mapped()).rejects.toThrow(errorMessage);
   });
 });

@@ -218,6 +218,7 @@ test.skip('skip variant', () => {});
 test.todo(\`todo variant\`, () => {});
 test.concurrent("concurrent variant", () => {});
 test.concurrent.only("concurrent only variant", () => {});
+test.concurrent.skip("concurrent skip variant", () => {});
 `,
       "utf8"
     );
@@ -235,7 +236,8 @@ test.concurrent.only("concurrent only variant", () => {});
         "skip variant",
         "todo variant",
         "concurrent variant",
-        "concurrent only variant"
+        "concurrent only variant",
+        "concurrent skip variant"
       ]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
@@ -264,6 +266,66 @@ test("actual executable title", () => {});
       expect(titles.includes("actual executable title")).toBe(true);
       expect(titles.includes("embedded fixture title")).toBe(false);
       expect(titles.includes("embedded only fixture title")).toBe(false);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("ignores non-literal and interpolated test title arguments", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "non-literal-title-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `
+const dynamicTitle = "dynamic title";
+const suffix = "segment";
+
+test(dynamicTitle, () => {});
+test(\`interpolated \${suffix}\`, () => {});
+test(String("computed"), () => {});
+test("literal title", () => {});
+`,
+      "utf8"
+    );
+
+    try {
+      const titles = readTestTitles(fixturePath);
+      expect(titles.includes("literal title")).toBe(true);
+      expect(titles.includes("dynamic title")).toBe(false);
+      expect(titles.includes("interpolated segment")).toBe(false);
+      expect(titles.includes("computed")).toBe(false);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("discovers nested test suites and normalizes relative paths", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const nestedDirectory = path.join(tempDirectory, "nested");
+    const deeperDirectory = path.join(nestedDirectory, "deeper");
+    fs.mkdirSync(deeperDirectory, { recursive: true });
+
+    fs.writeFileSync(path.join(tempDirectory, "root.test.ts"), "test(\"root\", () => {});", "utf8");
+    fs.writeFileSync(
+      path.join(nestedDirectory, "nested.test.ts"),
+      "test(\"nested\", () => {});",
+      "utf8"
+    );
+    fs.writeFileSync(
+      path.join(deeperDirectory, "deeper.test.ts"),
+      "test(\"deeper\", () => {});",
+      "utf8"
+    );
+    fs.writeFileSync(path.join(deeperDirectory, "helper.ts"), "export {};", "utf8");
+
+    try {
+      const discovered = listDiscoveredTestSuites(tempDirectory);
+      expect(discovered).toEqual([
+        "nested/deeper/deeper.test.ts",
+        "nested/nested.test.ts",
+        "root.test.ts"
+      ]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

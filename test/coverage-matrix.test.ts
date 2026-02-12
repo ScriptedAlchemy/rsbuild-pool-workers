@@ -353,6 +353,10 @@ function readRstestIncludePatterns(
         ts.isStringLiteral(statement.moduleSpecifier) &&
         statement.moduleSpecifier.text === "@rstest/core"
       ) {
+        const defaultImport = statement.importClause?.name;
+        if (defaultImport) {
+          defineConfigNamespaceIdentifiers.add(defaultImport.text);
+        }
         const namedBindings = statement.importClause?.namedBindings;
         if (namedBindings) {
           if (ts.isNamespaceImport(namedBindings)) {
@@ -1348,6 +1352,7 @@ test("cts title", () => {});
     const readme = fs.readFileSync(path.join(process.cwd(), "README.md"), "utf8");
     const requiredSnippets = [
       "alias import",
+      "default-import namespace access",
       "TypeScript `import = require` bindings",
       "namespace/property or namespace-element access",
       "direct `require(\"@rstest/core\").defineConfig(...)`/`[\"defineConfig\"](...)` calls",
@@ -1383,6 +1388,7 @@ test("cts title", () => {});
     const nonNullConfigPath = path.join(tempDirectory, "rstest-non-null.config.ts");
     const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
     const namespaceConfigPath = path.join(tempDirectory, "rstest-namespace.config.ts");
+    const defaultImportConfigPath = path.join(tempDirectory, "rstest-default-import.config.ts");
     const namespaceElementAccessConfigPath = path.join(
       tempDirectory,
       "rstest-namespace-element-access.config.ts"
@@ -1533,6 +1539,22 @@ void unrelated;
 
 export default rstest.defineConfig({
   include: ["test/**/*.namespace.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      defaultImportConfigPath,
+      `
+import rstest from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.default-import-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default rstest.defineConfig({
+  include: ["test/**/*.default-import.test.ts"]
 });
 `,
       "utf8"
@@ -1813,6 +1835,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(namespaceConfigPath)).toEqual([
         "test/**/*.namespace.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(defaultImportConfigPath)).toEqual([
+        "test/**/*.default-import.test.ts"
       ]);
       expect(readRstestIncludePatterns(namespaceElementAccessConfigPath)).toEqual([
         "test/**/*.namespace-element.test.ts"

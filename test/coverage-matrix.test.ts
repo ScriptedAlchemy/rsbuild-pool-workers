@@ -267,6 +267,16 @@ function unwrapConfigExpression(expression: ts.Expression): ts.Expression {
   return current;
 }
 
+function isPropertyNameText(name: ts.PropertyName, expected: string): boolean {
+  if (ts.isIdentifier(name)) {
+    return name.text === expected;
+  }
+  if (ts.isStringLiteral(name) || ts.isNoSubstitutionTemplateLiteral(name)) {
+    return name.text === expected;
+  }
+  return false;
+}
+
 function readRstestIncludePatterns(
   configFilePath: string,
   version = getFileVersion(configFilePath)
@@ -338,8 +348,7 @@ function readRstestIncludePatterns(
     for (const property of configObject.properties) {
       if (
         ts.isPropertyAssignment(property) &&
-        ts.isIdentifier(property.name) &&
-        property.name.text === "include"
+        isPropertyNameText(property.name, "include")
       ) {
         return readPatternsFromIncludeInitializer(property.initializer);
       }
@@ -418,8 +427,7 @@ function readRstestIncludePatterns(
 
     if (
       ts.isPropertyAssignment(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === "include"
+      isPropertyNameText(node.name, "include")
     ) {
       const extracted = readPatternsFromIncludeInitializer(node.initializer);
       if (extracted !== undefined && fallbackPatterns === undefined) {
@@ -1227,6 +1235,11 @@ test("cts title", () => {});
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
     const namespaceConfigPath = path.join(tempDirectory, "rstest-namespace.config.ts");
+    const namespaceElementAccessConfigPath = path.join(
+      tempDirectory,
+      "rstest-namespace-element-access.config.ts"
+    );
+    const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
     const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
     const elementAccessConfigPath = path.join(tempDirectory, "rstest-element-access.config.ts");
     const aliasConfigPath = path.join(tempDirectory, "rstest-alias.config.ts");
@@ -1287,6 +1300,33 @@ void unrelated;
 
 export default rstest.defineConfig({
   include: ["test/**/*.namespace.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      namespaceElementAccessConfigPath,
+      `
+import * as rstest from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.namespace-element-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default rstest["defineConfig"]({
+  include: ["test/**/*.namespace-element.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      quotedIncludeKeyConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  "include": ["test/**/*.quoted-include.test.ts"]
 });
 `,
       "utf8"
@@ -1360,6 +1400,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(namespaceConfigPath)).toEqual([
         "test/**/*.namespace.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(namespaceElementAccessConfigPath)).toEqual([
+        "test/**/*.namespace-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(quotedIncludeKeyConfigPath)).toEqual([
+        "test/**/*.quoted-include.test.ts"
       ]);
       expect(readRstestIncludePatterns(propertyAccessConfigPath)).toEqual([
         "test/**/*.property-access.test.ts"

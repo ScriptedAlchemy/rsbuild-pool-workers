@@ -29,7 +29,7 @@ function expectTitleCoverage(titles: string[], expectedTitles: string[]): void {
   }
 }
 
-describe("invalid workers options diagnostics coverage matrix", () => {
+describe("regression coverage matrix", () => {
   test("covers config-function invalid-return variants in unit suite", () => {
     const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
     const expectedUnitSuffixes = [
@@ -549,6 +549,109 @@ describe("invalid workers options diagnostics coverage matrix", () => {
       "defineWorkersProject keeps falsey plugin entries while deduping in promise exports",
       "defineWorkersProject keeps falsey plugin entries while deduping in promise-like config exports",
       "defineWorkersProject keeps falsey plugin entries while deduping thenable config function exports"
+    ]);
+  });
+
+  test("covers workers plugin suite variants", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "workers-plugin.test.ts"));
+    expectTitleCoverage(titles, [
+      "registers module resolution aliases for cloudflare:test modules",
+      "adds workerd resolve conditions and removes node"
+    ]);
+  });
+
+  test("covers runtime options suite variants", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "runtime-options.test.ts"));
+    expectTitleCoverage(titles, [
+      "resolves relative main path and fills miniflare defaults",
+      "preserves explicit compatibilityDate when provided",
+      "preserves explicit script config",
+      "preserves explicit scriptPath config",
+      "accepts additional worker export hints in options",
+      "bundles TypeScript entrypoint into in-memory script",
+      "bundles TSX entrypoint into in-memory script",
+      "bundles MTS entrypoint into in-memory script",
+      "bundles CTS entrypoint into in-memory script",
+      "falls back to scriptPath when TypeScript entrypoint file is missing"
+    ]);
+  });
+
+  test("covers runtime state suite variants", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "runtime-state.test.ts"));
+    expectTitleCoverage(titles, [
+      "SELF.fetch executes worker script and exposes bindings through env",
+      "SELF.fetch supports Request inputs with method/body semantics",
+      "SELF.fetch supports URL object inputs",
+      "SELF.fetch supports relative string inputs",
+      "SELF.fetch normalizes bare path string inputs",
+      "SELF.fetch Request inputs honor init overrides",
+      "SELF.fetch Request inputs preserve headers",
+      "SELF.fetch Request init can override headers",
+      "pushStorageSnapshot and popStorageSnapshot restore persisted KV state",
+      "listDurableObjectIds enumerates created Durable Object IDs",
+      "fetchMock intercepts outbound fetch and resets interceptor state",
+      "fetchMock remains usable after teardown followed by setup",
+      "runInDurableObject executes RPC-callable instance methods",
+      "runInDurableObject throws actionable error on state access",
+      "runInDurableObject preserves callback return values and errors",
+      "runDurableObjectAlarm rejects with unsupported guidance for real stubs",
+      "SELF.scheduled dispatches scheduled handler and persists effects",
+      "SELF.scheduled applies default cron/time when options are omitted"
+    ]);
+  });
+
+  test("covers cloudflare helper and unsupported suite variants", () => {
+    const helperTitles = readTestTitles(path.join(process.cwd(), "test", "cloudflare-test-helpers.test.ts"));
+    expectTitleCoverage(helperTitles, [
+      "waitOnExecutionContext resolves waitUntil promises",
+      "queue helpers collect ack/retry results",
+      "scheduled controller exposes normalized values",
+      "applyD1Migrations runs only unapplied migrations"
+    ]);
+
+    const unsupportedTitles = readTestTitles(
+      path.join(process.cwd(), "test", "cloudflare-test-unsupported.test.ts")
+    );
+    expectTitleCoverage(unsupportedTitles, [
+      "runInDurableObject validates argument types",
+      "runDurableObjectAlarm throws with explicit guidance",
+      "listDurableObjectIds validates namespace argument type",
+      "workflow introspection APIs throw with explicit guidance"
+    ]);
+  });
+
+  test("covers config utility and config type mapping suite variants", () => {
+    const utilityTitles = readTestTitles(path.join(process.cwd(), "test", "config-utilities.test.ts"));
+    expectTitleCoverage(utilityTitles, [
+      "readD1Migrations sorts by migration number and splits statements",
+      "buildPagesASSETSBinding serves static files",
+      "readD1Migrations throws on non-string input",
+      "buildPagesASSETSBinding throws on non-string input"
+    ]);
+
+    const configTypeTitles = readTestTitles(path.join(process.cwd(), "test", "config-types.test.ts"));
+    expectTitleCoverage(configTypeTitles, [
+      "maps object config exports",
+      "throws when mapper throws for object config exports",
+      "maps promise config exports",
+      "propagates mapper throws for promise config exports",
+      "propagates rejection for promise config exports",
+      "maps promise-like config exports",
+      "propagates mapper throws for promise-like config exports",
+      "propagates rejection for promise-like config exports",
+      "forwards config function export arguments through mapper",
+      "preserves this binding for mapped config function exports",
+      "forwards async config function export arguments through mapper",
+      "preserves this and arguments for promise-returning mapped config functions",
+      "preserves this and arguments for thenable-returning mapped config functions",
+      "propagates mapper throws for mapped config function exports",
+      "propagates mapper throws for promise-returning mapped config functions",
+      "propagates mapper throws for async mapped config function exports",
+      "propagates mapper throws for thenable-returning mapped config functions",
+      "propagates rejection for thenable-returning mapped config functions",
+      "propagates rejection for promise-returning mapped config functions",
+      "propagates thrown errors from mapped config function exports",
+      "propagates rejection from async mapped config function exports"
     ]);
   });
 });

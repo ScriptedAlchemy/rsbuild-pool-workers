@@ -2056,6 +2056,23 @@ describe("defineWorkersConfig", () => {
     await expect(configPromise).rejects.toThrow(errorMessage);
   });
 
+  test("propagates rejection from promise top-level async workers function", async () => {
+    const errorMessage = "promise top-level async workers rejection";
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: async () => {
+          throw new Error(errorMessage);
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(errorMessage);
+  });
+
   test("propagates rejection from promise top-level thenable workers function", async () => {
     const errorMessage = "promise top-level thenable workers rejection";
     const configPromise = defineWorkersConfig(
@@ -5157,6 +5174,23 @@ describe("defineWorkersConfig", () => {
     const value = defineWorkersProject(
       Promise.resolve({
         workers: () => Promise.reject(new Error(errorMessage))
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates rejection from promise top-level async workers function", async () => {
+    const errorMessage = "project promise top-level async workers rejection";
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: async () => {
+          throw new Error(errorMessage);
+        }
       })
     );
 

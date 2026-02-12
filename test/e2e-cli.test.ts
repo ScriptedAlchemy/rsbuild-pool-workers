@@ -5035,6 +5035,35 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces promise config export top-level async workers rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(
+          Promise.resolve({
+            include: ["./promise-top-level-async-rejection.test.ts"],
+            workers: async () => {
+              throw new Error("promise top-level async workers rejection e2e");
+            }
+          })
+        );
+      `,
+      "promise-top-level-async-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("promise top-level async workers rejection e2e");
+    });
+  });
+
   test("surfaces promise config export top-level thenable workers rejection end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -8951,6 +8980,37 @@ describe("rstest CLI integration", () => {
 
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain("project promise top-level workers rejection e2e");
+    });
+  });
+
+  test("surfaces defineWorkersProject promise export top-level async workers rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(
+          Promise.resolve({
+            include: ["./project-promise-top-level-async-rejection.test.ts"],
+            workers: async () => {
+              throw new Error("project promise top-level async workers rejection e2e");
+            }
+          })
+        );
+      `,
+      "project-promise-top-level-async-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "project promise top-level async workers rejection e2e"
+      );
     });
   });
 

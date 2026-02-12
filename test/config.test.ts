@@ -788,6 +788,31 @@ describe("defineWorkersConfig", () => {
     await expect(configPromiseLike).rejects.toThrow(errorMessage);
   });
 
+  test("propagates thrown errors from promise-like nested workers function", async () => {
+    const errorMessage = "promise-like nested workers throw";
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: () => {
+            throw new Error(errorMessage);
+          }
+        }
+      }
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(errorMessage);
+  });
+
   test("propagates rejection from promise-like nested thenable workers function", async () => {
     const errorMessage = "promise-like nested thenable workers rejection";
     const promiseLikeValue = {
@@ -1187,6 +1212,27 @@ describe("defineWorkersConfig", () => {
     const errorMessage = "promise-like top-level workers rejection";
     const promiseLikeValue = {
       workers: () => Promise.reject(new Error(errorMessage))
+    };
+    const configPromiseLike = defineWorkersConfig({
+      then(resolve: (value: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(configPromiseLike instanceof Promise)) {
+      throw new Error("Expected promise-like config export to resolve as Promise");
+    }
+
+    await expect(configPromiseLike).rejects.toThrow(errorMessage);
+  });
+
+  test("propagates thrown errors from promise-like top-level workers function", async () => {
+    const errorMessage = "promise-like top-level workers throw";
+    const promiseLikeValue = {
+      workers: () => {
+        throw new Error(errorMessage);
+      }
     };
     const configPromiseLike = defineWorkersConfig({
       then(resolve: (value: typeof promiseLikeValue) => void) {
@@ -3011,6 +3057,31 @@ describe("defineWorkersConfig", () => {
     await expect(value).rejects.toThrow(errorMessage);
   });
 
+  test("defineWorkersProject propagates thrown errors from promise-like nested workers function", async () => {
+    const errorMessage = "project promise-like nested workers throw";
+    const promiseLikeValue = {
+      test: {
+        poolOptions: {
+          workers: () => {
+            throw new Error(errorMessage);
+          }
+        }
+      }
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
   test("defineWorkersProject propagates rejection from promise-like nested thenable workers function", async () => {
     const errorMessage = "project promise-like nested thenable workers rejection";
     const promiseLikeValue = {
@@ -3422,6 +3493,27 @@ describe("defineWorkersConfig", () => {
     const errorMessage = "project promise-like top-level workers rejection";
     const promiseLikeValue = {
       workers: () => Promise.reject(new Error(errorMessage))
+    };
+    const value = defineWorkersProject({
+      then(resolve: (resolved: typeof promiseLikeValue) => void) {
+        resolve(promiseLikeValue);
+        return Promise.resolve(promiseLikeValue);
+      }
+    } as unknown as PromiseLike<typeof promiseLikeValue>);
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise-like config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates thrown errors from promise-like top-level workers function", async () => {
+    const errorMessage = "project promise-like top-level workers throw";
+    const promiseLikeValue = {
+      workers: () => {
+        throw new Error(errorMessage);
+      }
     };
     const value = defineWorkersProject({
       then(resolve: (resolved: typeof promiseLikeValue) => void) {

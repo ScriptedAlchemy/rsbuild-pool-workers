@@ -157,6 +157,19 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("test");
   });
 
+  test("propagates rejection for async config function exports", async () => {
+    const errorMessage = "async config function rejection";
+    const configFactory = defineWorkersConfig(async () => {
+      throw new Error(errorMessage);
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(errorMessage);
+  });
+
   test("forwards config function arguments when function returns a promise", async () => {
     const configFactory = defineWorkersConfig((...args: unknown[]) => {
       const context = args[0] as { mode?: string } | undefined;
@@ -4244,6 +4257,19 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("async-this");
     expect(String(defineValue)).toContain("project-async-this.ts");
+  });
+
+  test("defineWorkersProject propagates rejection for async config function exports", async () => {
+    const errorMessage = "project async config function rejection";
+    const configFactory = defineWorkersProject(async () => {
+      throw new Error(errorMessage);
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(errorMessage);
   });
 
   test("defineWorkersProject forwards arguments when config function returns a promise", async () => {

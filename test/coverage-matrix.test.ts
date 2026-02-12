@@ -402,33 +402,24 @@ function readRstestIncludePatterns(
     const unwrappedInitializer = unwrapConfigExpression(initializer);
     if (ts.isArrayLiteralExpression(unwrappedInitializer)) {
       const patterns: string[] = [];
-      const collectArrayLiteralStrings = (
-        arrayExpression: ts.ArrayLiteralExpression
-      ): void => {
-        for (const nestedElement of arrayExpression.elements) {
-          if (ts.isSpreadElement(nestedElement)) {
+      const collectArrayLiteralStrings = (arrayExpression: ts.ArrayLiteralExpression): void => {
+        for (const element of arrayExpression.elements) {
+          if (ts.isSpreadElement(element)) {
+            const unwrappedSpreadExpression = unwrapConfigExpression(element.expression);
+            if (ts.isArrayLiteralExpression(unwrappedSpreadExpression)) {
+              collectArrayLiteralStrings(unwrappedSpreadExpression);
+            }
             continue;
           }
-          const unwrappedNestedElement = unwrapConfigExpression(nestedElement);
-          if (ts.isStringLiteralLike(unwrappedNestedElement)) {
-            patterns.push(unwrappedNestedElement.text);
+
+          const unwrappedElement = unwrapConfigExpression(element);
+          if (ts.isStringLiteralLike(unwrappedElement)) {
+            patterns.push(unwrappedElement.text);
           }
         }
       };
 
-      for (const element of unwrappedInitializer.elements) {
-        if (ts.isSpreadElement(element)) {
-          const unwrappedSpreadExpression = unwrapConfigExpression(element.expression);
-          if (ts.isArrayLiteralExpression(unwrappedSpreadExpression)) {
-            collectArrayLiteralStrings(unwrappedSpreadExpression);
-          }
-          continue;
-        }
-        const unwrappedElement = unwrapConfigExpression(element);
-        if (ts.isStringLiteralLike(unwrappedElement)) {
-          patterns.push(unwrappedElement.text);
-        }
-      }
+      collectArrayLiteralStrings(unwrappedInitializer);
       return patterns;
     }
     if (ts.isStringLiteralLike(unwrappedInitializer)) {
@@ -1369,7 +1360,9 @@ test("cts title", () => {});
       "direct `require(\"@rstest/core\").defineConfig(...)`/`[\"defineConfig\"](...)` calls",
       "CommonJS `require(\"@rstest/core\")` namespace/destructured bindings",
       "scoped to symbols bound from `@rstest/core`",
-      "array of string literals or a single string literal",
+      "array of string literals",
+      "single string literal",
+      "including static spread array literals",
       "dynamic/non-literal values are ignored",
       "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present"
     ];
@@ -1394,6 +1387,10 @@ test("cts title", () => {});
     const spreadArrayElementsConfigPath = path.join(
       tempDirectory,
       "rstest-spread-array-elements.config.ts"
+    );
+    const nestedSpreadArrayElementsConfigPath = path.join(
+      tempDirectory,
+      "rstest-nested-spread-array-elements.config.ts"
     );
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const typeAssertionConfigPath = path.join(tempDirectory, "rstest-type-assertion.config.ts");
@@ -1489,6 +1486,28 @@ export default defineConfig({
     ...[
       "test/**/*.spread-array-static-a.test.ts" as const,
       \`test/**/*.spread-array-static-b.test.ts\`
+    ],
+    ...dynamicPatterns
+  ]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      nestedSpreadArrayElementsConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const dynamicPatterns = ["test/**/*.nested-spread-dynamic-should-not-be-read.ts"];
+
+export default defineConfig({
+  include: [
+    ...[
+      "test/**/*.nested-spread-static-a.test.ts",
+      ...[
+        "test/**/*.nested-spread-static-b.test.ts" as const,
+        \`test/**/*.nested-spread-static-c.test.ts\`
+      ]
     ],
     ...dynamicPatterns
   ]
@@ -1876,6 +1895,11 @@ export default config;
         "test/**/*.spread-array-direct.test.ts",
         "test/**/*.spread-array-static-a.test.ts",
         "test/**/*.spread-array-static-b.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(nestedSpreadArrayElementsConfigPath)).toEqual([
+        "test/**/*.nested-spread-static-a.test.ts",
+        "test/**/*.nested-spread-static-b.test.ts",
+        "test/**/*.nested-spread-static-c.test.ts"
       ]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
       expect(readRstestIncludePatterns(typeAssertionConfigPath)).toEqual([

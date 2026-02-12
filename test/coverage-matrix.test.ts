@@ -349,22 +349,26 @@ function readRstestIncludePatterns(configFilePath: string): string[] {
   }
 
   // Fallback for unusual config wrappers where include can only be located heuristically.
-  let fallbackPatterns: string[] = [];
+  let fallbackPatterns: string[] | undefined;
   const fallbackVisit = (node: ts.Node): void => {
+    if (fallbackPatterns !== undefined) {
+      return;
+    }
+
     if (
       ts.isPropertyAssignment(node) &&
       ts.isIdentifier(node.name) &&
       node.name.text === "include"
     ) {
       const extracted = readPatternsFromIncludeInitializer(node.initializer);
-      if (extracted !== undefined) {
+      if (extracted !== undefined && fallbackPatterns === undefined) {
         fallbackPatterns = extracted;
       }
     }
     ts.forEachChild(node, fallbackVisit);
   };
   fallbackVisit(sourceFile);
-  return fallbackPatterns;
+  return fallbackPatterns ?? [];
 }
 
 function expectSuffixCoverage(
@@ -1157,6 +1161,7 @@ test("cts title", () => {});
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
     const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
+    const fallbackConfigPath = path.join(tempDirectory, "rstest-fallback.config.ts");
 
     fs.writeFileSync(
       arrayConfigPath,
@@ -1216,6 +1221,22 @@ export default core.defineConfig({
 `,
       "utf8"
     );
+    fs.writeFileSync(
+      fallbackConfigPath,
+      `
+const config = {
+  include: ["test/**/*.fallback-first.test.ts"]
+};
+
+const secondary = {
+  include: ["test/**/*.fallback-second.test.ts"]
+};
+
+void secondary;
+export default config;
+`,
+      "utf8"
+    );
 
     try {
       expect(readRstestIncludePatterns(arrayConfigPath)).toEqual([
@@ -1228,6 +1249,9 @@ export default core.defineConfig({
       ]);
       expect(readRstestIncludePatterns(propertyAccessConfigPath)).toEqual([
         "test/**/*.property-access.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(fallbackConfigPath)).toEqual([
+        "test/**/*.fallback-first.test.ts"
       ]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });

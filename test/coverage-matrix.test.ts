@@ -360,6 +360,19 @@ function readRstestIncludePatterns(
       continue;
     }
 
+    if (ts.isImportEqualsDeclaration(statement)) {
+      const moduleReference = statement.moduleReference;
+      if (
+        ts.isExternalModuleReference(moduleReference) &&
+        moduleReference.expression &&
+        ts.isStringLiteral(moduleReference.expression) &&
+        moduleReference.expression.text === "@rstest/core"
+      ) {
+        defineConfigNamespaceIdentifiers.add(statement.name.text);
+      }
+      continue;
+    }
+
     if (ts.isVariableStatement(statement)) {
       for (const declaration of statement.declarationList.declarations) {
         if (isRequireFromRstestCore(declaration.initializer)) {
@@ -1297,6 +1310,7 @@ test("cts title", () => {});
     const readme = fs.readFileSync(path.join(process.cwd(), "README.md"), "utf8");
     const requiredSnippets = [
       "alias import",
+      "TypeScript `import = require` bindings",
       "namespace/property or namespace-element access",
       "direct `require(\"@rstest/core\").defineConfig(...)`/`[\"defineConfig\"](...)` calls",
       "CommonJS `require(\"@rstest/core\")` namespace/destructured bindings",
@@ -1336,6 +1350,7 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-require-direct-element.config.ts"
     );
+    const importEqualsConfigPath = path.join(tempDirectory, "rstest-import-equals.config.ts");
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
     const templateIncludeKeyConfigPath = path.join(
       tempDirectory,
@@ -1506,6 +1521,22 @@ export default require("@rstest/core")["defineConfig"]({
       "utf8"
     );
     fs.writeFileSync(
+      importEqualsConfigPath,
+      `
+import rstest = require("@rstest/core");
+
+const unrelated = {
+  include: ["test/**/*.import-equals-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default rstest.defineConfig({
+  include: ["test/**/*.import-equals.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       quotedIncludeKeyConfigPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -1615,6 +1646,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(requireDirectElementConfigPath)).toEqual([
         "test/**/*.require-direct-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(importEqualsConfigPath)).toEqual([
+        "test/**/*.import-equals.test.ts"
       ]);
       expect(readRstestIncludePatterns(quotedIncludeKeyConfigPath)).toEqual([
         "test/**/*.quoted-include.test.ts"

@@ -46,6 +46,7 @@ const COLLECTED_TITLE_CACHE = new Map<string, VersionedCacheEntry<string[]>>();
 const UNIQUE_TITLE_CACHE = new Map<string, VersionedCacheEntry<string[]>>();
 const TITLE_COUNT_CACHE = new Map<string, VersionedCacheEntry<Map<string, number>>>();
 const PARSED_TEST_CALL_CACHE = new Map<string, VersionedCacheEntry<ParsedTestCall[]>>();
+const RSTEST_INCLUDE_PATTERNS_CACHE = new Map<string, VersionedCacheEntry<string[]>>();
 
 function getFileVersion(filePath: string): string {
   const stats = fs.statSync(filePath);
@@ -266,7 +267,15 @@ function unwrapConfigExpression(expression: ts.Expression): ts.Expression {
   return current;
 }
 
-function readRstestIncludePatterns(configFilePath: string): string[] {
+function readRstestIncludePatterns(
+  configFilePath: string,
+  version = getFileVersion(configFilePath)
+): string[] {
+  const cached = RSTEST_INCLUDE_PATTERNS_CACHE.get(configFilePath);
+  if (cached && cached.version === version) {
+    return [...cached.value];
+  }
+
   const source = fs.readFileSync(configFilePath, "utf8");
   const sourceFile = ts.createSourceFile(
     configFilePath,
@@ -354,7 +363,11 @@ function readRstestIncludePatterns(configFilePath: string): string[] {
   visit(sourceFile);
 
   if (patterns !== undefined) {
-    return patterns;
+    RSTEST_INCLUDE_PATTERNS_CACHE.set(configFilePath, {
+      version,
+      value: [...patterns]
+    });
+    return [...patterns];
   }
 
   // Fallback for unusual config wrappers where include can only be located heuristically.
@@ -377,7 +390,12 @@ function readRstestIncludePatterns(configFilePath: string): string[] {
     ts.forEachChild(node, fallbackVisit);
   };
   fallbackVisit(sourceFile);
-  return fallbackPatterns ?? [];
+  const resolvedPatterns = fallbackPatterns ?? [];
+  RSTEST_INCLUDE_PATTERNS_CACHE.set(configFilePath, {
+    version,
+    value: [...resolvedPatterns]
+  });
+  return [...resolvedPatterns];
 }
 
 function expectSuffixCoverage(
@@ -1319,6 +1337,69 @@ export default defineConfig({
     try {
       expect(readRstestIncludePatterns(missingIncludePath)).toEqual([]);
       expect(readRstestIncludePatterns(nonLiteralIncludePath)).toEqual([]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("returns defensive copies for cached rstest include patterns", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const configPath = path.join(tempDirectory, "rstest-include-copy.config.ts");
+
+    fs.writeFileSync(
+      configPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.test.ts"]
+});
+`,
+      "utf8"
+    );
+
+    try {
+      const firstRead = readRstestIncludePatterns(configPath);
+      firstRead.push("test/**/*.injected.ts");
+
+      expect(readRstestIncludePatterns(configPath)).toEqual(["test/**/*.test.ts"]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("invalidates cached rstest include patterns when config file changes", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const configPath = path.join(tempDirectory, "rstest-include-cache-invalidation.config.ts");
+
+    fs.writeFileSync(
+      configPath,
+      `
+import { defineConfig } from "@rstest/core";
+export default defineConfig({
+  include: ["test/**/*.before.test.ts"]
+});
+`,
+      "utf8"
+    );
+
+    try {
+      expect(readRstestIncludePatterns(configPath)).toEqual(["test/**/*.before.test.ts"]);
+
+      fs.writeFileSync(
+        configPath,
+        `
+import { defineConfig } from "@rstest/core";
+export default defineConfig({
+  include: ["test/**/*.after.test.ts"]
+});
+`,
+        "utf8"
+      );
+      const now = Date.now();
+      fs.utimesSync(configPath, now / 1000, (now + 1000) / 1000);
+
+      expect(readRstestIncludePatterns(configPath)).toEqual(["test/**/*.after.test.ts"]);
     } finally {
       fs.rmSync(tempDirectory, { recursive: true, force: true });
     }

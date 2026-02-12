@@ -2451,6 +2451,33 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces sync config function export invalid top-level workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          include: ["./sync-config-function-invalid-top-level-workers-number-return.test.ts"],
+          workers: () => 123
+        }));
+      `,
+      "sync-config-function-invalid-top-level-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces sync config function export invalid nested workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2540,6 +2567,37 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from test.poolOptions.workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
+  test("surfaces sync config function export invalid nested workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          test: {
+            include: ["./sync-config-function-invalid-nested-workers-number-return.test.ts"],
+            poolOptions: {
+              workers: () => 123
+            }
+          }
+        }));
+      `,
+      "sync-config-function-invalid-nested-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received number."
       );
     });
   });
@@ -2692,6 +2750,37 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces async config function export invalid nested workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          test: {
+            include: ["./async-config-function-invalid-nested-workers-number-return.test.ts"],
+            poolOptions: {
+              workers: () => 123
+            }
+          }
+        }));
+      `,
+      "async-config-function-invalid-nested-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces async config function export invalid top-level workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2769,6 +2858,33 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
+  test("surfaces async config function export invalid top-level workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          include: ["./async-config-function-invalid-top-level-workers-number-return.test.ts"],
+          workers: () => 123
+        }));
+      `,
+      "async-config-function-invalid-top-level-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received number."
       );
     });
   });
@@ -2913,6 +3029,35 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces promise-returning config function export invalid top-level workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() =>
+          Promise.resolve({
+            include: ["./promise-config-function-invalid-top-level-workers-number-return.test.ts"],
+            workers: () => 123
+          })
+        );
+      `,
+      "promise-config-function-invalid-top-level-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces promise-returning config function export invalid nested workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3008,6 +3153,39 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from test.poolOptions.workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
+  test("surfaces promise-returning config function export invalid nested workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() =>
+          Promise.resolve({
+            test: {
+              include: ["./promise-config-function-invalid-nested-workers-number-return.test.ts"],
+              poolOptions: {
+                workers: () => 123
+              }
+            }
+          })
+        );
+      `,
+      "promise-config-function-invalid-nested-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received number."
       );
     });
   });
@@ -3214,6 +3392,49 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces thenable config function export invalid nested workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          then(resolve) {
+            resolve({
+              test: {
+                include: ["./thenable-config-function-invalid-nested-workers-number-return.test.ts"],
+                poolOptions: {
+                  workers: () => 123
+                }
+              }
+            });
+            return Promise.resolve({
+              test: {
+                include: ["./thenable-config-function-invalid-nested-workers-number-return.test.ts"],
+                poolOptions: {
+                  workers: () => 123
+                }
+              }
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "thenable-config-function-invalid-nested-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces thenable config function export invalid top-level workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3315,6 +3536,41 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
+  test("surfaces thenable config function export invalid top-level workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          then(resolve) {
+            resolve({
+              include: ["./thenable-config-function-invalid-top-level-workers-number-return.test.ts"],
+              workers: () => 123
+            });
+            return Promise.resolve({
+              include: ["./thenable-config-function-invalid-top-level-workers-number-return.test.ts"],
+              workers: () => 123
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "thenable-config-function-invalid-top-level-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received number."
       );
     });
   });
@@ -10657,6 +10913,33 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject sync config function export invalid top-level workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          include: ["./project-sync-config-function-invalid-top-level-workers-number-return.test.ts"],
+          workers: () => 123
+        }));
+      `,
+      "project-sync-config-function-invalid-top-level-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject sync config function export invalid nested workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -10746,6 +11029,37 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from test.poolOptions.workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject sync config function export invalid nested workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          test: {
+            include: ["./project-sync-config-function-invalid-nested-workers-number-return.test.ts"],
+            poolOptions: {
+              workers: () => 123
+            }
+          }
+        }));
+      `,
+      "project-sync-config-function-invalid-nested-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received number."
       );
     });
   });
@@ -10898,6 +11212,37 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject async config function export invalid nested workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          test: {
+            include: ["./project-async-config-function-invalid-nested-workers-number-return.test.ts"],
+            poolOptions: {
+              workers: () => 123
+            }
+          }
+        }));
+      `,
+      "project-async-config-function-invalid-nested-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject async config function export invalid top-level workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -10975,6 +11320,33 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject async config function export invalid top-level workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          include: ["./project-async-config-function-invalid-top-level-workers-number-return.test.ts"],
+          workers: () => 123
+        }));
+      `,
+      "project-async-config-function-invalid-top-level-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received number."
       );
     });
   });
@@ -11119,6 +11491,35 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject promise-returning config function export invalid top-level workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() =>
+          Promise.resolve({
+            include: ["./project-promise-config-function-invalid-top-level-workers-number-return.test.ts"],
+            workers: () => 123
+          })
+        );
+      `,
+      "project-promise-config-function-invalid-top-level-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject promise-returning config function export invalid nested workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -11214,6 +11615,39 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from test.poolOptions.workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject promise-returning config function export invalid nested workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() =>
+          Promise.resolve({
+            test: {
+              include: ["./project-promise-config-function-invalid-nested-workers-number-return.test.ts"],
+              poolOptions: {
+                workers: () => 123
+              }
+            }
+          })
+        );
+      `,
+      "project-promise-config-function-invalid-nested-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received number."
       );
     });
   });
@@ -11420,6 +11854,49 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject thenable config function export invalid nested workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          then(resolve) {
+            resolve({
+              test: {
+                include: ["./project-thenable-config-function-invalid-nested-workers-number-return.test.ts"],
+                poolOptions: {
+                  workers: () => 123
+                }
+              }
+            });
+            return Promise.resolve({
+              test: {
+                include: ["./project-thenable-config-function-invalid-nested-workers-number-return.test.ts"],
+                poolOptions: {
+                  workers: () => 123
+                }
+              }
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "project-thenable-config-function-invalid-nested-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received number."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject thenable config function export invalid top-level workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -11521,6 +11998,41 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject thenable config function export invalid top-level workers number return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          then(resolve) {
+            resolve({
+              include: ["./project-thenable-config-function-invalid-top-level-workers-number-return.test.ts"],
+              workers: () => 123
+            });
+            return Promise.resolve({
+              include: ["./project-thenable-config-function-invalid-top-level-workers-number-return.test.ts"],
+              workers: () => 123
+            });
+          }
+        }) as PromiseLike<any>);
+      `,
+      "project-thenable-config-function-invalid-top-level-workers-number-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received number."
       );
     });
   });

@@ -327,13 +327,20 @@ function readRstestIncludePatterns(
   };
 
   const isRequireFromRstestCore = (expression: ts.Expression | undefined): boolean => {
-    if (!expression || !ts.isCallExpression(expression)) {
+    if (!expression) {
       return false;
     }
-    if (!ts.isIdentifier(expression.expression) || expression.expression.text !== "require") {
+    const unwrappedExpression = unwrapConfigExpression(expression);
+    if (!ts.isCallExpression(unwrappedExpression)) {
       return false;
     }
-    const [firstArgument] = expression.arguments;
+    if (
+      !ts.isIdentifier(unwrappedExpression.expression) ||
+      unwrappedExpression.expression.text !== "require"
+    ) {
+      return false;
+    }
+    const [firstArgument] = unwrappedExpression.arguments;
     return ts.isStringLiteral(firstArgument) && firstArgument.text === "@rstest/core";
   };
 
@@ -1350,6 +1357,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-require-direct-element.config.ts"
     );
+    const parenthesizedRequireConfigPath = path.join(
+      tempDirectory,
+      "rstest-parenthesized-require.config.ts"
+    );
     const importEqualsConfigPath = path.join(tempDirectory, "rstest-import-equals.config.ts");
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
     const templateIncludeKeyConfigPath = path.join(
@@ -1521,6 +1532,20 @@ export default require("@rstest/core")["defineConfig"]({
       "utf8"
     );
     fs.writeFileSync(
+      parenthesizedRequireConfigPath,
+      `
+const unrelated = {
+  include: ["test/**/*.parenthesized-require-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default (require("@rstest/core")).defineConfig({
+  include: ["test/**/*.parenthesized-require.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       importEqualsConfigPath,
       `
 import rstest = require("@rstest/core");
@@ -1646,6 +1671,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(requireDirectElementConfigPath)).toEqual([
         "test/**/*.require-direct-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(parenthesizedRequireConfigPath)).toEqual([
+        "test/**/*.parenthesized-require.test.ts"
       ]);
       expect(readRstestIncludePatterns(importEqualsConfigPath)).toEqual([
         "test/**/*.import-equals.test.ts"

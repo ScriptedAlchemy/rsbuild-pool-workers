@@ -662,6 +662,19 @@ test("cts title", () => {});
     expect(isSupportedTestFileName("ignored.test.d.ts")).toBe(false);
     expect(isSupportedTestFileName("ignored.ts")).toBe(false);
     expect(isSupportedTestFileName("ignored.js")).toBe(false);
+    expect(isSupportedTestFileName("IGNORED.TEST.TS")).toBe(false);
+  });
+
+  test("maps script kinds by supported file extension", () => {
+    expect(getScriptKindFromFilePath("alpha.test.ts")).toBe(ts.ScriptKind.TS);
+    expect(getScriptKindFromFilePath("beta.test.tsx")).toBe(ts.ScriptKind.TSX);
+    expect(getScriptKindFromFilePath("gamma.test.mts")).toBe(ts.ScriptKind.TS);
+    expect(getScriptKindFromFilePath("delta.test.cts")).toBe(ts.ScriptKind.TS);
+    expect(getScriptKindFromFilePath("epsilon.test.js")).toBe(ts.ScriptKind.JS);
+    expect(getScriptKindFromFilePath("zeta.test.jsx")).toBe(ts.ScriptKind.JSX);
+    expect(getScriptKindFromFilePath("eta.test.mjs")).toBe(ts.ScriptKind.JS);
+    expect(getScriptKindFromFilePath("theta.test.cjs")).toBe(ts.ScriptKind.JS);
+    expect(getScriptKindFromFilePath("fallback.unknown")).toBe(ts.ScriptKind.TS);
   });
 
   test("invalidates cached titles when a fixture file changes", () => {

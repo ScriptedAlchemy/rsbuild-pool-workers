@@ -330,4 +330,23 @@ describe("mapAnyConfigExport", () => {
 
     await expect(mapped()).rejects.toThrow(errorMessage);
   });
+
+  test("propagates rejection for promise-returning mapped config functions", async () => {
+    const errorMessage = "mapped promise function rejection";
+    const mapped = mapAnyConfigExport(
+      (value) => ({
+        ...value,
+        include: [...(value.include ?? []), "mapped-should-not-run.test.ts"]
+      }),
+      function () {
+        return Promise.reject(new Error(errorMessage)) as Promise<RstestConfig>;
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped promise-returning function export");
+    }
+
+    await expect(mapped()).rejects.toThrow(errorMessage);
+  });
 });

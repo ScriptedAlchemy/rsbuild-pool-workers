@@ -322,6 +322,28 @@ describe("mapAnyConfigExport", () => {
     await expect(mapped.call({ mode: "ctx" }, "arg")).rejects.toThrow(errorMessage);
   });
 
+  test("propagates mapper throws for async mapped config function exports", async () => {
+    const errorMessage = "mapper async function throw";
+    const mapped = mapAnyConfigExport(
+      () => {
+        throw new Error(errorMessage);
+      },
+      async (...args: unknown[]) => {
+        const context = args[0] as { mode?: string } | undefined;
+        const suffix = typeof args[1] === "string" ? args[1] : "none";
+        return {
+          include: [`${context?.mode ?? "unknown"}-${suffix}`]
+        } satisfies RstestConfig;
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped async function export");
+    }
+
+    await expect(mapped({ mode: "serve" }, "watch")).rejects.toThrow(errorMessage);
+  });
+
   test("propagates mapper throws for thenable-returning mapped config functions", async () => {
     const errorMessage = "mapper thenable function throw";
     const mapped = mapAnyConfigExport(

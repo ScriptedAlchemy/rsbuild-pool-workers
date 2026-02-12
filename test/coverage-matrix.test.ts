@@ -398,6 +398,15 @@ function readRstestIncludePatterns(
     return undefined;
   };
 
+  const isRstestNamespaceExpression = (
+    expression: ts.LeftHandSideExpression
+  ): boolean => {
+    if (ts.isIdentifier(expression)) {
+      return defineConfigNamespaceIdentifiers.has(expression.text);
+    }
+    return isRequireFromRstestCore(expression);
+  };
+
   const isDefineConfigCallExpression = (
     expression: ts.LeftHandSideExpression
   ): boolean => {
@@ -407,8 +416,7 @@ function readRstestIncludePatterns(
     if (ts.isPropertyAccessExpression(expression)) {
       return (
         expression.name.text === "defineConfig" &&
-        ts.isIdentifier(expression.expression) &&
-        defineConfigNamespaceIdentifiers.has(expression.expression.text)
+        isRstestNamespaceExpression(expression.expression)
       );
     }
     if (ts.isElementAccessExpression(expression)) {
@@ -417,8 +425,7 @@ function readRstestIncludePatterns(
         argument &&
         (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
         argument.text === "defineConfig" &&
-        ts.isIdentifier(expression.expression) &&
-        defineConfigNamespaceIdentifiers.has(expression.expression.text)
+        isRstestNamespaceExpression(expression.expression)
       ) {
         return true;
       }
@@ -1291,6 +1298,7 @@ test("cts title", () => {});
     const requiredSnippets = [
       "alias import",
       "namespace/property or namespace-element access",
+      "direct `require(\"@rstest/core\").defineConfig(...)`/`[\"defineConfig\"](...)` calls",
       "CommonJS `require(\"@rstest/core\")` namespace/destructured bindings",
       "array of string literals or a single string literal",
       "dynamic/non-literal values are ignored"
@@ -1320,6 +1328,14 @@ test("cts title", () => {});
     );
     const requireNamespaceConfigPath = path.join(tempDirectory, "rstest-require-namespace.config.ts");
     const requireAliasConfigPath = path.join(tempDirectory, "rstest-require-alias.config.ts");
+    const requireDirectPropertyConfigPath = path.join(
+      tempDirectory,
+      "rstest-require-direct-property.config.ts"
+    );
+    const requireDirectElementConfigPath = path.join(
+      tempDirectory,
+      "rstest-require-direct-element.config.ts"
+    );
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
     const templateIncludeKeyConfigPath = path.join(
       tempDirectory,
@@ -1462,6 +1478,34 @@ export default makeConfig({
       "utf8"
     );
     fs.writeFileSync(
+      requireDirectPropertyConfigPath,
+      `
+const unrelated = {
+  include: ["test/**/*.require-direct-property-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default require("@rstest/core").defineConfig({
+  include: ["test/**/*.require-direct-property.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      requireDirectElementConfigPath,
+      `
+const unrelated = {
+  include: ["test/**/*.require-direct-element-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default require("@rstest/core")["defineConfig"]({
+  include: ["test/**/*.require-direct-element.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       quotedIncludeKeyConfigPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -1565,6 +1609,12 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(requireAliasConfigPath)).toEqual([
         "test/**/*.require-alias.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(requireDirectPropertyConfigPath)).toEqual([
+        "test/**/*.require-direct-property.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(requireDirectElementConfigPath)).toEqual([
+        "test/**/*.require-direct-element.test.ts"
       ]);
       expect(readRstestIncludePatterns(quotedIncludeKeyConfigPath)).toEqual([
         "test/**/*.quoted-include.test.ts"

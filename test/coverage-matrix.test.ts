@@ -302,7 +302,7 @@ function readRstestIncludePatterns(
     true,
     ts.ScriptKind.TS
   );
-  const defineConfigIdentifiers = new Set(["defineConfig"]);
+  const defineConfigIdentifiers = new Set<string>();
   const defineConfigNamespaceIdentifiers = new Set<string>();
   const registerDefineConfigRequireBinding = (declarationName: ts.BindingName): void => {
     if (ts.isIdentifier(declarationName)) {
@@ -1321,6 +1321,7 @@ test("cts title", () => {});
       "namespace/property or namespace-element access",
       "direct `require(\"@rstest/core\").defineConfig(...)`/`[\"defineConfig\"](...)` calls",
       "CommonJS `require(\"@rstest/core\")` namespace/destructured bindings",
+      "scoped to symbols bound from `@rstest/core`",
       "array of string literals or a single string literal",
       "dynamic/non-literal values are ignored"
     ];
@@ -1362,6 +1363,7 @@ test("cts title", () => {});
       "rstest-parenthesized-require.config.ts"
     );
     const importEqualsConfigPath = path.join(tempDirectory, "rstest-import-equals.config.ts");
+    const localShadowConfigPath = path.join(tempDirectory, "rstest-local-shadow.config.ts");
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
     const templateIncludeKeyConfigPath = path.join(
       tempDirectory,
@@ -1562,6 +1564,23 @@ export default rstest.defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      localShadowConfigPath,
+      `
+import { defineConfig as makeConfig } from "@rstest/core";
+
+const defineConfig = (value: unknown) => value;
+const unrelated = defineConfig({
+  include: ["test/**/*.shadow-should-not-be-read.ts"]
+});
+void unrelated;
+
+export default makeConfig({
+  include: ["test/**/*.shadow.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       quotedIncludeKeyConfigPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -1677,6 +1696,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(importEqualsConfigPath)).toEqual([
         "test/**/*.import-equals.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(localShadowConfigPath)).toEqual([
+        "test/**/*.shadow.test.ts"
       ]);
       expect(readRstestIncludePatterns(quotedIncludeKeyConfigPath)).toEqual([
         "test/**/*.quoted-include.test.ts"

@@ -188,6 +188,20 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("propagates rejection for async config function exports with invalid top-level workers options", async () => {
+    const configFactory = defineWorkersConfig(async () => ({
+      workers: 123 as unknown as WorkersPoolOptions
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers: expected an object but received number."
+    );
+  });
+
   test("propagates rejection for async config function exports when nested workers function returns invalid options", async () => {
     const configFactory = defineWorkersConfig(async () => ({
       test: {
@@ -368,6 +382,24 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("throws actionable error for sync config function exports with invalid nested workers options", () => {
+    const configFactory = defineWorkersConfig(() => ({
+      test: {
+        poolOptions: {
+          workers: 123 as unknown as WorkersPoolOptions
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    expect(() => configFactory()).toThrow(
+      "Invalid workers options from test.poolOptions.workers: expected an object but received number."
+    );
+  });
+
   test("throws actionable error for sync config function exports when top-level workers function returns invalid options", () => {
     const configFactory = defineWorkersConfig(() => ({
       workers: () => null as unknown as WorkersPoolOptions
@@ -520,6 +552,26 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from workers: expected an object but received null."
+    );
+  });
+
+  test("propagates rejection for promise-returning config function exports with invalid nested workers options", async () => {
+    const configFactory = defineWorkersConfig(() =>
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: 123 as unknown as WorkersPoolOptions
+          }
+        }
+      })
+    );
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers: expected an object but received number."
     );
   });
 
@@ -754,6 +806,28 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from test.poolOptions.workers: expected an object but received array."
+    );
+  });
+
+  test("propagates rejection for thenable-returning config function exports with invalid top-level workers options", async () => {
+    const configFactory = defineWorkersConfig(() => {
+      const value = {
+        workers: 123 as unknown as WorkersPoolOptions
+      };
+      return {
+        then(resolve: (resolved: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers: expected an object but received number."
     );
   });
 
@@ -7851,6 +7925,20 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("defineWorkersProject propagates rejection for async config function exports with invalid top-level workers options", async () => {
+    const configFactory = defineWorkersProject(async () => ({
+      workers: 123 as unknown as WorkersPoolOptions
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected async config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers: expected an object but received number."
+    );
+  });
+
   test("defineWorkersProject propagates rejection for async config function exports when nested workers function returns invalid options", async () => {
     const configFactory = defineWorkersProject(async () => ({
       test: {
@@ -8032,6 +8120,24 @@ describe("defineWorkersConfig", () => {
     );
   });
 
+  test("defineWorkersProject throws actionable error for sync config function exports with invalid nested workers options", () => {
+    const configFactory = defineWorkersProject(() => ({
+      test: {
+        poolOptions: {
+          workers: 123 as unknown as WorkersPoolOptions
+        }
+      }
+    }));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    expect(() => configFactory()).toThrow(
+      "Invalid workers options from test.poolOptions.workers: expected an object but received number."
+    );
+  });
+
   test("defineWorkersProject throws actionable error for sync config function exports when top-level workers function returns invalid options", () => {
     const configFactory = defineWorkersProject(() => ({
       workers: () => null as unknown as WorkersPoolOptions
@@ -8184,6 +8290,26 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from workers: expected an object but received null."
+    );
+  });
+
+  test("defineWorkersProject propagates rejection for promise-returning config function exports with invalid nested workers options", async () => {
+    const configFactory = defineWorkersProject(() =>
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: 123 as unknown as WorkersPoolOptions
+          }
+        }
+      })
+    );
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from test.poolOptions.workers: expected an object but received number."
     );
   });
 
@@ -8419,6 +8545,28 @@ describe("defineWorkersConfig", () => {
 
     await expect(configFactory()).rejects.toThrow(
       "Invalid workers options from test.poolOptions.workers: expected an object but received array."
+    );
+  });
+
+  test("defineWorkersProject propagates rejection for thenable-returning config function exports with invalid top-level workers options", async () => {
+    const configFactory = defineWorkersProject(() => {
+      const value = {
+        workers: 123 as unknown as WorkersPoolOptions
+      };
+      return {
+        then(resolve: (resolved: typeof value) => void) {
+          resolve(value);
+          return Promise.resolve(value);
+        }
+      } as unknown as PromiseLike<typeof value>;
+    });
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(
+      "Invalid workers options from workers: expected an object but received number."
     );
   });
 

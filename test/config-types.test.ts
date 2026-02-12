@@ -301,6 +301,56 @@ describe("mapAnyConfigExport", () => {
     await expect(mapped.call({ mode: "mapped-throw" })).rejects.toThrow(errorMessage);
   });
 
+  test("propagates mapper throws for promise-returning mapped config functions", async () => {
+    const errorMessage = "mapper promise function throw";
+    const mapped = mapAnyConfigExport(
+      () => {
+        throw new Error(errorMessage);
+      },
+      function (this: { mode?: string }, ...args: unknown[]) {
+        const suffix = typeof args[0] === "string" ? args[0] : "none";
+        return Promise.resolve({
+          include: [`${this.mode ?? "unknown"}-${suffix}`]
+        } satisfies RstestConfig);
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped promise-returning function export");
+    }
+
+    await expect(mapped.call({ mode: "ctx" }, "arg")).rejects.toThrow(errorMessage);
+  });
+
+  test("propagates mapper throws for thenable-returning mapped config functions", async () => {
+    const errorMessage = "mapper thenable function throw";
+    const mapped = mapAnyConfigExport(
+      () => {
+        throw new Error(errorMessage);
+      },
+      function (this: { mode?: string }, ...args: unknown[]) {
+        const suffix = typeof args[0] === "string" ? args[0] : "none";
+        const value = {
+          include: [`${this.mode ?? "unknown"}-${suffix}`]
+        } satisfies RstestConfig;
+        return {
+          then(resolve: (resolved: typeof value) => void) {
+            resolve(value);
+            return Promise.resolve(value);
+          }
+        } as unknown as PromiseLike<typeof value>;
+      }
+    );
+
+    if (typeof mapped !== "function") {
+      throw new Error("Expected mapped thenable-returning function export");
+    }
+
+    await expect(mapped.call({ mode: "thenable-ctx" }, "thenable-arg")).rejects.toThrow(
+      errorMessage
+    );
+  });
+
   test("propagates rejection for thenable-returning mapped config functions", async () => {
     const errorMessage = "mapped thenable function rejection";
     const mapped = mapAnyConfigExport(

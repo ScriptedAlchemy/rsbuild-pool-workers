@@ -2712,6 +2712,36 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces promise-like config export rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          then(_onfulfilled, onrejected) {
+            const error = new Error("promise-like config export rejection e2e");
+            if (typeof onrejected === "function") {
+              onrejected(error);
+            }
+            return Promise.reject(error);
+          }
+        } as PromiseLike<any>);
+      `,
+      "promise-like-config-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("promise-like config export rejection e2e");
+    });
+  });
+
   test("surfaces promise-like nested workers rejection end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -4981,6 +5011,36 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("project-promise-like.test.ts");
+    });
+  });
+
+  test("surfaces defineWorkersProject promise-like config export rejection end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject({
+          then(_onfulfilled, onrejected) {
+            const error = new Error("project promise-like config export rejection e2e");
+            if (typeof onrejected === "function") {
+              onrejected(error);
+            }
+            return Promise.reject(error);
+          }
+        } as PromiseLike<any>);
+      `,
+      "project-promise-like-config-rejection.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain("project promise-like config export rejection e2e");
     });
   });
 

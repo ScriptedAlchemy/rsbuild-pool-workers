@@ -433,22 +433,24 @@ function readRstestIncludePatterns(
   const isDefineConfigCallExpression = (
     expression: ts.LeftHandSideExpression
   ): boolean => {
-    if (ts.isIdentifier(expression)) {
-      return defineConfigIdentifiers.has(expression.text);
+    const unwrappedExpression = unwrapConfigExpression(expression);
+
+    if (ts.isIdentifier(unwrappedExpression)) {
+      return defineConfigIdentifiers.has(unwrappedExpression.text);
     }
-    if (ts.isPropertyAccessExpression(expression)) {
+    if (ts.isPropertyAccessExpression(unwrappedExpression)) {
       return (
-        expression.name.text === "defineConfig" &&
-        isRstestNamespaceExpression(expression.expression)
+        unwrappedExpression.name.text === "defineConfig" &&
+        isRstestNamespaceExpression(unwrappedExpression.expression)
       );
     }
-    if (ts.isElementAccessExpression(expression)) {
-      const argument = expression.argumentExpression;
+    if (ts.isElementAccessExpression(unwrappedExpression)) {
+      const argument = unwrappedExpression.argumentExpression;
       if (
         argument &&
         (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
         argument.text === "defineConfig" &&
-        isRstestNamespaceExpression(expression.expression)
+        isRstestNamespaceExpression(unwrappedExpression.expression)
       ) {
         return true;
       }
@@ -1372,6 +1374,7 @@ test("cts title", () => {});
     );
     const importEqualsConfigPath = path.join(tempDirectory, "rstest-import-equals.config.ts");
     const localShadowConfigPath = path.join(tempDirectory, "rstest-local-shadow.config.ts");
+    const wrappedCalleeConfigPath = path.join(tempDirectory, "rstest-wrapped-callee.config.ts");
     const quotedIncludeKeyConfigPath = path.join(tempDirectory, "rstest-quoted-include-key.config.ts");
     const templateIncludeKeyConfigPath = path.join(
       tempDirectory,
@@ -1621,6 +1624,22 @@ export default makeConfig({
       "utf8"
     );
     fs.writeFileSync(
+      wrappedCalleeConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.wrapped-callee-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default (defineConfig)({
+  include: ["test/**/*.wrapped-callee.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       quotedIncludeKeyConfigPath,
       `
 import { defineConfig } from "@rstest/core";
@@ -1745,6 +1764,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(localShadowConfigPath)).toEqual([
         "test/**/*.shadow.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(wrappedCalleeConfigPath)).toEqual([
+        "test/**/*.wrapped-callee.test.ts"
       ]);
       expect(readRstestIncludePatterns(quotedIncludeKeyConfigPath)).toEqual([
         "test/**/*.quoted-include.test.ts"

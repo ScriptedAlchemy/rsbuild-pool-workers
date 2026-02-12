@@ -260,7 +260,9 @@ function unwrapConfigExpression(expression: ts.Expression): ts.Expression {
   while (
     ts.isParenthesizedExpression(current) ||
     ts.isAsExpression(current) ||
-    ts.isSatisfiesExpression(current)
+    ts.isSatisfiesExpression(current) ||
+    ts.isTypeAssertionExpression(current) ||
+    ts.isNonNullExpression(current)
   ) {
     current = current.expression;
   }
@@ -1248,6 +1250,8 @@ test("cts title", () => {});
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const arrayConfigPath = path.join(tempDirectory, "rstest-array.config.ts");
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
+    const typeAssertionConfigPath = path.join(tempDirectory, "rstest-type-assertion.config.ts");
+    const nonNullConfigPath = path.join(tempDirectory, "rstest-non-null.config.ts");
     const preferredConfigPath = path.join(tempDirectory, "rstest-preferred.config.ts");
     const namespaceConfigPath = path.join(tempDirectory, "rstest-namespace.config.ts");
     const namespaceElementAccessConfigPath = path.join(
@@ -1283,6 +1287,30 @@ import { defineConfig } from "@rstest/core";
 
 export default defineConfig({
   include: ("test/**/*.test.js")
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      typeAssertionConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: (<string[]>["test/**/*.type-asserted.test.ts"])
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      nonNullConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const includePatterns: string[] | undefined = ["test/**/*.non-null.test.ts"];
+
+export default defineConfig({
+  include: includePatterns!
 });
 `,
       "utf8"
@@ -1410,6 +1438,10 @@ export default config;
         "test/**/*.test.tsx"
       ]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
+      expect(readRstestIncludePatterns(typeAssertionConfigPath)).toEqual([
+        "test/**/*.type-asserted.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(nonNullConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(preferredConfigPath)).toEqual([
         "test/**/*.preferred.test.ts"
       ]);

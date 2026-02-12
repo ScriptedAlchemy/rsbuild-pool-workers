@@ -540,6 +540,37 @@ function readRstestIncludePatterns(
     return false;
   };
 
+  const topLevelVariableInitializers = new Map<string, ts.Expression>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) {
+      continue;
+    }
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.initializer) {
+        topLevelVariableInitializers.set(declaration.name.text, declaration.initializer);
+      }
+    }
+  }
+
+  const resolveTopLevelExpression = (
+    expression: ts.Expression
+  ): ts.Expression => {
+    let current = unwrapConfigExpression(expression);
+    const seenIdentifiers = new Set<string>();
+    while (ts.isIdentifier(current)) {
+      if (seenIdentifiers.has(current.text)) {
+        break;
+      }
+      seenIdentifiers.add(current.text);
+      const initializer = topLevelVariableInitializers.get(current.text);
+      if (!initializer) {
+        break;
+      }
+      current = unwrapConfigExpression(initializer);
+    }
+    return current;
+  };
+
   let exportedPatterns: string[] | undefined;
   let sawExportedDefineConfigCall = false;
   for (const statement of sourceFile.statements) {
@@ -560,7 +591,7 @@ function readRstestIncludePatterns(
       continue;
     }
 
-    const unwrappedCandidate = unwrapConfigExpression(candidateExpression);
+    const unwrappedCandidate = resolveTopLevelExpression(candidateExpression);
     if (
       ts.isCallExpression(unwrappedCandidate) &&
       isDefineConfigCallExpression(unwrappedCandidate.expression)
@@ -1460,7 +1491,7 @@ test("cts title", () => {});
       "follows last-assignment object-literal semantics",
       "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present",
       "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)",
-      "top-level exports (`export default`, `module.exports`, `exports.default`), those exported call sites are preferred over non-export helper calls"
+      "top-level exports (`export default`, `module.exports`, `exports.default`), those exported call sites (including simple identifier references to top-level `defineConfig(...)` results) are preferred over non-export helper calls"
     ];
     const missingSnippets = requiredSnippets.filter((snippet) => !readme.includes(snippet));
 
@@ -1515,6 +1546,18 @@ test("cts title", () => {});
     const exportedEqualsPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-equals-preferred.config.ts"
+    );
+    const exportedIdentifierPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-identifier-preferred.config.ts"
+    );
+    const exportedModuleIdentifierPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-module-identifier-preferred.config.js"
+    );
+    const exportedIdentifierNonLiteralPath = path.join(
+      tempDirectory,
+      "rstest-exported-identifier-non-literal.config.ts"
     );
     const stringConfigPath = path.join(tempDirectory, "rstest-string.config.ts");
     const typeAssertionConfigPath = path.join(tempDirectory, "rstest-type-assertion.config.ts");
@@ -1763,6 +1806,61 @@ void unrelated;
 export = defineConfig({
   include: ["test/**/*.export-equals-preferred.test.ts"]
 });
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedIdentifierPreferredPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-identifier-preferred-should-not-be-read.ts"]
+});
+void unrelated;
+
+const config = defineConfig({
+  include: ["test/**/*.exported-identifier-preferred.test.ts"]
+});
+
+export default config;
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedModuleIdentifierPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-module-identifier-preferred-should-not-be-read.ts"]
+});
+void unrelated;
+
+const config = defineConfig({
+  include: ["test/**/*.exported-module-identifier-preferred.test.ts"]
+});
+
+module.exports = config;
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedIdentifierNonLiteralPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.exported-identifier-non-literal-fallback-should-not-be-read.ts"]
+};
+void unrelated;
+
+const includePatterns = ["test/**/*.exported-identifier-non-literal.test.ts"];
+const config = defineConfig({
+  include: includePatterns
+});
+
+export default config;
 `,
       "utf8"
     );
@@ -2311,6 +2409,13 @@ export default config;
       expect(readRstestIncludePatterns(exportedEqualsPreferredPath)).toEqual([
         "test/**/*.export-equals-preferred.test.ts"
       ]);
+      expect(readRstestIncludePatterns(exportedIdentifierPreferredPath)).toEqual([
+        "test/**/*.exported-identifier-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedModuleIdentifierPreferredPath)).toEqual([
+        "test/**/*.exported-module-identifier-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedIdentifierNonLiteralPath)).toEqual([]);
       expect(readRstestIncludePatterns(stringConfigPath)).toEqual(["test/**/*.test.js"]);
       expect(readRstestIncludePatterns(typeAssertionConfigPath)).toEqual([
         "test/**/*.type-asserted.test.ts"

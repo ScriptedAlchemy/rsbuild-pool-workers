@@ -172,7 +172,7 @@ import {
 - when `include` is assigned multiple times inside a recognized `defineConfig({...})` object, extraction follows last-assignment object-literal semantics.
 - heuristic include fallback scanning is only used when no recognized `defineConfig` call is present, preventing unrelated `include` literals from shadowing authoritative `defineConfig(...)` parsing.
 - parser regression fixtures explicitly cover config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`) for consistent include extraction behavior.
-- when recognized `defineConfig` calls appear in top-level exports (`export default`, `module.exports`, `exports.default`), those exported call sites are preferred over non-export helper calls.
+- when recognized `defineConfig` calls appear in top-level exports (`export default`, `module.exports`, `exports.default`), those exported call sites (including simple identifier references to top-level `defineConfig(...)` results) are preferred over non-export helper calls.
 - `cloudflare:test` currently supports:
   - `env`
   - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`; `Request` + `init` override semantics are preserved) and `SELF.scheduled()`

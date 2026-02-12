@@ -449,6 +449,43 @@ test.runIf(true)("run if", () => {});
     }
   });
 
+  test("keeps parser caches isolated between different fixture files", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixtureAPath = path.join(tempDirectory, "fixture-a.test.ts");
+    const fixtureBPath = path.join(tempDirectory, "fixture-b.test.ts");
+
+    fs.writeFileSync(fixtureAPath, `test("title from fixture A", () => {});\n`, "utf8");
+    fs.writeFileSync(fixtureBPath, `test("title from fixture B", () => {});\n`, "utf8");
+
+    try {
+      expect(readTestTitles(fixtureAPath)).toEqual(["title from fixture A"]);
+      expect(readTestTitles(fixtureBPath)).toEqual(["title from fixture B"]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("returns defensive copies for cached title count maps", () => {
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
+    const fixturePath = path.join(tempDirectory, "defensive-copy-fixture.test.ts");
+
+    fs.writeFileSync(
+      fixturePath,
+      `test("same", () => {});\ntest("same", () => {});\n`,
+      "utf8"
+    );
+
+    try {
+      const firstRead = readTestTitleCounts(fixturePath);
+      firstRead.set("same", 999);
+      firstRead.set("injected", 1);
+
+      expect(Array.from(readTestTitleCounts(fixturePath).entries())).toEqual([["same", 2]]);
+    } finally {
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
   test("ensures guarded suites have unique executable test titles", () => {
     for (const suiteFile of GUARDED_TEST_SUITES) {
       const counts = readTestTitleCounts(path.join(process.cwd(), "test", suiteFile));

@@ -1688,6 +1688,14 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-include-method-before-literal.config.ts"
     );
+    const includeSetterOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-setter-override.config.ts"
+    );
+    const includeSetterBeforeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-include-setter-before-literal.config.ts"
+    );
     const exportedDefineConfigPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-define-config-preferred.config.ts"
@@ -2146,6 +2154,34 @@ export default defineConfig({
     return ["test/**/*.include-method-before-literal-should-not-be-read.test.ts"];
   },
   include: ["test/**/*.include-method-before-literal.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeSetterOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.include-setter-override-should-not-be-read.test.ts"],
+  set include(value) {
+    void value;
+  }
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      includeSetterBeforeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  set include(value) {
+    void value;
+  },
+  include: ["test/**/*.include-setter-before-literal.test.ts"]
 });
 `,
       "utf8"
@@ -3269,6 +3305,10 @@ export default config;
       expect(readRstestIncludePatterns(includeMethodOverrideConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(includeMethodBeforeLiteralConfigPath)).toEqual([
         "test/**/*.include-method-before-literal.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(includeSetterOverrideConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(includeSetterBeforeLiteralConfigPath)).toEqual([
+        "test/**/*.include-setter-before-literal.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedDefineConfigPreferredPath)).toEqual([
         "test/**/*.exported-define-preferred.test.ts"

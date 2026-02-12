@@ -373,4 +373,72 @@ describe("invalid workers options diagnostics coverage matrix", () => {
       "does not evaluate nested workers function in defineWorkersProject promise export when top-level thenable function is set end-to-end"
     ]);
   });
+
+  test("covers error propagation variants in unit suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "config.test.ts"));
+    expectTitleCoverage(titles, [
+      "propagates thrown errors for sync config function exports",
+      "propagates rejection for async config function exports",
+      "propagates rejection for promise-returning config function exports",
+      "propagates rejection for thenable-returning config function exports",
+      "defineWorkersProject propagates thrown errors for sync config function exports",
+      "defineWorkersProject propagates rejection for async config function exports",
+      "defineWorkersProject propagates rejection for promise-returning config function exports",
+      "defineWorkersProject propagates rejection for thenable-returning config function exports",
+      "propagates rejection from promise-like config exports",
+      "propagates thrown errors from promise-like config exports",
+      "defineWorkersProject propagates rejection from promise-like config exports",
+      "defineWorkersProject propagates thrown errors from promise-like config exports",
+      "propagates rejection from promise-like nested workers function",
+      "propagates thrown errors from promise-like nested workers function",
+      "propagates rejection from promise-like top-level workers function",
+      "propagates thrown errors from promise-like top-level workers function",
+      "defineWorkersProject propagates rejection from promise-like nested workers function",
+      "defineWorkersProject propagates thrown errors from promise-like nested workers function",
+      "defineWorkersProject propagates rejection from promise-like top-level workers function",
+      "defineWorkersProject propagates thrown errors from promise-like top-level workers function",
+      "propagates rejection from promise nested workers function",
+      "propagates thrown errors from promise nested workers function",
+      "propagates rejection from promise top-level workers function",
+      "propagates thrown errors from promise top-level workers function",
+      "defineWorkersProject propagates rejection from promise nested workers function",
+      "defineWorkersProject propagates thrown errors from promise nested workers function",
+      "defineWorkersProject propagates rejection from promise top-level workers function",
+      "defineWorkersProject propagates thrown errors from promise top-level workers function"
+    ]);
+  });
+
+  test("covers error propagation variants in e2e suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "e2e-cli.test.ts"));
+    expectTitleCoverage(titles, [
+      "surfaces sync config function export thrown errors end-to-end",
+      "surfaces async config function export rejection end-to-end",
+      "surfaces promise-returning config function export rejection end-to-end",
+      "surfaces thenable config function export rejection end-to-end",
+      "surfaces defineWorkersProject sync config function export thrown errors end-to-end",
+      "surfaces defineWorkersProject async config function export rejection end-to-end",
+      "surfaces defineWorkersProject promise-returning config function export rejection end-to-end",
+      "surfaces defineWorkersProject thenable config function export rejection end-to-end",
+      "surfaces promise-like config export rejection end-to-end",
+      "surfaces promise-like config export thrown errors end-to-end",
+      "surfaces defineWorkersProject promise-like config export rejection end-to-end",
+      "surfaces defineWorkersProject promise-like config export thrown errors end-to-end",
+      "surfaces promise-like nested workers rejection end-to-end",
+      "surfaces promise-like nested workers thrown errors end-to-end",
+      "surfaces promise-like top-level workers rejection end-to-end",
+      "surfaces promise-like top-level workers thrown errors end-to-end",
+      "surfaces defineWorkersProject promise-like nested workers rejection end-to-end",
+      "surfaces defineWorkersProject promise-like nested workers thrown errors end-to-end",
+      "surfaces defineWorkersProject promise-like top-level workers rejection end-to-end",
+      "surfaces defineWorkersProject promise-like top-level workers thrown errors end-to-end",
+      "surfaces promise config export nested workers rejection end-to-end",
+      "surfaces promise config export nested workers thrown errors end-to-end",
+      "surfaces promise config export top-level workers rejection end-to-end",
+      "surfaces promise config export top-level workers thrown errors end-to-end",
+      "surfaces defineWorkersProject promise export nested workers rejection end-to-end",
+      "surfaces defineWorkersProject promise export nested workers thrown errors end-to-end",
+      "surfaces defineWorkersProject promise export top-level workers rejection end-to-end",
+      "surfaces defineWorkersProject promise export top-level workers thrown errors end-to-end"
+    ]);
+  });
 });

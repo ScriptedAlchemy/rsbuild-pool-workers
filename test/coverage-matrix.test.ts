@@ -1604,6 +1604,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-identifier-reassignment-preferred.config.ts"
     );
+    const exportedIdentifierAssignmentChainPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-identifier-assignment-chain-preferred.config.ts"
+    );
     const exportedModuleChainAssignmentPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-module-chain-assignment-preferred.config.js"
@@ -1984,6 +1988,22 @@ let config = defineConfig({
 
 config = defineConfig({
   include: ["test/**/*.exported-identifier-reassignment-second.test.ts"]
+});
+
+export default config;
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedIdentifierAssignmentChainPreferredPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+let config: unknown;
+let alias: unknown;
+
+config = alias = defineConfig({
+  include: ["test/**/*.exported-identifier-assignment-chain.test.ts"]
 });
 
 export default config;
@@ -2620,6 +2640,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedIdentifierReassignmentPreferredPath)).toEqual([
         "test/**/*.exported-identifier-reassignment-second.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedIdentifierAssignmentChainPreferredPath)).toEqual([
+        "test/**/*.exported-identifier-assignment-chain.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedModuleChainAssignmentPreferredPath)).toEqual([
         "test/**/*.exported-chain-assignment.test.ts"

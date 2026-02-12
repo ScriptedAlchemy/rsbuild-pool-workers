@@ -1520,7 +1520,8 @@ test("cts title", () => {});
       "follows last-assignment object-literal semantics",
       "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present",
       "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)",
-      "top-level exports (`export default`, `module.exports`, `exports.default`), those exported call sites (including simple identifier references to top-level `defineConfig(...)` results and chained assignment forms) are preferred over non-export helper calls"
+      "top-level exports (`export default`, `module.exports`, `exports.default`), those exported call sites (including simple identifier references to top-level `defineConfig(...)` results and chained assignment forms) are preferred over non-export helper calls",
+      "repeated top-level export assignments, include extraction follows last-assignment statement order"
     ];
     const missingSnippets = requiredSnippets.filter((snippet) => !readme.includes(snippet));
 

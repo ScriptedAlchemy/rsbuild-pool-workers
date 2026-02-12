@@ -2424,6 +2424,33 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces sync config function export invalid top-level workers boolean return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          include: ["./sync-config-function-invalid-top-level-workers-boolean-return.test.ts"],
+          workers: () => false
+        }));
+      `,
+      "sync-config-function-invalid-top-level-workers-boolean-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
   test("surfaces sync config function export invalid nested workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2482,6 +2509,37 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+      );
+    });
+  });
+
+  test("surfaces sync config function export invalid nested workers boolean return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(() => ({
+          test: {
+            include: ["./sync-config-function-invalid-nested-workers-boolean-return.test.ts"],
+            poolOptions: {
+              workers: () => false
+            }
+          }
+        }));
+      `,
+      "sync-config-function-invalid-nested-workers-boolean-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received boolean."
       );
     });
   });
@@ -2603,6 +2661,37 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces async config function export invalid nested workers boolean return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          test: {
+            include: ["./async-config-function-invalid-nested-workers-boolean-return.test.ts"],
+            poolOptions: {
+              workers: () => false
+            }
+          }
+        }));
+      `,
+      "async-config-function-invalid-nested-workers-boolean-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
   test("surfaces async config function export invalid top-level workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2653,6 +2742,33 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers() return value: expected an object but received undefined."
+      );
+    });
+  });
+
+  test("surfaces async config function export invalid top-level workers boolean return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig(async () => ({
+          include: ["./async-config-function-invalid-top-level-workers-boolean-return.test.ts"],
+          workers: () => false
+        }));
+      `,
+      "async-config-function-invalid-top-level-workers-boolean-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received boolean."
       );
     });
   });
@@ -9954,6 +10070,33 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject sync config function export invalid top-level workers boolean return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          include: ["./project-sync-config-function-invalid-top-level-workers-boolean-return.test.ts"],
+          workers: () => false
+        }));
+      `,
+      "project-sync-config-function-invalid-top-level-workers-boolean-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject sync config function export invalid nested workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -10012,6 +10155,37 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from test.poolOptions.workers() return value: expected an object but received string."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject sync config function export invalid nested workers boolean return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(() => ({
+          test: {
+            include: ["./project-sync-config-function-invalid-nested-workers-boolean-return.test.ts"],
+            poolOptions: {
+              workers: () => false
+            }
+          }
+        }));
+      `,
+      "project-sync-config-function-invalid-nested-workers-boolean-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received boolean."
       );
     });
   });
@@ -10133,6 +10307,37 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces defineWorkersProject async config function export invalid nested workers boolean return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          test: {
+            include: ["./project-async-config-function-invalid-nested-workers-boolean-return.test.ts"],
+            poolOptions: {
+              workers: () => false
+            }
+          }
+        }));
+      `,
+      "project-async-config-function-invalid-nested-workers-boolean-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from test.poolOptions.workers() return value: expected an object but received boolean."
+      );
+    });
+  });
+
   test("surfaces defineWorkersProject async config function export invalid top-level workers function return options end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -10183,6 +10388,33 @@ describe("rstest CLI integration", () => {
     await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
       expect(`${stdout}${stderr}`).toContain(
         "Invalid workers options from workers() return value: expected an object but received undefined."
+      );
+    });
+  });
+
+  test("surfaces defineWorkersProject async config function export invalid top-level workers boolean return options end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersProject } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersProject(async () => ({
+          include: ["./project-async-config-function-invalid-top-level-workers-boolean-return.test.ts"],
+          workers: () => false
+        }));
+      `,
+      "project-async-config-function-invalid-top-level-workers-boolean-return.test.ts": `
+        import { test } from "@rstest/core";
+
+        test("placeholder", () => {
+          // config resolution should fail before this executes
+        });
+      `
+    };
+
+    await runFixtureExpectFailure(files, ({ stdout, stderr }) => {
+      expect(`${stdout}${stderr}`).toContain(
+        "Invalid workers options from workers() return value: expected an object but received boolean."
       );
     });
   });

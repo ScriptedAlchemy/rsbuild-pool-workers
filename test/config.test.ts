@@ -182,6 +182,17 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("serve");
   });
 
+  test("propagates rejection for promise-returning config function exports", async () => {
+    const errorMessage = "promise config function rejection";
+    const configFactory = defineWorkersConfig(() => Promise.reject(new Error(errorMessage)));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function");
+    }
+
+    await expect(configFactory()).rejects.toThrow(errorMessage);
+  });
+
   test("supports config functions returning thenables", async () => {
     const configFactory = defineWorkersConfig((...args: unknown[]) => {
       const context = args[0] as { mode?: string } | undefined;
@@ -4246,6 +4257,17 @@ describe("defineWorkersConfig", () => {
     expect(typeof defineValue).toBe("string");
     expect(String(defineValue)).toContain("serve");
     expect(String(defineValue)).toContain("project-promise-forwarding.ts");
+  });
+
+  test("defineWorkersProject propagates rejection for promise-returning config function exports", async () => {
+    const errorMessage = "project promise config function rejection";
+    const configFactory = defineWorkersProject(() => Promise.reject(new Error(errorMessage)));
+
+    if (typeof configFactory !== "function") {
+      throw new Error("Expected config function export");
+    }
+
+    await expect(configFactory()).rejects.toThrow(errorMessage);
   });
 
   test("defineWorkersProject supports config functions returning thenables", async () => {

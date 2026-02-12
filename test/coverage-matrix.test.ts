@@ -431,16 +431,60 @@ function readRstestIncludePatterns(
   const readPatternsFromConfigObject = (
     configObject: ts.ObjectLiteralExpression
   ): string[] | undefined => {
-    let includeInitializer: ts.Expression | undefined;
-    for (const property of configObject.properties) {
-      if (ts.isPropertyAssignment(property) && isPropertyNameText(property.name, "include")) {
-        includeInitializer = property.initializer;
-      } else if (
-        ts.isShorthandPropertyAssignment(property) &&
-        property.name.text === "include"
-      ) {
-        includeInitializer = property.name;
+    const readIncludeInitializerFromConfigObject = (
+      objectLiteral: ts.ObjectLiteralExpression
+    ): ts.Expression | "unknown" | undefined => {
+      let includeInitializer: ts.Expression | undefined;
+      let includeOverriddenByUnknownSpread = false;
+
+      for (const property of objectLiteral.properties) {
+        if (ts.isPropertyAssignment(property) && isPropertyNameText(property.name, "include")) {
+          includeInitializer = property.initializer;
+          includeOverriddenByUnknownSpread = false;
+          continue;
+        }
+
+        if (ts.isShorthandPropertyAssignment(property) && property.name.text === "include") {
+          includeInitializer = property.name;
+          includeOverriddenByUnknownSpread = false;
+          continue;
+        }
+
+        if (ts.isSpreadAssignment(property)) {
+          const unwrappedSpreadExpression = unwrapConfigExpression(property.expression);
+          if (ts.isObjectLiteralExpression(unwrappedSpreadExpression)) {
+            const nestedInitializer = readIncludeInitializerFromConfigObject(unwrappedSpreadExpression);
+            if (nestedInitializer === "unknown") {
+              if (includeInitializer !== undefined) {
+                includeInitializer = undefined;
+                includeOverriddenByUnknownSpread = true;
+              }
+            } else if (nestedInitializer !== undefined) {
+              includeInitializer = nestedInitializer;
+              includeOverriddenByUnknownSpread = false;
+            }
+            continue;
+          }
+
+          if (includeInitializer !== undefined) {
+            includeInitializer = undefined;
+            includeOverriddenByUnknownSpread = true;
+          }
+        }
       }
+
+      if (includeInitializer !== undefined) {
+        return includeInitializer;
+      }
+      if (includeOverriddenByUnknownSpread) {
+        return "unknown";
+      }
+      return undefined;
+    };
+
+    const includeInitializer = readIncludeInitializerFromConfigObject(configObject);
+    if (includeInitializer === "unknown") {
+      return [];
     }
     if (!includeInitializer) {
       return undefined;
@@ -1519,6 +1563,7 @@ test("cts title", () => {});
       "single string literal",
       "including static spread array literals",
       "dynamic/non-literal values are ignored",
+      "object spread entries in recognized config objects are handled conservatively",
       "follows last-assignment object-literal semantics",
       "heuristic include fallback scanning is only used when no recognized `defineConfig` call is present",
       "config-file extension variants (`.js`, `.mjs`, `.cjs`, `.mts`, `.cts`)",
@@ -1562,6 +1607,18 @@ test("cts title", () => {});
     const duplicateIncludeShorthandNonLiteralConfigPath = path.join(
       tempDirectory,
       "rstest-duplicate-include-shorthand-non-literal.config.ts"
+    );
+    const objectSpreadLiteralOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-object-spread-literal-override.config.ts"
+    );
+    const objectSpreadDynamicOverrideConfigPath = path.join(
+      tempDirectory,
+      "rstest-object-spread-dynamic-override.config.ts"
+    );
+    const objectSpreadDynamicBeforeLiteralConfigPath = path.join(
+      tempDirectory,
+      "rstest-object-spread-dynamic-before-literal.config.ts"
     );
     const exportedDefineConfigPreferredPath = path.join(
       tempDirectory,
@@ -1823,6 +1880,52 @@ const include = ["test/**/*.duplicate-include-shorthand-non-literal-last.test.ts
 export default defineConfig({
   include: ["test/**/*.duplicate-include-shorthand-should-not-be-read.test.ts"],
   include
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      objectSpreadLiteralOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  include: ["test/**/*.object-spread-literal-first.test.ts"],
+  ...{
+    include: ["test/**/*.object-spread-literal-last.test.ts"]
+  }
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      objectSpreadDynamicOverrideConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const overrides = {
+  include: ["test/**/*.object-spread-dynamic-last.test.ts"]
+};
+
+export default defineConfig({
+  include: ["test/**/*.object-spread-dynamic-should-not-be-read.test.ts"],
+  ...overrides
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      objectSpreadDynamicBeforeLiteralConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+const overrides = {
+  include: ["test/**/*.object-spread-dynamic-before-literal-should-not-be-read.test.ts"]
+};
+
+export default defineConfig({
+  ...overrides,
+  include: ["test/**/*.object-spread-dynamic-before-literal.test.ts"]
 });
 `,
       "utf8"
@@ -2689,6 +2792,13 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(duplicateIncludeNonLiteralConfigPath)).toEqual([]);
       expect(readRstestIncludePatterns(duplicateIncludeShorthandNonLiteralConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(objectSpreadLiteralOverrideConfigPath)).toEqual([
+        "test/**/*.object-spread-literal-last.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(objectSpreadDynamicOverrideConfigPath)).toEqual([]);
+      expect(readRstestIncludePatterns(objectSpreadDynamicBeforeLiteralConfigPath)).toEqual([
+        "test/**/*.object-spread-dynamic-before-literal.test.ts"
+      ]);
       expect(readRstestIncludePatterns(exportedDefineConfigPreferredPath)).toEqual([
         "test/**/*.exported-define-preferred.test.ts"
       ]);

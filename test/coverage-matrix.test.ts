@@ -1229,6 +1229,21 @@ test("cts title", () => {});
     expect(readme.includes("pnpm test:matrix")).toBe(true);
   });
 
+  test("documents supported test suffixes in README", () => {
+    const readme = fs.readFileSync(path.join(process.cwd(), "README.md"), "utf8");
+    const missingSuffixMentions = SUPPORTED_TEST_FILE_SUFFIXES.filter(
+      (suffix) => !readme.includes(`\`${suffix}\``)
+    );
+
+    expect(
+      missingSuffixMentions,
+      [
+        "README is missing supported test suffix mentions:",
+        ...missingSuffixMentions.map((suffix) => `- ${suffix}`)
+      ].join("\n")
+    ).toEqual([]);
+  });
+
   test("reads rstest include patterns from array and single-string forms", () => {
     const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rstest-workers-matrix-"));
     const arrayConfigPath = path.join(tempDirectory, "rstest-array.config.ts");

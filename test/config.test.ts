@@ -2045,6 +2045,30 @@ describe("defineWorkersConfig", () => {
     await expect(configPromise).rejects.toThrow(errorMessage);
   });
 
+  test("propagates thrown errors from promise nested thenable workers function", async () => {
+    const errorMessage = "promise nested thenable workers throw";
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: () =>
+              ({
+                then() {
+                  throw new Error(errorMessage);
+                }
+              }) as PromiseLike<WorkersPoolOptions>
+          }
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(errorMessage);
+  });
+
   test("propagates thrown errors from promise top-level workers function", async () => {
     const errorMessage = "promise top-level workers throw";
     const configPromise = defineWorkersConfig(
@@ -2109,6 +2133,26 @@ describe("defineWorkersConfig", () => {
                 onrejected(error);
               }
               return Promise.reject(error);
+            }
+          }) as PromiseLike<WorkersPoolOptions>
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(errorMessage);
+  });
+
+  test("propagates thrown errors from promise top-level thenable workers function", async () => {
+    const errorMessage = "promise top-level thenable workers throw";
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: () =>
+          ({
+            then() {
+              throw new Error(errorMessage);
             }
           }) as PromiseLike<WorkersPoolOptions>
       })
@@ -5194,6 +5238,30 @@ describe("defineWorkersConfig", () => {
     await expect(value).rejects.toThrow(errorMessage);
   });
 
+  test("defineWorkersProject propagates thrown errors from promise nested thenable workers function", async () => {
+    const errorMessage = "project promise nested thenable workers throw";
+    const value = defineWorkersProject(
+      Promise.resolve({
+        test: {
+          poolOptions: {
+            workers: () =>
+              ({
+                then() {
+                  throw new Error(errorMessage);
+                }
+              }) as PromiseLike<WorkersPoolOptions>
+          }
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
   test("defineWorkersProject propagates thrown errors from promise top-level workers function", async () => {
     const errorMessage = "project promise top-level workers throw";
     const value = defineWorkersProject(
@@ -5258,6 +5326,26 @@ describe("defineWorkersConfig", () => {
                 onrejected(error);
               }
               return Promise.reject(error);
+            }
+          }) as PromiseLike<WorkersPoolOptions>
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates thrown errors from promise top-level thenable workers function", async () => {
+    const errorMessage = "project promise top-level thenable workers throw";
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () =>
+          ({
+            then() {
+              throw new Error(errorMessage);
             }
           }) as PromiseLike<WorkersPoolOptions>
       })

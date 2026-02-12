@@ -2318,6 +2318,44 @@ describe("defineWorkersConfig", () => {
     delete process.env.RSTEST_INJECT_PROMISE_TOP_LEVEL_THENABLE;
   });
 
+  test("supports direct env fallback for promise top-level thenable workers function", async () => {
+    process.env.PROMISE_TOP_LEVEL_THENABLE_FALLBACK = "\"promise-top-level-thenable-fallback\"";
+
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => {
+          const resolvedValue = {
+            main: "./src/promise-top-level-thenable-fallback.ts",
+            miniflare: {
+              bindings: {
+                PROMISE_TOP_LEVEL_THENABLE_FALLBACK: inject<string>(
+                  "PROMISE_TOP_LEVEL_THENABLE_FALLBACK"
+                )
+              }
+            }
+          };
+          return {
+            then(resolve: (resolved: typeof resolvedValue) => void) {
+              resolve(resolvedValue);
+              return Promise.resolve(resolvedValue);
+            }
+          } as unknown as PromiseLike<typeof resolvedValue>;
+        }
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await configPromise;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("promise-top-level-thenable-fallback");
+
+    delete process.env.PROMISE_TOP_LEVEL_THENABLE_FALLBACK;
+  });
+
   test("supports direct env fallback for promise async top-level workers function", async () => {
     process.env.PROMISE_TOP_LEVEL_ASYNC_FALLBACK = "\"promise-top-level-async-fallback\"";
 
@@ -5072,6 +5110,45 @@ describe("defineWorkersConfig", () => {
     expect(String(defineValue)).toContain("project-promise-top-level-thenable");
 
     delete process.env.RSTEST_INJECT_PROJECT_PROMISE_TOP_LEVEL_THENABLE;
+  });
+
+  test("defineWorkersProject supports direct env fallback for promise top-level thenable workers function", async () => {
+    process.env.PROJECT_PROMISE_TOP_LEVEL_THENABLE_FALLBACK =
+      "\"project-promise-top-level-thenable-fallback\"";
+
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: ({ inject }: WorkerPoolOptionsContext) => {
+          const resolvedValue = {
+            main: "./src/project-promise-top-level-thenable-fallback-entry.ts",
+            miniflare: {
+              bindings: {
+                PROJECT_PROMISE_TOP_LEVEL_THENABLE_FALLBACK: inject<string>(
+                  "PROJECT_PROMISE_TOP_LEVEL_THENABLE_FALLBACK"
+                )
+              }
+            }
+          };
+          return {
+            then(resolve: (resolved: typeof resolvedValue) => void) {
+              resolve(resolvedValue);
+              return Promise.resolve(resolvedValue);
+            }
+          } as unknown as PromiseLike<typeof resolvedValue>;
+        }
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    const resolved = await value;
+    const defineValue = resolved.source?.define?.__RSTEST_POOL_WORKERS_OPTIONS_JSON__;
+    expect(typeof defineValue).toBe("string");
+    expect(String(defineValue)).toContain("project-promise-top-level-thenable-fallback");
+
+    delete process.env.PROJECT_PROMISE_TOP_LEVEL_THENABLE_FALLBACK;
   });
 
   test("defineWorkersProject supports direct env fallback for promise async top-level workers function", async () => {

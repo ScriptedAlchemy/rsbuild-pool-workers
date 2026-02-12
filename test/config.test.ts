@@ -2004,6 +2004,33 @@ describe("defineWorkersConfig", () => {
     await expect(configPromise).rejects.toThrow(errorMessage);
   });
 
+  test("propagates rejection from promise top-level thenable workers function", async () => {
+    const errorMessage = "promise top-level thenable workers rejection";
+    const configPromise = defineWorkersConfig(
+      Promise.resolve({
+        workers: () =>
+          ({
+            then(
+              _onfulfilled?: ((value: WorkersPoolOptions) => unknown) | null,
+              onrejected?: ((reason: unknown) => unknown) | null
+            ) {
+              const error = new Error(errorMessage);
+              if (typeof onrejected === "function") {
+                onrejected(error);
+              }
+              return Promise.reject(error);
+            }
+          }) as PromiseLike<WorkersPoolOptions>
+      })
+    );
+
+    if (!(configPromise instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(configPromise).rejects.toThrow(errorMessage);
+  });
+
   test("supports promise config exports with nested workers function", async () => {
     process.env.RSTEST_INJECT_PROMISE_NESTED = "\"promise-nested\"";
 
@@ -5026,6 +5053,33 @@ describe("defineWorkersConfig", () => {
     const value = defineWorkersProject(
       Promise.resolve({
         workers: () => Promise.reject(new Error(errorMessage))
+      })
+    );
+
+    if (!(value instanceof Promise)) {
+      throw new Error("Expected promise config export");
+    }
+
+    await expect(value).rejects.toThrow(errorMessage);
+  });
+
+  test("defineWorkersProject propagates rejection from promise top-level thenable workers function", async () => {
+    const errorMessage = "project promise top-level thenable workers rejection";
+    const value = defineWorkersProject(
+      Promise.resolve({
+        workers: () =>
+          ({
+            then(
+              _onfulfilled?: ((resolved: WorkersPoolOptions) => unknown) | null,
+              onrejected?: ((reason: unknown) => unknown) | null
+            ) {
+              const error = new Error(errorMessage);
+              if (typeof onrejected === "function") {
+                onrejected(error);
+              }
+              return Promise.reject(error);
+            }
+          }) as PromiseLike<WorkersPoolOptions>
       })
     );
 

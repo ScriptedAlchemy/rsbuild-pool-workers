@@ -18,14 +18,24 @@ const GUARDED_TEST_SUITES = [
 ] as const;
 
 const TEST_MODIFIER_SEGMENTS = new Set(["only", "skip", "todo", "concurrent"]);
-const COLLECTED_TITLE_CACHE = new Map<string, string[]>();
-const UNIQUE_TITLE_CACHE = new Map<string, string[]>();
-const TITLE_COUNT_CACHE = new Map<string, Map<string, number>>();
+type VersionedCacheEntry<T> = {
+  version: string;
+  value: T;
+};
+const COLLECTED_TITLE_CACHE = new Map<string, VersionedCacheEntry<string[]>>();
+const UNIQUE_TITLE_CACHE = new Map<string, VersionedCacheEntry<string[]>>();
+const TITLE_COUNT_CACHE = new Map<string, VersionedCacheEntry<Map<string, number>>>();
+
+function getFileVersion(filePath: string): string {
+  const stats = fs.statSync(filePath);
+  return `${stats.mtimeMs}:${stats.size}`;
+}
 
 function collectTestTitles(filePath: string): string[] {
+  const version = getFileVersion(filePath);
   const cached = COLLECTED_TITLE_CACHE.get(filePath);
-  if (cached) {
-    return [...cached];
+  if (cached && cached.version === version) {
+    return [...cached.value];
   }
 
   const source = fs.readFileSync(filePath, "utf8");
@@ -74,32 +84,43 @@ function collectTestTitles(filePath: string): string[] {
 
   visit(sourceFile);
 
-  COLLECTED_TITLE_CACHE.set(filePath, [...titles]);
+  COLLECTED_TITLE_CACHE.set(filePath, {
+    version,
+    value: [...titles]
+  });
   return [...titles];
 }
 
 function readTestTitles(filePath: string): string[] {
+  const version = getFileVersion(filePath);
   const cached = UNIQUE_TITLE_CACHE.get(filePath);
-  if (cached) {
-    return [...cached];
+  if (cached && cached.version === version) {
+    return [...cached.value];
   }
 
   const titles = Array.from(new Set(collectTestTitles(filePath)));
-  UNIQUE_TITLE_CACHE.set(filePath, [...titles]);
+  UNIQUE_TITLE_CACHE.set(filePath, {
+    version,
+    value: [...titles]
+  });
   return [...titles];
 }
 
 function readTestTitleCounts(filePath: string): Map<string, number> {
+  const version = getFileVersion(filePath);
   const cached = TITLE_COUNT_CACHE.get(filePath);
-  if (cached) {
-    return new Map(cached);
+  if (cached && cached.version === version) {
+    return new Map(cached.value);
   }
 
   const counts = new Map<string, number>();
   for (const title of collectTestTitles(filePath)) {
     counts.set(title, (counts.get(title) ?? 0) + 1);
   }
-  TITLE_COUNT_CACHE.set(filePath, new Map(counts));
+  TITLE_COUNT_CACHE.set(filePath, {
+    version,
+    value: new Map(counts)
+  });
   return counts;
 }
 

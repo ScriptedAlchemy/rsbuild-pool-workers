@@ -1812,6 +1812,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-to-identifier-chain-preferred.config.js"
     );
+    const exportedMixedTargetReassignmentPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-mixed-target-reassignment-preferred.config.js"
+    );
     const exportedModuleDuplicateLiteralPath = path.join(
       tempDirectory,
       "rstest-exported-module-duplicate-literal.config.js"
@@ -2658,6 +2662,21 @@ module.exports = config = defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      exportedMixedTargetReassignmentPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+exports.default = defineConfig({
+  include: ["test/**/*.exported-mixed-target-first.test.ts"]
+});
+
+module.exports = defineConfig({
+  include: ["test/**/*.exported-mixed-target-second.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       exportedModuleDuplicateLiteralPath,
       `
 const { defineConfig } = require("@rstest/core");
@@ -3393,6 +3412,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedModuleToIdentifierChainPreferredPath)).toEqual([
         "test/**/*.exported-module-to-identifier.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedMixedTargetReassignmentPreferredPath)).toEqual([
+        "test/**/*.exported-mixed-target-second.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedModuleDuplicateLiteralPath)).toEqual([
         "test/**/*.exported-module-duplicate-last.test.ts"

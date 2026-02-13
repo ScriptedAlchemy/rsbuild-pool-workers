@@ -183,7 +183,7 @@ import {
   - `SELF.fetch()` (string, `URL`, and `Request` inputs; relative/bare strings are normalized to `http://localhost/...`; `Request` + `init` override semantics are preserved) and `SELF.scheduled()`
   - `fetchMock`
   - `listDurableObjectIds` (deterministic lexicographic ordering)
-  - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`)
+  - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`) on stubs from the same worker isolate
   - `runDurableObjectAlarm` for RPC-callable `alarm()` methods on Durable Object stubs from the same worker isolate (returns `false` when no alarm method is available)
   - event/queue helpers and D1 migration helper utilities
 - Some advanced `cloudflare:test` APIs are currently stubs in Rstest mode:

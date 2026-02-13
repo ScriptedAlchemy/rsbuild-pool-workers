@@ -481,4 +481,111 @@ describe("unsupported cloudflare:test APIs", () => {
       await fs.rm(durablePersistPath, { recursive: true, force: true });
     }
   });
+
+  test("WorkersRuntimeState listDurableObjectIds defaults script name to worker when absent", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-defaultname-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const defaultNamePath = path.join(durablePersistPath, "worker-Counter");
+      await fs.mkdir(defaultNamePath, { recursive: true });
+      await fs.writeFile(path.join(defaultNamePath, "default-worker-id.sqlite"), "");
+
+      const state = new WorkersRuntimeState();
+      (
+        state as unknown as {
+          setupReady: boolean;
+          envCache: Record<string, unknown>;
+          resolvedOptions: { miniflare: Record<string, unknown> };
+          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
+        }
+      ).setupReady = true;
+      (
+        state as unknown as {
+          envCache: Record<string, unknown>;
+          resolvedOptions: { miniflare: Record<string, unknown> };
+        }
+      ).envCache = {
+        COUNTER: namespace
+      };
+      (
+        state as unknown as {
+          resolvedOptions: { miniflare: Record<string, unknown> };
+        }
+      ).resolvedOptions = {
+        miniflare: {
+          durableObjects: {
+            COUNTER: "Counter"
+          }
+        }
+      };
+      (
+        state as unknown as {
+          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
+        }
+      ).miniflare = {
+        unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+      };
+
+      const ids = await state.listDurableObjectIds(namespace);
+      expect(ids.map((id) => id.toString())).toEqual(["default-worker-id"]);
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
+
+  test("WorkersRuntimeState listDurableObjectIds uses configured worker name when scriptName is absent", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-workername-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const namedPath = path.join(durablePersistPath, "named-worker-Counter");
+      await fs.mkdir(namedPath, { recursive: true });
+      await fs.writeFile(path.join(namedPath, "named-worker-id.sqlite"), "");
+
+      const state = new WorkersRuntimeState();
+      (
+        state as unknown as {
+          setupReady: boolean;
+          envCache: Record<string, unknown>;
+          resolvedOptions: { miniflare: Record<string, unknown> };
+          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
+        }
+      ).setupReady = true;
+      (
+        state as unknown as {
+          envCache: Record<string, unknown>;
+          resolvedOptions: { miniflare: Record<string, unknown> };
+        }
+      ).envCache = {
+        COUNTER: namespace
+      };
+      (
+        state as unknown as {
+          resolvedOptions: { miniflare: Record<string, unknown> };
+        }
+      ).resolvedOptions = {
+        miniflare: {
+          name: "named-worker",
+          durableObjects: {
+            COUNTER: {
+              className: "Counter"
+            }
+          }
+        }
+      };
+      (
+        state as unknown as {
+          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
+        }
+      ).miniflare = {
+        unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+      };
+
+      const ids = await state.listDurableObjectIds(namespace);
+      expect(ids.map((id) => id.toString())).toEqual(["named-worker-id"]);
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
 });

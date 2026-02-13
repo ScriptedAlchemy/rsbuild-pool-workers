@@ -5001,7 +5001,9 @@ export default defineConfig({
       "workflow introspection APIs throw with explicit guidance",
       "WorkersRuntimeState same-isolate namespace resolution excludes scriptName-scoped bindings",
       "WorkersRuntimeState listDurableObjectIds uses scriptName-scoped unique key when configured",
-      "WorkersRuntimeState listDurableObjectIds prefers unsafeUniqueKey when configured"
+      "WorkersRuntimeState listDurableObjectIds prefers unsafeUniqueKey when configured",
+      "WorkersRuntimeState listDurableObjectIds defaults script name to worker when absent",
+      "WorkersRuntimeState listDurableObjectIds uses configured worker name when scriptName is absent"
     ]);
   });
 

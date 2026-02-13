@@ -13,6 +13,8 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      RAYON_NUM_THREADS: "1"
 
     steps:
       - name: Checkout

@@ -147,6 +147,7 @@ import {
   - if `workers.miniflare.compatibilityDate` is older than `2022-10-31`, include `export_commonjs_default`.
   - `workers.miniflare.compatibilityFlags` must be an array of strings, and `workers.miniflare.compatibilityDate` must be a valid `YYYY-MM-DD` calendar date string.
   - surrounding whitespace in `workers.miniflare.compatibilityDate` is trimmed before validation.
+  - old-date compatibility checks (for required `export_commonjs_default`) are evaluated after compatibilityDate normalization.
   - duplicate compatibility flags are normalized away during runtime option resolution (preserving first-seen order), and surrounding whitespace is trimmed.
   - empty compatibility flag entries are rejected.
   - compatibility flag requirement/incompatibility checks run against normalized flag values (for example trimmed `export_commonjs_default`/`export_commonjs_namespace` entries).

@@ -4942,6 +4942,7 @@ export default defineConfig({
       "throws when incompatible export_commonjs_namespace flag is present",
       "requires export_commonjs_default when compatibilityDate is older than default-on date",
       "accepts old compatibilityDate when export_commonjs_default flag is explicitly present",
+      "throws actionable error for invalid compatibilityDate format",
       "preserves explicit script config",
       "preserves explicit scriptPath config",
       "accepts additional worker export hints in options",

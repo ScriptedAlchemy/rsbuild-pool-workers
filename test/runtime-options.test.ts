@@ -86,6 +86,21 @@ describe("resolveRuntimeOptions", () => {
     expect(options.miniflare.compatibilityFlags).toEqual(["export_commonjs_default"]);
   });
 
+  test("throws actionable error for invalid compatibilityDate format", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: "not-a-date",
+            compatibilityFlags: []
+          }
+        },
+        "/repo/example"
+      )
+    ).rejects.toThrow('Invalid compatibilityDate "not-a-date".');
+  });
+
   test("preserves explicit script config", async () => {
     const options = await resolveRuntimeOptions(
       {

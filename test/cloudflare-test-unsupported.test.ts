@@ -357,6 +357,28 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject uses stub.state DurableObjectState when ctx is unavailable", async () => {
+    const state = createDurableObjectState();
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-id-state-prop")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-id-state-prop"
+        ) as DurableObjectStubLike & {
+          state?: DurableObjectStateLike;
+        };
+        stub.state = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => receivedState)
+        ).resolves.toBe(state);
+      }
+    );
+  });
+
   test("runInDurableObject tolerates throwing ctx getters when state fallback exists", async () => {
     const state = createDurableObjectState();
 

@@ -312,12 +312,14 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
       if (isDurableObjectStateLike(state)) {
         const getAlarm = state.storage.getAlarm;
         const deleteAlarm = state.storage.deleteAlarm;
-        if (typeof getAlarm === "function" && typeof deleteAlarm === "function") {
+        if (typeof getAlarm === "function") {
           const scheduledAlarm = await getAlarm.call(state.storage);
-          if (scheduledAlarm === null) {
+          if (scheduledAlarm === null || scheduledAlarm === undefined) {
             return false;
           }
-          await deleteAlarm.call(state.storage);
+          if (typeof deleteAlarm === "function") {
+            await deleteAlarm.call(state.storage);
+          }
         }
       }
 

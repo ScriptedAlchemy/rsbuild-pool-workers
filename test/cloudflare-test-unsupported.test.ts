@@ -123,18 +123,23 @@ function createDurableObjectStub(
 function createDurableObjectState(options: {
   alarmValue?: number | null;
   onDeleteAlarm?: () => void;
+  includeGetAlarm?: boolean;
+  includeDeleteAlarm?: boolean;
 } = {}): DurableObjectStateLike {
   let alarmValue = options.alarmValue ?? null;
+  const storage: DurableObjectStateLike["storage"] = {};
+  if (options.includeGetAlarm ?? true) {
+    storage.getAlarm = async () => alarmValue;
+  }
+  if (options.includeDeleteAlarm ?? true) {
+    storage.deleteAlarm = async () => {
+      options.onDeleteAlarm?.();
+      alarmValue = null;
+    };
+  }
+
   return {
-    storage: {
-      async getAlarm() {
-        return alarmValue;
-      },
-      async deleteAlarm() {
-        options.onDeleteAlarm?.();
-        alarmValue = null;
-      }
-    }
+    storage
   };
 }
 
@@ -555,6 +560,36 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(deleteAlarmCalls).toBe(0);
   });
 
+  test("runDurableObjectAlarm returns false when state storage getAlarm resolves to undefined", async () => {
+    let alarmCalls = 0;
+    const state = createDurableObjectState({
+      alarmValue: undefined as unknown as number | null
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("scheduled-alarm-undefined")
+      },
+      async () => {
+        const stubWithAlarm = createDurableObjectStub(
+          "scheduled-alarm-undefined",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stubWithAlarm.ctx = state;
+
+        await expect(runDurableObjectAlarm(stubWithAlarm)).resolves.toBe(false);
+      }
+    );
+
+    expect(alarmCalls).toBe(0);
+  });
+
   test("runDurableObjectAlarm clears alarm before invoking alarm handler when state is available", async () => {
     let alarmCalls = 0;
     let deleteAlarmCalls = 0;
@@ -587,6 +622,37 @@ describe("unsupported cloudflare:test APIs", () => {
     );
 
     expect(deleteAlarmCalls).toBe(1);
+    expect(alarmCalls).toBe(1);
+  });
+
+  test("runDurableObjectAlarm still invokes alarm when deleteAlarm is unavailable", async () => {
+    let alarmCalls = 0;
+    const state = createDurableObjectState({
+      alarmValue: Date.now() + 10_000,
+      includeDeleteAlarm: false
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("scheduled-alarm-no-delete")
+      },
+      async () => {
+        const stubWithAlarm = createDurableObjectStub(
+          "scheduled-alarm-no-delete",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stubWithAlarm.ctx = state;
+
+        await expect(runDurableObjectAlarm(stubWithAlarm)).resolves.toBe(true);
+      }
+    );
+
     expect(alarmCalls).toBe(1);
   });
 

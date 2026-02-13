@@ -61,9 +61,12 @@ export interface DurableObjectStatePlaceholder {
 
 function isDurableObjectStub(value: unknown): value is DurableObjectStubLike {
   const id = (value as { id?: unknown } | null)?.id;
+  const constructorName =
+    (value as { constructor?: { name?: unknown } } | null)?.constructor?.name;
   return (
     typeof value === "object" &&
     value !== null &&
+    (constructorName === "DurableObject" || constructorName === "WorkerRpc") &&
     "fetch" in value &&
     typeof (value as { fetch?: unknown }).fetch === "function" &&
     isDurableObjectIdLike(id)

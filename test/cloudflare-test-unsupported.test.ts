@@ -53,6 +53,39 @@ function createNamespaceWithAcceptedId(acceptedId: string): DurableObjectNamespa
   };
 }
 
+function createDurableObjectStub(
+  id: string,
+  options: {
+    fetch?: DurableObjectStubLike["fetch"];
+    alarm?: (() => Promise<void> | void) | undefined;
+  } = {}
+): DurableObjectStubLike {
+  class WorkerRpc {
+    id: DurableObjectIdLike;
+
+    constructor(stubId: DurableObjectIdLike) {
+      this.id = stubId;
+    }
+
+    async fetch(): Promise<Response> {
+      return new Response("ok");
+    }
+  }
+
+  const stub = new WorkerRpc({ toString: () => id }) as DurableObjectStubLike & {
+    alarm?: (() => Promise<void> | void) | undefined;
+  };
+
+  if (options.fetch) {
+    stub.fetch = options.fetch;
+  }
+  if ("alarm" in options) {
+    stub.alarm = options.alarm;
+  }
+
+  return stub;
+}
+
 describe("unsupported cloudflare:test APIs", () => {
   test("runInDurableObject validates argument types", async () => {
     await expect(
@@ -63,7 +96,7 @@ describe("unsupported cloudflare:test APIs", () => {
 
     await expect(
       runInDurableObject(
-        { fetch: async () => new Response("ok"), id: { toString: () => "id" } } as DurableObjectStubLike,
+        createDurableObjectStub("id"),
         "not-a-function" as unknown as (_instance: unknown, _state: unknown) => unknown
       )
     ).rejects.toThrow(
@@ -86,10 +119,7 @@ describe("unsupported cloudflare:test APIs", () => {
     );
 
     await expect(
-      runDurableObjectAlarm({
-        fetch: async () => new Response("ok"),
-        id: { toString: () => "id-1" }
-      } as DurableObjectStubLike)
+      runDurableObjectAlarm(createDurableObjectStub("id-1"))
     ).resolves.toBe(false);
   });
 
@@ -101,10 +131,7 @@ describe("unsupported cloudflare:test APIs", () => {
       async () => {
         await expect(
           runInDurableObject(
-            {
-              fetch: async () => new Response("ok"),
-              id: { toString: () => "different-id" }
-            } as DurableObjectStubLike,
+            createDurableObjectStub("different-id"),
             async () => "value"
           )
         ).rejects.toThrow(
@@ -122,10 +149,7 @@ describe("unsupported cloudflare:test APIs", () => {
       async () => {
         await expect(
           runInDurableObject(
-            {
-              fetch: async () => new Response("ok"),
-              id: { toString: () => "any-id" }
-            } as DurableObjectStubLike,
+            createDurableObjectStub("any-id"),
             async () => "value"
           )
         ).rejects.toThrow(
@@ -143,14 +167,15 @@ describe("unsupported cloudflare:test APIs", () => {
         COUNTER: createNamespaceWithAcceptedId("shared-id")
       },
       async () => {
+        const stubWithAlarm = createDurableObjectStub("shared-id") as DurableObjectStubLike & {
+          alarm?: () => Promise<void>;
+        };
+        stubWithAlarm.alarm = async () => {
+          alarmCalls += 1;
+        };
+
         await expect(
-          runDurableObjectAlarm({
-            fetch: async () => new Response("ok"),
-            id: { toString: () => "shared-id" },
-            async alarm() {
-              alarmCalls += 1;
-            }
-          } as DurableObjectStubLike)
+          runDurableObjectAlarm(stubWithAlarm)
         ).resolves.toBe(true);
       }
     );
@@ -165,10 +190,7 @@ describe("unsupported cloudflare:test APIs", () => {
       },
       async () => {
         await expect(
-          runDurableObjectAlarm({
-            fetch: async () => new Response("ok"),
-            id: { toString: () => "shared-id-no-alarm" }
-          } as DurableObjectStubLike)
+          runDurableObjectAlarm(createDurableObjectStub("shared-id-no-alarm"))
         ).resolves.toBe(false);
       }
     );
@@ -181,11 +203,11 @@ describe("unsupported cloudflare:test APIs", () => {
       },
       async () => {
         await expect(
-          runDurableObjectAlarm({
-            fetch: async () => new Response("ok"),
-            id: { toString: () => "different-id" },
-            async alarm() {}
-          } as DurableObjectStubLike)
+          runDurableObjectAlarm(
+            createDurableObjectStub("different-id", {
+              async alarm() {}
+            })
+          )
         ).rejects.toThrow(
           "Durable Object test helpers can only be used with stubs pointing to objects defined within the same worker."
         );

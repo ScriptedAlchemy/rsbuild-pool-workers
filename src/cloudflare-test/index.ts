@@ -259,15 +259,32 @@ export async function listDurableObjectIds(
 }
 
 export async function introspectWorkflowInstance(
-  _workflow: unknown,
-  _instanceId: string
+  workflow: unknown,
+  instanceId: string
 ): Promise<never> {
+  if (typeof workflow !== "object" || workflow === null) {
+    throw new TypeError(
+      "Failed to execute 'introspectWorkflowInstance': parameter 1 is not of type 'Workflow'."
+    );
+  }
+  if (typeof instanceId !== "string" || instanceId.length === 0) {
+    throw new TypeError(
+      "Failed to execute 'introspectWorkflowInstance': parameter 2 is not of type 'string'."
+    );
+  }
+
   throw new Error(
     "Workflow introspection helpers are not yet available in Rstest mode."
   );
 }
 
-export async function introspectWorkflow(_workflow: unknown): Promise<never> {
+export async function introspectWorkflow(workflow: unknown): Promise<never> {
+  if (typeof workflow !== "object" || workflow === null) {
+    throw new TypeError(
+      "Failed to execute 'introspectWorkflow': parameter 1 is not of type 'Workflow'."
+    );
+  }
+
   throw new Error(
     "Workflow introspection helpers are not yet available in Rstest mode."
   );

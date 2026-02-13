@@ -5051,6 +5051,7 @@ export default defineConfig({
       "runDurableObjectAlarm falls back to env namespace discovery if same-isolate metadata helper throws",
       "runDurableObjectAlarm returns false when same-worker stub has no alarm method",
       "runDurableObjectAlarm rejects stubs outside same-worker namespaces when runtime bindings are available",
+      "runDurableObjectAlarm rejects mismatched stubs when metadata helper throws and fallback is used",
       "listDurableObjectIds validates namespace argument type",
       "listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity",
       "workflow introspection validates workflow parameter types",

@@ -381,6 +381,30 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm rejects mismatched stubs when metadata helper throws and fallback is used", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("expected-id")
+      },
+      async () => {
+        await expect(
+          runDurableObjectAlarm(
+            createDurableObjectStub("different-id", {
+              async alarm() {}
+            })
+          )
+        ).rejects.toThrow(
+          "Durable Object test helpers can only be used with stubs pointing to objects defined within the same worker."
+        );
+      },
+      {
+        getSameIsolateDurableObjectNamespaces: () => {
+          throw new Error("metadata unavailable");
+        }
+      }
+    );
+  });
+
   test("listDurableObjectIds validates namespace argument type", async () => {
     await withRuntimeBindings(
       {},

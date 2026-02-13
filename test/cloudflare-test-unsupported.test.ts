@@ -34,23 +34,28 @@ function withRuntimeBindings(
 }
 
 function createNamespaceWithAcceptedId(acceptedId: string): DurableObjectNamespaceLike {
-  return {
+  class LoopbackDurableObjectNamespace {
     newUniqueId() {
       return { toString: () => acceptedId } as DurableObjectIdLike;
-    },
+    }
+
     idFromName() {
       return { toString: () => acceptedId } as DurableObjectIdLike;
-    },
+    }
+
     idFromString(id: string) {
       if (id !== acceptedId) {
         throw new Error("namespace mismatch");
       }
       return { toString: () => id } as DurableObjectIdLike;
-    },
+    }
+
     get() {
       throw new Error("not implemented for this test");
     }
-  };
+  }
+
+  return new LoopbackDurableObjectNamespace() as DurableObjectNamespaceLike;
 }
 
 function createDurableObjectStub(
@@ -218,6 +223,21 @@ describe("unsupported cloudflare:test APIs", () => {
   test("listDurableObjectIds validates namespace argument type", async () => {
     await expect(
       listDurableObjectIds({} as never)
+    ).rejects.toThrow(
+      "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+    );
+  });
+
+  test("listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity", async () => {
+    await expect(
+      listDurableObjectIds(
+        {
+          newUniqueId: () => ({ toString: () => "id-a" }),
+          idFromName: () => ({ toString: () => "id-a" }),
+          idFromString: (id: string) => ({ toString: () => id }),
+          get: () => ({})
+        } as unknown as DurableObjectNamespaceLike
+      )
     ).rejects.toThrow(
       "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
     );

@@ -48,6 +48,27 @@ async function requestToDispatchArgs(request: Request): Promise<{
   };
 }
 
+function isDurableObjectNamespaceLike(value: unknown): value is {
+  idFromString(id: string): unknown;
+} {
+  const constructorName =
+    (value as { constructor?: { name?: unknown } } | null)?.constructor?.name;
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof constructorName === "string" &&
+    /^(?:Loopback)?DurableObjectNamespace$/.test(constructorName) &&
+    "newUniqueId" in value &&
+    typeof (value as { newUniqueId?: unknown }).newUniqueId === "function" &&
+    "idFromName" in value &&
+    typeof (value as { idFromName?: unknown }).idFromName === "function" &&
+    "idFromString" in value &&
+    typeof (value as { idFromString?: unknown }).idFromString === "function" &&
+    "get" in value &&
+    typeof (value as { get?: unknown }).get === "function"
+  );
+}
+
 export class WorkersRuntimeState {
   private miniflare: Miniflare | undefined;
   private envCache: Record<string, unknown> | undefined;
@@ -223,12 +244,7 @@ export class WorkersRuntimeState {
   }
 
   async listDurableObjectIds(namespace: unknown): Promise<unknown[]> {
-    const hasIdFromString =
-      typeof namespace === "object" &&
-      namespace !== null &&
-      "idFromString" in namespace &&
-      typeof (namespace as { idFromString?: unknown }).idFromString === "function";
-    if (!hasIdFromString) {
+    if (!isDurableObjectNamespaceLike(namespace)) {
       throw new TypeError(
         "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
       );
@@ -307,7 +323,7 @@ export class WorkersRuntimeState {
       }
     }
 
-    const idFromString = (namespace as { idFromString: (id: string) => unknown }).idFromString;
+    const idFromString = namespace.idFromString;
     return Array.from(ids)
       .sort((a, b) => a.localeCompare(b))
       .map((id) => idFromString(id));

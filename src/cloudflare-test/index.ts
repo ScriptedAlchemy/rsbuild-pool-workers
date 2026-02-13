@@ -74,9 +74,13 @@ function isDurableObjectStub(value: unknown): value is DurableObjectStubLike {
 }
 
 function isDurableObjectNamespaceLike(value: unknown): value is DurableObjectNamespaceLike {
+  const constructorName =
+    (value as { constructor?: { name?: unknown } } | null)?.constructor?.name;
   return (
     typeof value === "object" &&
     value !== null &&
+    typeof constructorName === "string" &&
+    /^(?:Loopback)?DurableObjectNamespace$/.test(constructorName) &&
     "newUniqueId" in value &&
     typeof (value as { newUniqueId?: unknown }).newUniqueId === "function" &&
     "idFromName" in value &&

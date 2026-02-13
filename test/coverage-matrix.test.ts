@@ -4996,6 +4996,7 @@ export default defineConfig({
       "runDurableObjectAlarm returns false when same-worker stub has no alarm method",
       "runDurableObjectAlarm rejects stubs outside same-worker namespaces when runtime bindings are available",
       "listDurableObjectIds validates namespace argument type",
+      "listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity",
       "workflow introspection APIs throw with explicit guidance"
     ]);
   });

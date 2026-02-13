@@ -4974,6 +4974,7 @@ export default defineConfig({
       "throws when incompatible export_commonjs_namespace flag is present",
       "rejects incompatible export_commonjs_namespace flag after whitespace normalization",
       "requires export_commonjs_default when compatibilityDate is older than default-on date",
+      "applies old-date required-flag check after compatibilityDate whitespace normalization",
       "accepts old compatibilityDate when export_commonjs_default flag is explicitly present",
       "accepts old compatibilityDate when required flag is present after whitespace normalization",
       "normalizes compatibilityFlags into a defensive copy",

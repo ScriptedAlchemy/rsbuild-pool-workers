@@ -86,6 +86,23 @@ describe("resolveRuntimeOptions", () => {
     );
   });
 
+  test("applies old-date required-flag check after compatibilityDate whitespace normalization", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: " 2022-10-30 ",
+            compatibilityFlags: []
+          }
+        },
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      'workers.miniflare.compatibilityFlags must contain "export_commonjs_default"'
+    );
+  });
+
   test("accepts old compatibilityDate when export_commonjs_default flag is explicitly present", async () => {
     const options = await resolveRuntimeOptions(
       {

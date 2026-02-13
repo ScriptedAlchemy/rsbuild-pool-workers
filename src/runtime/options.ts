@@ -77,6 +77,8 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
       `${optionsPath}.compatibilityFlags must be an array of strings.`
     );
   }
+  const normalizedFlags = [...(flags as string[])];
+  options.miniflare.compatibilityFlags = normalizedFlags;
 
   const compatibilityDateValue = options.miniflare.compatibilityDate;
   if (
@@ -92,14 +94,14 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
   const incompatibleDisableFlag = "export_commonjs_namespace";
   const defaultOnDate = "2022-10-31";
 
-  if (flags.includes(incompatibleDisableFlag)) {
+  if (normalizedFlags.includes(incompatibleDisableFlag)) {
     throw new Error(
       `${optionsPath}.compatibilityFlags must not contain "${incompatibleDisableFlag}". ` +
         `This flag is incompatible with @cloudflare/rstest-pool-workers.`
     );
   }
 
-  const hasEnableFlag = flags.includes(requiredEnableFlag);
+  const hasEnableFlag = normalizedFlags.includes(requiredEnableFlag);
   const hasSufficientDate = isDateAtLeast(
     compatibilityDateValue,
     defaultOnDate

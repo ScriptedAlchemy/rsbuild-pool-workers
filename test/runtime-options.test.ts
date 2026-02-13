@@ -86,6 +86,23 @@ describe("resolveRuntimeOptions", () => {
     expect(options.miniflare.compatibilityFlags).toEqual(["export_commonjs_default"]);
   });
 
+  test("normalizes compatibilityFlags into a defensive copy", async () => {
+    const flags = ["export_commonjs_default"];
+    const options = await resolveRuntimeOptions(
+      {
+        main: "./src/worker.ts",
+        miniflare: {
+          compatibilityDate: "2022-10-30",
+          compatibilityFlags: flags
+        }
+      },
+      "/repo/example"
+    );
+
+    expect(options.miniflare.compatibilityFlags).toEqual(["export_commonjs_default"]);
+    expect(options.miniflare.compatibilityFlags).not.toBe(flags);
+  });
+
   test("throws actionable error for invalid compatibilityDate format", async () => {
     await expect(
       resolveRuntimeOptions(

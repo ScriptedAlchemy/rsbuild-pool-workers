@@ -35,7 +35,7 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
-  test("runDurableObjectAlarm throws with explicit guidance", async () => {
+  test("runDurableObjectAlarm validates argument types and returns false when unavailable", async () => {
     await expect(runDurableObjectAlarm({} as unknown as DurableObjectStubLike)).rejects.toThrow(
       "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
     );
@@ -45,9 +45,7 @@ describe("unsupported cloudflare:test APIs", () => {
         fetch: async () => new Response("ok"),
         id: { toString: () => "id-1" }
       } as DurableObjectStubLike)
-    ).rejects.toThrow(
-      "runDurableObjectAlarm() is not yet available in Rstest mode."
-    );
+    ).resolves.toBe(false);
   });
 
   test("listDurableObjectIds validates namespace argument type", async () => {

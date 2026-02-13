@@ -174,9 +174,13 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
       "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
     );
   }
-  throw new Error(
-    "runDurableObjectAlarm() is not yet available in Rstest mode."
-  );
+  const maybeAlarm = (stub as { alarm?: unknown }).alarm;
+  if (typeof maybeAlarm !== "function") {
+    return false;
+  }
+
+  await maybeAlarm.call(stub);
+  return true;
 }
 
 export async function listDurableObjectIds(

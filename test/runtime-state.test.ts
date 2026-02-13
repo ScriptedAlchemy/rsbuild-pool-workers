@@ -565,7 +565,7 @@ describe("Workers runtime state integration", () => {
     ).rejects.toThrow("callback-failure");
   });
 
-  test("runDurableObjectAlarm rejects with unsupported guidance for real stubs", async () => {
+  test("runDurableObjectAlarm invokes RPC-callable alarm handlers for real stubs", async () => {
     setWorkersRuntimeOptionsForTesting({
       miniflare: {
         modules: true,
@@ -573,11 +573,17 @@ describe("Workers runtime state integration", () => {
           import { DurableObject } from "cloudflare:workers";
 
           export class Counter extends DurableObject {
-            async alarm() {}
+            async alarm() {
+              await this.ctx.storage.put("alarm-ran", "yes");
+            }
             async fetch(request) {
-              if (new URL(request.url).pathname === "/set") {
+              const pathname = new URL(request.url).pathname;
+              if (pathname === "/set") {
                 await this.ctx.storage.setAlarm(Date.now() + 1_000);
                 return new Response("set");
+              }
+              if (pathname === "/status") {
+                return new Response((await this.ctx.storage.get("alarm-ran")) ?? "no");
               }
               return new Response("ok");
             }
@@ -604,9 +610,9 @@ describe("Workers runtime state integration", () => {
     const namespace = workersEnv.COUNTER as unknown as DurableObjectNamespaceLike;
     const stub = namespace.get(namespace.idFromName("singleton"));
 
-    await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
-      "runDurableObjectAlarm() is not yet available in Rstest mode."
-    );
+    await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+    const status = await stub.fetch("http://localhost/status");
+    expect(await status.text()).toBe("yes");
   });
 
   test("SELF.scheduled dispatches scheduled handler and persists effects", async () => {

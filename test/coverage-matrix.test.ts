@@ -269,6 +269,21 @@ function unwrapConfigExpression(expression: ts.Expression): ts.Expression {
   return current;
 }
 
+function isStringLiteralLikeExpression(
+  expression: ts.Expression | undefined,
+  expected: string
+): boolean {
+  if (!expression) {
+    return false;
+  }
+  const unwrappedExpression = unwrapConfigExpression(expression);
+  return (
+    (ts.isStringLiteral(unwrappedExpression) ||
+      ts.isNoSubstitutionTemplateLiteral(unwrappedExpression)) &&
+    unwrappedExpression.text === expected
+  );
+}
+
 function isPropertyNameText(name: ts.PropertyName, expected: string): boolean {
   if (ts.isIdentifier(name)) {
     return name.text === expected;
@@ -277,10 +292,7 @@ function isPropertyNameText(name: ts.PropertyName, expected: string): boolean {
     return name.text === expected;
   }
   if (ts.isComputedPropertyName(name)) {
-    const expression = name.expression;
-    if (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)) {
-      return expression.text === expected;
-    }
+    return isStringLiteralLikeExpression(name.expression, expected);
   }
   return false;
 }
@@ -523,13 +535,10 @@ function readRstestIncludePatterns(
     }
     if (ts.isElementAccessExpression(unwrappedExpression)) {
       const unwrappedBaseExpression = unwrapConfigExpression(unwrappedExpression.expression);
-      const argument = unwrappedExpression.argumentExpression;
       return (
         ts.isIdentifier(unwrappedBaseExpression) &&
         unwrappedBaseExpression.text === "module" &&
-        argument !== undefined &&
-        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
-        argument.text === "exports"
+        isStringLiteralLikeExpression(unwrappedExpression.argumentExpression, "exports")
       );
     }
     return false;
@@ -562,30 +571,23 @@ function readRstestIncludePatterns(
     }
     if (ts.isElementAccessExpression(unwrappedExpression)) {
       const unwrappedBaseExpression = unwrapConfigExpression(unwrappedExpression.expression);
-      const argument = unwrappedExpression.argumentExpression;
       if (
         ts.isIdentifier(unwrappedBaseExpression) &&
         unwrappedBaseExpression.text === "module" &&
-        argument &&
-        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
-        argument.text === "exports"
+        isStringLiteralLikeExpression(unwrappedExpression.argumentExpression, "exports")
       ) {
         return true;
       }
       if (
         ts.isIdentifier(unwrappedBaseExpression) &&
         unwrappedBaseExpression.text === "exports" &&
-        argument &&
-        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
-        argument.text === "default"
+        isStringLiteralLikeExpression(unwrappedExpression.argumentExpression, "default")
       ) {
         return true;
       }
       if (
         isModuleExportsNamespaceExpression(unwrappedBaseExpression) &&
-        argument &&
-        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
-        argument.text === "default"
+        isStringLiteralLikeExpression(unwrappedExpression.argumentExpression, "default")
       ) {
         return true;
       }
@@ -618,11 +620,8 @@ function readRstestIncludePatterns(
       );
     }
     if (ts.isElementAccessExpression(unwrappedExpression)) {
-      const argument = unwrappedExpression.argumentExpression;
       if (
-        argument &&
-        (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) &&
-        argument.text === "defineConfig" &&
+        isStringLiteralLikeExpression(unwrappedExpression.argumentExpression, "defineConfig") &&
         isRstestNamespaceExpression(unwrappedExpression.expression)
       ) {
         return true;
@@ -1864,6 +1863,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-module-to-exports-element-chain-preferred.config.js"
     );
+    const exportedParenthesizedElementChainPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-parenthesized-element-chain-preferred.config.js"
+    );
     const exportedExportsElementToModuleChainPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-exports-element-to-module-chain-preferred.config.js"
@@ -1950,6 +1953,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-namespace-element-access.config.ts"
     );
+    const namespaceParenthesizedElementAccessConfigPath = path.join(
+      tempDirectory,
+      "rstest-namespace-parenthesized-element-access.config.ts"
+    );
     const wrappedNamespacePropertyConfigPath = path.join(
       tempDirectory,
       "rstest-wrapped-namespace-property.config.ts"
@@ -2001,6 +2008,10 @@ test("cts title", () => {});
     const templateIncludeKeyConfigPath = path.join(
       tempDirectory,
       "rstest-template-include-key.config.ts"
+    );
+    const parenthesizedComputedIncludeKeyConfigPath = path.join(
+      tempDirectory,
+      "rstest-parenthesized-computed-include-key.config.ts"
     );
     const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
     const elementAccessConfigPath = path.join(tempDirectory, "rstest-element-access.config.ts");
@@ -2979,6 +2990,22 @@ module.exports = exports["default"] = defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      exportedParenthesizedElementChainPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.exported-parenthesized-chain-should-not-be-read.ts"]
+});
+void unrelated;
+
+module[("exports")] = exports[("default")] = defineConfig({
+  include: ["test/**/*.exported-parenthesized-chain.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       exportedExportsElementToModuleChainPreferredPath,
       `
 const { defineConfig } = require("@rstest/core");
@@ -3392,6 +3419,22 @@ export default rstest["defineConfig"]({
       "utf8"
     );
     fs.writeFileSync(
+      namespaceParenthesizedElementAccessConfigPath,
+      `
+import * as rstest from "@rstest/core";
+
+const unrelated = {
+  include: ["test/**/*.namespace-parenthesized-element-should-not-be-read.ts"]
+};
+void unrelated;
+
+export default rstest[("defineConfig")]({
+  include: ["test/**/*.namespace-parenthesized-element.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       wrappedNamespacePropertyConfigPath,
       `
 import * as rstest from "@rstest/core";
@@ -3725,6 +3768,17 @@ export default defineConfig({
       "utf8"
     );
     fs.writeFileSync(
+      parenthesizedComputedIncludeKeyConfigPath,
+      `
+import { defineConfig } from "@rstest/core";
+
+export default defineConfig({
+  [("include")]: ["test/**/*.parenthesized-computed-include.test.ts"]
+});
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
       propertyAccessConfigPath,
       `
 const core = {
@@ -3950,6 +4004,9 @@ export default config;
       expect(readRstestIncludePatterns(exportedModuleToExportsElementChainPreferredPath)).toEqual([
         "test/**/*.exported-chain-element.test.ts"
       ]);
+      expect(readRstestIncludePatterns(exportedParenthesizedElementChainPreferredPath)).toEqual([
+        "test/**/*.exported-parenthesized-chain.test.ts"
+      ]);
       expect(readRstestIncludePatterns(exportedExportsElementToModuleChainPreferredPath)).toEqual([
         "test/**/*.exported-element-to-module.test.ts"
       ]);
@@ -4013,6 +4070,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(namespaceElementAccessConfigPath)).toEqual([
         "test/**/*.namespace-element.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(namespaceParenthesizedElementAccessConfigPath)).toEqual([
+        "test/**/*.namespace-parenthesized-element.test.ts"
       ]);
       expect(readRstestIncludePatterns(wrappedNamespacePropertyConfigPath)).toEqual([
         "test/**/*.wrapped-namespace-property.test.ts"
@@ -4079,6 +4139,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(templateIncludeKeyConfigPath)).toEqual([
         "test/**/*.template-include.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(parenthesizedComputedIncludeKeyConfigPath)).toEqual([
+        "test/**/*.parenthesized-computed-include.test.ts"
       ]);
       expect(readRstestIncludePatterns(propertyAccessConfigPath)).toEqual([
         "test/**/*.property-access.test.ts"

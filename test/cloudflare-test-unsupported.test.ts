@@ -253,6 +253,25 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject falls back to env namespace discovery if same-isolate metadata helper returns non-array value", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("expected-id")
+      },
+      async () => {
+        await expect(
+          runInDurableObject(
+            createDurableObjectStub("expected-id"),
+            async () => "value"
+          )
+        ).resolves.toBe("value");
+      },
+      {
+        getSameIsolateDurableObjectNamespaces: () => ({ invalid: true }) as never
+      }
+    );
+  });
+
   test("runInDurableObject still rejects mismatched stubs when metadata helper throws and fallback is used", async () => {
     await withRuntimeBindings(
       {
@@ -343,6 +362,35 @@ describe("unsupported cloudflare:test APIs", () => {
         getSameIsolateDurableObjectNamespaces: () => {
           throw new Error("metadata unavailable");
         }
+      }
+    );
+
+    expect(alarmCalls).toBe(1);
+  });
+
+  test("runDurableObjectAlarm falls back when metadata helper returns non-array value", async () => {
+    let alarmCalls = 0;
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("fallback-alarm-non-array-id")
+      },
+      async () => {
+        const stubWithAlarm = createDurableObjectStub(
+          "fallback-alarm-non-array-id"
+        ) as DurableObjectStubLike & {
+          alarm?: () => Promise<void>;
+        };
+        stubWithAlarm.alarm = async () => {
+          alarmCalls += 1;
+        };
+
+        await expect(
+          runDurableObjectAlarm(stubWithAlarm)
+        ).resolves.toBe(true);
+      },
+      {
+        getSameIsolateDurableObjectNamespaces: () => ({ invalid: true }) as never
       }
     );
 

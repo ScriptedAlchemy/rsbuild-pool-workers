@@ -861,4 +861,77 @@ describe("unsupported cloudflare:test APIs", () => {
     }
   });
 
+  test("WorkersRuntimeState listDurableObjectIds ignores empty scriptName values and falls back to worker name", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-empty-scriptname-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const fallbackPath = path.join(durablePersistPath, "named-worker-Counter");
+      await fs.mkdir(fallbackPath, { recursive: true });
+      await fs.writeFile(path.join(fallbackPath, "fallback-id.sqlite"), "");
+
+      const state = createMockedRuntimeState({
+        envCache: {
+          COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            name: "named-worker",
+            durableObjects: {
+              COUNTER: {
+                className: "Counter",
+                scriptName: "   "
+              }
+            }
+          }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+        }
+      });
+
+      const ids = (await state.listDurableObjectIds(namespace)) as DurableObjectIdLike[];
+      expect(ids.map((id) => id.toString())).toEqual(["fallback-id"]);
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
+
+  test("WorkersRuntimeState listDurableObjectIds ignores empty unsafeUniqueKey values and falls back to scriptName key", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-empty-unsafe-key-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const scriptNamePath = path.join(durablePersistPath, "remote-worker-Counter");
+      await fs.mkdir(scriptNamePath, { recursive: true });
+      await fs.writeFile(path.join(scriptNamePath, "script-key-id.sqlite"), "");
+
+      const state = createMockedRuntimeState({
+        envCache: {
+          COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            name: "worker",
+            durableObjects: {
+              COUNTER: {
+                className: "Counter",
+                scriptName: "remote-worker",
+                unsafeUniqueKey: "   "
+              }
+            }
+          }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+        }
+      });
+
+      const ids = (await state.listDurableObjectIds(namespace)) as DurableObjectIdLike[];
+      expect(ids.map((id) => id.toString())).toEqual(["script-key-id"]);
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
+
 });

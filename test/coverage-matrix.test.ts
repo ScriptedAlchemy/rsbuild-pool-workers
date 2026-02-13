@@ -5078,7 +5078,9 @@ export default defineConfig({
       "WorkersRuntimeState listDurableObjectIds throws when no designator exists for resolved binding",
       "WorkersRuntimeState listDurableObjectIds throws when className is not a string",
       "WorkersRuntimeState listDurableObjectIds throws when className is an empty string",
-      "WorkersRuntimeState listDurableObjectIds throws when string designator className is empty"
+      "WorkersRuntimeState listDurableObjectIds throws when string designator className is empty",
+      "WorkersRuntimeState listDurableObjectIds ignores empty scriptName values and falls back to worker name",
+      "WorkersRuntimeState listDurableObjectIds ignores empty unsafeUniqueKey values and falls back to scriptName key"
     ]);
   });
 

@@ -324,11 +324,14 @@ export class WorkersRuntimeState {
         className = maybeClassName;
       }
       const maybeScript = (designator as { scriptName?: unknown }).scriptName;
-      if (typeof maybeScript === "string") {
+      if (typeof maybeScript === "string" && maybeScript.trim().length > 0) {
         scriptName = maybeScript;
       }
       const maybeUnsafeUniqueKey = (designator as { unsafeUniqueKey?: unknown }).unsafeUniqueKey;
-      if (typeof maybeUnsafeUniqueKey === "string") {
+      if (
+        typeof maybeUnsafeUniqueKey === "string" &&
+        maybeUnsafeUniqueKey.trim().length > 0
+      ) {
         unsafeUniqueKey = maybeUnsafeUniqueKey;
       }
     }

@@ -198,6 +198,7 @@ import {
   - `listDurableObjectIds` (deterministic lexicographic ordering)
     - requires the namespace to resolve to a configured Miniflare `durableObjects` designator
     - designators must resolve to a non-empty class name (`"ClassName"` or object-form `className`)
+    - empty/whitespace-only `scriptName` and `unsafeUniqueKey` values are ignored during namespace key resolution
   - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`) on stubs from the same worker isolate
   - `runDurableObjectAlarm` for RPC-callable `alarm()` methods on Durable Object stubs from the same worker isolate (returns `false` when no alarm method is available and follows the same same-isolate fallback checks as `runInDurableObject`)
   - Durable Object helper validations intentionally require real runtime Durable Object constructors (`DurableObject`/`WorkerRpc` and `DurableObjectNamespace` variants), not plain-object lookalikes

@@ -40,6 +40,16 @@ export type WorkersRuntimeOptions = z.output<typeof WorkersOptionsSchema> & {
 
 const TYPESCRIPT_ENTRYPOINT_REGEXP = /\.(?:cts|mts|ts|tsx)$/i;
 
+function describeValueType(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  return typeof value;
+}
+
 function parseDateOrThrow(dateValue: string): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
     throw new Error(`Invalid compatibilityDate "${dateValue}".`);
@@ -67,14 +77,16 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
   const optionsPath = "workers.miniflare";
   if (flagsValue !== undefined && !Array.isArray(flagsValue)) {
     throw new Error(
-      `${optionsPath}.compatibilityFlags must be an array of strings.`
+      `${optionsPath}.compatibilityFlags must be an array of strings. ` +
+        `Received: ${describeValueType(flagsValue)}.`
     );
   }
   const flags = (flagsValue ?? []) as unknown[];
   const nonStringFlag = flags.find((flag) => typeof flag !== "string");
   if (nonStringFlag !== undefined) {
     throw new Error(
-      `${optionsPath}.compatibilityFlags must be an array of strings.`
+      `${optionsPath}.compatibilityFlags must be an array of strings. ` +
+        `Received entry type: ${describeValueType(nonStringFlag)}.`
     );
   }
   const normalizedFlags = Array.from(
@@ -93,7 +105,8 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
     typeof compatibilityDateValue !== "string"
   ) {
     throw new Error(
-      `${optionsPath}.compatibilityDate must be a string in YYYY-MM-DD format.`
+      `${optionsPath}.compatibilityDate must be a string in YYYY-MM-DD format. ` +
+        `Received: ${describeValueType(compatibilityDateValue)}.`
     );
   }
   const normalizedCompatibilityDate =

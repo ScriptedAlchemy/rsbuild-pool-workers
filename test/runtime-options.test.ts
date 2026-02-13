@@ -331,6 +331,22 @@ describe("resolveRuntimeOptions", () => {
     );
   });
 
+  test("includes received type in compatibilityFlags non-array diagnostics", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityFlags: "export_commonjs_default"
+          }
+        } as never,
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "Received: string."
+    );
+  });
+
   test("throws actionable error when compatibilityFlags contains non-string values", async () => {
     await expect(
       resolveRuntimeOptions(
@@ -344,6 +360,22 @@ describe("resolveRuntimeOptions", () => {
       )
     ).rejects.toThrow(
       "workers.miniflare.compatibilityFlags must be an array of strings."
+    );
+  });
+
+  test("includes entry type in compatibilityFlags non-string diagnostics", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityFlags: ["export_commonjs_default", 1]
+          }
+        } as never,
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "Received entry type: number."
     );
   });
 
@@ -361,6 +393,23 @@ describe("resolveRuntimeOptions", () => {
       )
     ).rejects.toThrow(
       "workers.miniflare.compatibilityDate must be a string in YYYY-MM-DD format."
+    );
+  });
+
+  test("includes received type in compatibilityDate non-string diagnostics", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: 20240101,
+            compatibilityFlags: ["export_commonjs_default"]
+          }
+        } as never,
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "Received: number."
     );
   });
 

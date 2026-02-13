@@ -33,6 +33,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Typecheck
+        run: pnpm check:type
+
+      - name: Build
+        run: pnpm build
+
       - name: Publish preview package
         id: publish
         run: pnpx pkg-pr-new publish --pnpm --comment=update

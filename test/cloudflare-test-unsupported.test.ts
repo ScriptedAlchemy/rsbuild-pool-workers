@@ -370,7 +370,7 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
-  test("workflow introspection APIs throw with explicit guidance", async () => {
+  test("workflow introspection validates workflow parameter types", async () => {
     await expect(introspectWorkflow(null as unknown as Record<string, unknown>)).rejects.toThrow(
       "Failed to execute 'introspectWorkflow': parameter 1 is not of type 'Workflow'."
     );
@@ -385,6 +385,9 @@ describe("unsupported cloudflare:test APIs", () => {
     ).rejects.toThrow(
       "Failed to execute 'introspectWorkflowInstance': parameter 1 is not of type 'Workflow'."
     );
+  });
+
+  test("workflow introspection validates instance id parameter type", async () => {
     await expect(introspectWorkflowInstance({}, "")).rejects.toThrow(
       "Failed to execute 'introspectWorkflowInstance': parameter 2 is not of type 'string'."
     );
@@ -393,7 +396,9 @@ describe("unsupported cloudflare:test APIs", () => {
     ).rejects.toThrow(
       "Failed to execute 'introspectWorkflowInstance': parameter 2 is not of type 'string'."
     );
+  });
 
+  test("workflow introspection APIs throw with explicit guidance", async () => {
     await expect(introspectWorkflow({})).rejects.toThrow(
       "Workflow introspection helpers are not yet available in Rstest mode"
     );

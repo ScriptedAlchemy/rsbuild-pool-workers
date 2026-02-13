@@ -593,6 +593,28 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("WorkersRuntimeState same-isolate namespace resolution ignores empty scriptName values", () => {
+    const localNamespace = createNamespaceWithAcceptedId("local-id");
+
+    const state = createMockedRuntimeState({
+      envCache: {
+        LOCAL_COUNTER: localNamespace
+      },
+      resolvedOptions: {
+        miniflare: {
+          durableObjects: {
+            LOCAL_COUNTER: {
+              className: "Counter",
+              scriptName: "   "
+            }
+          }
+        }
+      }
+    });
+
+    expect(state.getSameIsolateDurableObjectNamespaces()).toEqual([localNamespace]);
+  });
+
   test("WorkersRuntimeState listDurableObjectIds uses scriptName-scoped unique key when configured", async () => {
     const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-scriptname-"));
     const namespace = createNamespaceAcceptingAnyId();

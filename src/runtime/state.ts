@@ -200,13 +200,11 @@ export class WorkersRuntimeState {
 
     const namespaces: unknown[] = [];
     for (const [bindingName, designator] of Object.entries(designators)) {
-      const scriptName =
-        typeof designator === "object" &&
-        designator !== null &&
-        typeof (designator as { scriptName?: unknown }).scriptName === "string"
-          ? (designator as { scriptName: string }).scriptName
+      const maybeScriptName =
+        typeof designator === "object" && designator !== null
+          ? (designator as { scriptName?: unknown }).scriptName
           : undefined;
-      if (scriptName !== undefined) {
+      if (typeof maybeScriptName === "string" && maybeScriptName.trim().length > 0) {
         continue;
       }
 

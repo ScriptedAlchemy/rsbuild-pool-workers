@@ -28,7 +28,7 @@ describe("resolveRuntimeOptions", () => {
       {
         main: "./src/worker.ts",
         miniflare: {
-          compatibilityDate: "2023-10-10"
+          compatibilityDate: " 2023-10-10 "
         }
       },
       "/repo/example"
@@ -188,6 +188,21 @@ describe("resolveRuntimeOptions", () => {
         "/repo/example"
       )
     ).rejects.toThrow('Invalid compatibilityDate "not-a-date".');
+  });
+
+  test("throws actionable error for whitespace-only compatibilityDate", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: "   ",
+            compatibilityFlags: ["export_commonjs_default"]
+          }
+        },
+        "/repo/example"
+      )
+    ).rejects.toThrow('Invalid compatibilityDate "   ".');
   });
 
   test("throws actionable error for non-ISO compatibilityDate format", async () => {

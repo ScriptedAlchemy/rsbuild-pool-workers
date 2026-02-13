@@ -96,6 +96,19 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
       `${optionsPath}.compatibilityDate must be a string in YYYY-MM-DD format.`
     );
   }
+  const normalizedCompatibilityDate =
+    typeof compatibilityDateValue === "string"
+      ? compatibilityDateValue.trim()
+      : compatibilityDateValue;
+  if (
+    typeof compatibilityDateValue === "string" &&
+    normalizedCompatibilityDate === ""
+  ) {
+    throw new Error(`Invalid compatibilityDate "${compatibilityDateValue}".`);
+  }
+  if (normalizedCompatibilityDate !== undefined) {
+    options.miniflare.compatibilityDate = normalizedCompatibilityDate;
+  }
 
   const requiredEnableFlag = "export_commonjs_default";
   const incompatibleDisableFlag = "export_commonjs_namespace";
@@ -110,7 +123,7 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
 
   const hasEnableFlag = normalizedFlags.includes(requiredEnableFlag);
   const hasSufficientDate = isDateAtLeast(
-    compatibilityDateValue,
+    normalizedCompatibilityDate,
     defaultOnDate
   );
   if (!hasEnableFlag && !hasSufficientDate) {

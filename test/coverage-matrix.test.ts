@@ -4980,6 +4980,7 @@ export default defineConfig({
       "throws actionable error when compatibilityFlags contains empty entries",
       "normalizes missing compatibilityFlags to an empty array",
       "throws actionable error for invalid compatibilityDate format",
+      "throws actionable error for whitespace-only compatibilityDate",
       "throws actionable error for non-ISO compatibilityDate format",
       "throws actionable error for impossible calendar compatibilityDate",
       "accepts valid leap-day compatibilityDate",

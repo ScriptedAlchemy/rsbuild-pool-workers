@@ -128,8 +128,8 @@ describe("resolveRuntimeOptions", () => {
         miniflare: {
           compatibilityDate: "2024-01-01",
           compatibilityFlags: [
-            "export_commonjs_default",
-            "alpha-flag",
+            " export_commonjs_default ",
+            " alpha-flag ",
             "export_commonjs_default",
             "alpha-flag"
           ]
@@ -142,6 +142,23 @@ describe("resolveRuntimeOptions", () => {
       "export_commonjs_default",
       "alpha-flag"
     ]);
+  });
+
+  test("throws actionable error when compatibilityFlags contains empty entries", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: "2024-01-01",
+            compatibilityFlags: ["export_commonjs_default", "  "]
+          }
+        },
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "workers.miniflare.compatibilityFlags must not contain empty entries."
+    );
   });
 
   test("normalizes missing compatibilityFlags to an empty array", async () => {

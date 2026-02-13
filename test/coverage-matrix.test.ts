@@ -4977,6 +4977,7 @@ export default defineConfig({
       "normalizes compatibilityFlags into a defensive copy",
       "deduplicates compatibilityFlags entries during normalization",
       "deduplicates compatibilityFlags while preserving first-seen order",
+      "throws actionable error when compatibilityFlags contains empty entries",
       "normalizes missing compatibilityFlags to an empty array",
       "throws actionable error for invalid compatibilityDate format",
       "throws actionable error for non-ISO compatibilityDate format",

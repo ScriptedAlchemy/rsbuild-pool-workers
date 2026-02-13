@@ -77,7 +77,14 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
       `${optionsPath}.compatibilityFlags must be an array of strings.`
     );
   }
-  const normalizedFlags = Array.from(new Set(flags as string[]));
+  const normalizedFlags = Array.from(
+    new Set((flags as string[]).map((flag) => flag.trim()))
+  );
+  if (normalizedFlags.some((flag) => flag.length === 0)) {
+    throw new Error(
+      `${optionsPath}.compatibilityFlags must not contain empty entries.`
+    );
+  }
   options.miniflare.compatibilityFlags = normalizedFlags;
 
   const compatibilityDateValue = options.miniflare.compatibilityDate;

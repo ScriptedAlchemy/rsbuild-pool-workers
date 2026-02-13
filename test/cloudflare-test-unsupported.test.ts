@@ -158,6 +158,22 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(alarmCalls).toBe(1);
   });
 
+  test("runDurableObjectAlarm returns false when same-worker stub has no alarm method", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("shared-id-no-alarm")
+      },
+      async () => {
+        await expect(
+          runDurableObjectAlarm({
+            fetch: async () => new Response("ok"),
+            id: { toString: () => "shared-id-no-alarm" }
+          } as DurableObjectStubLike)
+        ).resolves.toBe(false);
+      }
+    );
+  });
+
   test("runDurableObjectAlarm rejects stubs outside same-worker namespaces when runtime bindings are available", async () => {
     await withRuntimeBindings(
       {

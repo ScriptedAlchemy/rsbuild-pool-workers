@@ -4993,6 +4993,7 @@ export default defineConfig({
       "runInDurableObject rejects stubs outside same-worker namespaces when runtime bindings are available",
       "runInDurableObject rejects stubs when runtime bindings contain no Durable Object namespaces",
       "runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace",
+      "runDurableObjectAlarm returns false when same-worker stub has no alarm method",
       "runDurableObjectAlarm rejects stubs outside same-worker namespaces when runtime bindings are available",
       "listDurableObjectIds validates namespace argument type",
       "workflow introspection APIs throw with explicit guidance"

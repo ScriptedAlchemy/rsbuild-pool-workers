@@ -96,6 +96,10 @@ function isDurableObjectNamespaceLike(value: unknown): value is DurableObjectNam
   );
 }
 
+function isWorkflowLike(value: unknown): value is WorkflowLike {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function assertDurableObjectStubFromSameWorker(stub: DurableObjectStubLike): void {
   let runtimeState:
     | (ReturnType<typeof runtime> & {
@@ -272,7 +276,7 @@ export async function introspectWorkflowInstance(
   workflow: WorkflowLike,
   instanceId: string
 ): Promise<never> {
-  if (typeof workflow !== "object" || workflow === null) {
+  if (!isWorkflowLike(workflow)) {
     throw new TypeError(
       "Failed to execute 'introspectWorkflowInstance': parameter 1 is not of type 'Workflow'."
     );
@@ -289,7 +293,7 @@ export async function introspectWorkflowInstance(
 }
 
 export async function introspectWorkflow(workflow: WorkflowLike): Promise<never> {
-  if (typeof workflow !== "object" || workflow === null) {
+  if (!isWorkflowLike(workflow)) {
     throw new TypeError(
       "Failed to execute 'introspectWorkflow': parameter 1 is not of type 'Workflow'."
     );

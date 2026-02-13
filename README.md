@@ -196,5 +196,5 @@ import {
   - event/queue helpers and D1 migration helper utilities
 - Some advanced `cloudflare:test` APIs are currently stubs in Rstest mode:
   - Durable Object state access within `runInDurableObject` callbacks
-  - workflow introspection helpers
+  - workflow introspection helpers (argument types are validated before emitting unsupported guidance)
 

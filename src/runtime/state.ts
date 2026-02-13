@@ -291,14 +291,6 @@ export class WorkersRuntimeState {
       throw new Error("Could not resolve Durable Object binding name for provided namespace.");
     }
 
-    const durablePersistPath = (this.getMiniflare() as unknown as {
-      unsafeGetPersistPaths?: () => Map<string, string>;
-    }).unsafeGetPersistPaths?.()?.get("do");
-
-    if (!durablePersistPath) {
-      return [];
-    }
-
     const miniflareOptions = this.resolvedOptions?.miniflare as
       | { durableObjects?: Record<string, unknown>; name?: string }
       | undefined;
@@ -343,6 +335,14 @@ export class WorkersRuntimeState {
     const resolvedUniqueKey =
       unsafeUniqueKey ??
       `${(scriptName ?? miniflareOptions?.name ?? "worker")}-${className}`;
+
+    const durablePersistPath = (this.getMiniflare() as unknown as {
+      unsafeGetPersistPaths?: () => Map<string, string>;
+    }).unsafeGetPersistPaths?.()?.get("do");
+    if (!durablePersistPath) {
+      return [];
+    }
+
     const namespaceKeys = [resolvedUniqueKey];
 
     const ids = new Set<string>();

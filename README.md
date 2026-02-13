@@ -142,6 +142,9 @@ import {
 
 - TypeScript worker entrypoints in `workers.main` (`.ts`, `.tsx`, `.mts`, `.cts`) are bundled for Miniflare runtime.
 - relative `workers.main` and `workers.wrangler.configPath` values are resolved from the calling config file directory.
+- compatibility flag prerequisites mirror Workers test-runtime requirements:
+  - `export_commonjs_namespace` is rejected as incompatible,
+  - if `workers.miniflare.compatibilityDate` is older than `2022-10-31`, include `export_commonjs_default`.
 - `cloudflare:test-internal` is also aliased to the same runtime helpers for compatibility.
 - `env` bindings exposed by `cloudflare:test` are read-only.
 - `fetchMock` state is reset before each test case via runtime setup hooks.

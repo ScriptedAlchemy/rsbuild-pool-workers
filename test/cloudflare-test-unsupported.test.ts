@@ -352,6 +352,34 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject tolerates throwing ctx getters when state fallback exists", async () => {
+    const state = createDurableObjectState();
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-throwing-ctx-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-throwing-ctx-id"
+        ) as DurableObjectStubLike & {
+          state?: DurableObjectStateLike;
+        };
+        Object.defineProperty(stub, "ctx", {
+          configurable: true,
+          get() {
+            throw new Error("ctx getter failed");
+          }
+        });
+        stub.state = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => receivedState)
+        ).resolves.toBe(state);
+      }
+    );
+  });
+
   test("runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace", async () => {
     let alarmCalls = 0;
 

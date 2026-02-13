@@ -127,12 +127,14 @@ function isDurableObjectStateLike(value: unknown): value is DurableObjectStateLi
 }
 
 function getDurableObjectStateFromStub(stub: DurableObjectStubLike): DurableObjectStateLike | undefined {
-  const stubCandidate = stub as {
-    ctx?: unknown;
-    state?: unknown;
-  };
-  const maybeState = [stubCandidate.ctx, stubCandidate.state];
-  for (const candidate of maybeState) {
+  const stubCandidate = stub as Record<string, unknown>;
+  for (const key of ["ctx", "state"] as const) {
+    let candidate: unknown;
+    try {
+      candidate = stubCandidate[key];
+    } catch {
+      continue;
+    }
     if (isDurableObjectStateLike(candidate)) {
       return candidate;
     }

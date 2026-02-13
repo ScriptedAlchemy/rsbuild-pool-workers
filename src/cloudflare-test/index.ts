@@ -97,7 +97,9 @@ function assertDurableObjectStubFromSameWorker(stub: DurableObjectStubLike): voi
   const idString = stub.id.toString();
   const namespaces = Object.values(bindings).filter(isDurableObjectNamespaceLike);
   if (namespaces.length === 0) {
-    return;
+    throw new Error(
+      "Durable Object test helpers can only be used with stubs pointing to objects defined within the same worker."
+    );
   }
 
   for (const namespace of namespaces) {

@@ -325,17 +325,27 @@ describe("unsupported cloudflare:test APIs", () => {
   });
 
   test("listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity", async () => {
-    await expect(
-      listDurableObjectIds(
-        {
-          newUniqueId: () => ({ toString: () => "id-a" }),
-          idFromName: () => ({ toString: () => "id-a" }),
-          idFromString: (id: string) => ({ toString: () => id }),
-          get: () => ({})
-        } as unknown as DurableObjectNamespaceLike
-      )
-    ).rejects.toThrow(
-      "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+    await withRuntimeBindings(
+      {},
+      async () => {
+        await expect(
+          listDurableObjectIds(
+            {
+              newUniqueId: () => ({ toString: () => "id-a" }),
+              idFromName: () => ({ toString: () => "id-a" }),
+              idFromString: (id: string) => ({ toString: () => id }),
+              get: () => ({})
+            } as unknown as DurableObjectNamespaceLike
+          )
+        ).rejects.toThrow(
+          "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+        );
+      },
+      {
+        listDurableObjectIds: () => {
+          throw new Error("runtime-should-not-be-called");
+        }
+      }
     );
   });
 

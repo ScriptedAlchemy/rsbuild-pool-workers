@@ -192,6 +192,35 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject accepts class-based stubs with non-Object constructors", async () => {
+    class CustomDurableStub {
+      id: DurableObjectIdLike;
+
+      constructor(id: DurableObjectIdLike) {
+        this.id = id;
+      }
+
+      async fetch(): Promise<Response> {
+        return new Response("ok");
+      }
+    }
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("custom-constructor-id")
+      },
+      async () => {
+        const stub = new CustomDurableStub({
+          toString: () => "custom-constructor-id"
+        }) as unknown as DurableObjectStubLike;
+
+        await expect(
+          runInDurableObject(stub, async () => "value")
+        ).resolves.toBe("value");
+      }
+    );
+  });
+
   test("runDurableObjectAlarm validates argument types and returns false when unavailable", async () => {
     await expect(runDurableObjectAlarm({} as unknown as DurableObjectStubLike)).rejects.toThrow(
       "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
@@ -717,6 +746,38 @@ describe("unsupported cloudflare:test APIs", () => {
         listDurableObjectIds: () => {
           throw new Error("runtime-should-not-be-called");
         }
+      }
+    );
+  });
+
+  test("listDurableObjectIds accepts class-based namespaces with non-Object constructors", async () => {
+    class CustomNamespace {
+      newUniqueId() {
+        return { toString: () => "custom-id" } as DurableObjectIdLike;
+      }
+
+      idFromName(name: string) {
+        return { toString: () => name } as DurableObjectIdLike;
+      }
+
+      idFromString(id: string) {
+        return { toString: () => id } as DurableObjectIdLike;
+      }
+
+      get() {
+        return createDurableObjectStub("custom-id");
+      }
+    }
+
+    const namespace = new CustomNamespace() as unknown as DurableObjectNamespaceLike;
+    await withRuntimeBindings(
+      {},
+      async () => {
+        const ids = await listDurableObjectIds(namespace);
+        expect(ids.map((id) => id.toString())).toEqual(["custom-id"]);
+      },
+      {
+        listDurableObjectIds: () => [{ toString: () => "custom-id" }]
       }
     );
   });

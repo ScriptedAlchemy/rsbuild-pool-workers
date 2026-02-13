@@ -5031,7 +5031,8 @@ export default defineConfig({
       "runInDurableObject executes RPC-callable instance methods",
       "runInDurableObject throws actionable error on state access",
       "runInDurableObject preserves callback return values and errors",
-      "runDurableObjectAlarm invokes RPC-callable alarm handlers for real stubs",
+      "runDurableObjectAlarm surfaces actionable guidance for runtime Durable Object stubs",
+      "runDurableObjectAlarm surfaces same guidance for runtime stubs without scheduled alarms",
       "SELF.scheduled dispatches scheduled handler and persists effects",
       "SELF.scheduled applies default cron/time when options are omitted"
     ]);
@@ -5051,6 +5052,7 @@ export default defineConfig({
     );
     expectTitleCoverage(unsupportedTitles, [
       "runInDurableObject validates argument types",
+      "runInDurableObject accepts class-based stubs with non-Object constructors",
       "runDurableObjectAlarm validates argument types and returns false when unavailable",
       "runInDurableObject rejects stubs outside same-worker namespaces when runtime bindings are available",
       "runInDurableObject only accepts namespaces designated as same-isolate by runtime metadata",
@@ -5073,6 +5075,7 @@ export default defineConfig({
       "runDurableObjectAlarm still invokes alarm when deleteAlarm is unavailable",
       "listDurableObjectIds validates namespace argument type",
       "listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity",
+      "listDurableObjectIds accepts class-based namespaces with non-Object constructors",
       "workflow introspection validates workflow parameter types",
       "workflow introspection validates instance id parameter type",
       "workflow introspection APIs throw with explicit guidance",

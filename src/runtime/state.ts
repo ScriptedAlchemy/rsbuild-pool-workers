@@ -57,7 +57,7 @@ function isDurableObjectNamespaceLike(value: unknown): value is {
     typeof value === "object" &&
     value !== null &&
     typeof constructorName === "string" &&
-    /^(?:Loopback)?DurableObjectNamespace$/.test(constructorName) &&
+    constructorName !== "Object" &&
     "newUniqueId" in value &&
     typeof (value as { newUniqueId?: unknown }).newUniqueId === "function" &&
     "idFromName" in value &&

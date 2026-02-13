@@ -81,7 +81,8 @@ function isDurableObjectStub(value: unknown): value is DurableObjectStubLike {
   return (
     typeof value === "object" &&
     value !== null &&
-    (constructorName === "DurableObject" || constructorName === "WorkerRpc") &&
+    typeof constructorName === "string" &&
+    constructorName !== "Object" &&
     "fetch" in value &&
     typeof (value as { fetch?: unknown }).fetch === "function" &&
     isDurableObjectIdLike(id)
@@ -95,7 +96,7 @@ function isDurableObjectNamespaceLike(value: unknown): value is DurableObjectNam
     typeof value === "object" &&
     value !== null &&
     typeof constructorName === "string" &&
-    /^(?:Loopback)?DurableObjectNamespace$/.test(constructorName) &&
+    constructorName !== "Object" &&
     "newUniqueId" in value &&
     typeof (value as { newUniqueId?: unknown }).newUniqueId === "function" &&
     "idFromName" in value &&
@@ -305,7 +306,24 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
   return runInDurableObject<{ alarm?: () => unknown }, boolean>(
     stub,
     async (instance, state) => {
-      if (typeof instance.alarm !== "function") {
+      const throwReservedAlarmGuidance = () => {
+        throw new Error(
+          "runDurableObjectAlarm(): invoking alarm() on runtime Durable Object stubs is not yet supported in Rstest mode. " +
+            "Use fetch-driven Durable Object hooks or same-isolate stubbed alarm methods for now."
+        );
+      };
+
+      let alarmMethod: unknown;
+      try {
+        alarmMethod = instance.alarm;
+      } catch (error) {
+        const message = String((error as { message?: unknown } | undefined)?.message ?? error);
+        if (message.includes("'alarm' is a reserved method")) {
+          throwReservedAlarmGuidance();
+        }
+        throw error;
+      }
+      if (typeof alarmMethod !== "function") {
         return false;
       }
 
@@ -323,7 +341,15 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
         }
       }
 
-      await instance.alarm();
+      try {
+        await alarmMethod.call(instance);
+      } catch (error) {
+        const message = String((error as { message?: unknown } | undefined)?.message ?? error);
+        if (message.includes("'alarm' is a reserved method")) {
+          throwReservedAlarmGuidance();
+        }
+        throw error;
+      }
       return true;
     }
   );

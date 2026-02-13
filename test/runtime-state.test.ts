@@ -565,7 +565,7 @@ describe("Workers runtime state integration", () => {
     ).rejects.toThrow("callback-failure");
   });
 
-  test("runDurableObjectAlarm invokes RPC-callable alarm handlers for real stubs", async () => {
+  test("runDurableObjectAlarm surfaces actionable guidance for runtime Durable Object stubs", async () => {
     setWorkersRuntimeOptionsForTesting({
       miniflare: {
         modules: true,
@@ -610,9 +610,59 @@ describe("Workers runtime state integration", () => {
     const namespace = workersEnv.COUNTER as unknown as DurableObjectNamespaceLike;
     const stub = namespace.get(namespace.idFromName("singleton"));
 
-    await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+    await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+      "runDurableObjectAlarm(): invoking alarm() on runtime Durable Object stubs is not yet supported in Rstest mode."
+    );
     const status = await stub.fetch("http://localhost/status");
-    expect(await status.text()).toBe("yes");
+    expect(await status.text()).toBe("no");
+  });
+
+  test("runDurableObjectAlarm surfaces same guidance for runtime stubs without scheduled alarms", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      miniflare: {
+        modules: true,
+        script: `
+          import { DurableObject } from "cloudflare:workers";
+
+          export class Counter extends DurableObject {
+            async alarm() {
+              await this.ctx.storage.put("alarm-ran", "yes");
+            }
+            async fetch(request) {
+              const pathname = new URL(request.url).pathname;
+              if (pathname === "/status") {
+                return new Response((await this.ctx.storage.get("alarm-ran")) ?? "no");
+              }
+              return new Response("ok");
+            }
+          }
+
+          export default {
+            async fetch(_request, env) {
+              const id = env.COUNTER.idFromName("singleton");
+              const stub = env.COUNTER.get(id);
+              await stub.fetch("http://localhost/status");
+              return new Response("done");
+            }
+          };
+        `,
+        durableObjects: {
+          COUNTER: "Counter"
+        }
+      }
+    });
+
+    await runtime.setup();
+    await SELF.fetch("http://localhost/");
+
+    const namespace = workersEnv.COUNTER as unknown as DurableObjectNamespaceLike;
+    const stub = namespace.get(namespace.idFromName("singleton"));
+
+    await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+      "runDurableObjectAlarm(): invoking alarm() on runtime Durable Object stubs is not yet supported in Rstest mode."
+    );
+    const status = await stub.fetch("http://localhost/status");
+    expect(await status.text()).toBe("no");
   });
 
   test("SELF.scheduled dispatches scheduled handler and persists effects", async () => {

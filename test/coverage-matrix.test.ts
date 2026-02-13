@@ -4945,6 +4945,7 @@ export default defineConfig({
       "throws actionable error for invalid compatibilityDate format",
       "throws actionable error for non-ISO compatibilityDate format",
       "throws actionable error for impossible calendar compatibilityDate",
+      "accepts valid leap-day compatibilityDate",
       "throws actionable error when compatibilityFlags is not an array",
       "throws actionable error when compatibilityFlags contains non-string values",
       "throws actionable error when compatibilityDate is not a string",

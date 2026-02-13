@@ -131,6 +131,21 @@ describe("resolveRuntimeOptions", () => {
     ).rejects.toThrow('Invalid compatibilityDate "2024-02-30".');
   });
 
+  test("accepts valid leap-day compatibilityDate", async () => {
+    const options = await resolveRuntimeOptions(
+      {
+        main: "./src/worker.ts",
+        miniflare: {
+          compatibilityDate: "2024-02-29",
+          compatibilityFlags: ["export_commonjs_default"]
+        }
+      },
+      "/repo/example"
+    );
+
+    expect(options.miniflare.compatibilityDate).toBe("2024-02-29");
+  });
+
   test("throws actionable error when compatibilityFlags is not an array", async () => {
     await expect(
       resolveRuntimeOptions(

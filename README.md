@@ -145,6 +145,7 @@ import {
 - compatibility flag prerequisites mirror Workers test-runtime requirements:
   - `export_commonjs_namespace` is rejected as incompatible,
   - if `workers.miniflare.compatibilityDate` is older than `2022-10-31`, include `export_commonjs_default`.
+  - `workers.miniflare.compatibilityFlags` must be an array of strings, and `workers.miniflare.compatibilityDate` must be a `YYYY-MM-DD` string.
 - `cloudflare:test-internal` is also aliased to the same runtime helpers for compatibility.
 - `env` bindings exposed by `cloudflare:test` are read-only.
 - `fetchMock` state is reset before each test case via runtime setup hooks.

@@ -121,6 +121,29 @@ describe("resolveRuntimeOptions", () => {
     expect(options.miniflare.compatibilityFlags).toEqual(["export_commonjs_default"]);
   });
 
+  test("deduplicates compatibilityFlags while preserving first-seen order", async () => {
+    const options = await resolveRuntimeOptions(
+      {
+        main: "./src/worker.ts",
+        miniflare: {
+          compatibilityDate: "2024-01-01",
+          compatibilityFlags: [
+            "export_commonjs_default",
+            "alpha-flag",
+            "export_commonjs_default",
+            "alpha-flag"
+          ]
+        }
+      },
+      "/repo/example"
+    );
+
+    expect(options.miniflare.compatibilityFlags).toEqual([
+      "export_commonjs_default",
+      "alpha-flag"
+    ]);
+  });
+
   test("normalizes missing compatibilityFlags to an empty array", async () => {
     const options = await resolveRuntimeOptions(
       {

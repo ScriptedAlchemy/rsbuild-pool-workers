@@ -103,6 +103,20 @@ describe("resolveRuntimeOptions", () => {
     expect(options.miniflare.compatibilityFlags).not.toBe(flags);
   });
 
+  test("normalizes missing compatibilityFlags to an empty array", async () => {
+    const options = await resolveRuntimeOptions(
+      {
+        main: "./src/worker.ts",
+        miniflare: {
+          compatibilityDate: "2024-01-01"
+        }
+      },
+      "/repo/example"
+    );
+
+    expect(options.miniflare.compatibilityFlags).toEqual([]);
+  });
+
   test("throws actionable error for invalid compatibilityDate format", async () => {
     await expect(
       resolveRuntimeOptions(

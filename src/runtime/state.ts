@@ -304,7 +304,13 @@ export class WorkersRuntimeState {
     const miniflareOptions = this.resolvedOptions?.miniflare as
       | { durableObjects?: Record<string, unknown>; name?: string }
       | undefined;
-    const designator = miniflareOptions?.durableObjects?.[bindingName];
+    const designators = miniflareOptions?.durableObjects;
+    if (!designators || !(bindingName in designators)) {
+      throw new Error(
+        `Could not resolve Durable Object designator for binding "${bindingName}".`
+      );
+    }
+    const designator = designators[bindingName];
 
     let className: string | undefined;
     let scriptName: string | undefined;

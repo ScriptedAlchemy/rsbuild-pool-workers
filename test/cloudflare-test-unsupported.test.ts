@@ -528,4 +528,33 @@ describe("unsupported cloudflare:test APIs", () => {
     }
   });
 
+  test("WorkersRuntimeState listDurableObjectIds throws when no designator exists for resolved binding", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-missing-designator-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const state = createMockedRuntimeState({
+        envCache: {
+          COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            durableObjects: {
+              OTHER_COUNTER: "Counter"
+            }
+          }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+        }
+      });
+
+      await expect(state.listDurableObjectIds(namespace)).rejects.toThrow(
+        'Could not resolve Durable Object designator for binding "COUNTER".'
+      );
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
+
 });

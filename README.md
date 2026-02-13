@@ -149,6 +149,7 @@ import {
   - surrounding whitespace in `workers.miniflare.compatibilityDate` is trimmed before validation.
   - duplicate compatibility flags are normalized away during runtime option resolution (preserving first-seen order), and surrounding whitespace is trimmed.
   - empty compatibility flag entries are rejected.
+  - compatibility flag requirement/incompatibility checks run against normalized flag values (for example trimmed `export_commonjs_default`/`export_commonjs_namespace` entries).
   - missing `workers.miniflare.compatibilityFlags` values normalize to an empty array.
 - `cloudflare:test-internal` is also aliased to the same runtime helpers for compatibility.
 - `env` bindings exposed by `cloudflare:test` are read-only.

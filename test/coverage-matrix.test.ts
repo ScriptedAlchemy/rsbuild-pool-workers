@@ -4939,6 +4939,9 @@ export default defineConfig({
     expectTitleCoverage(titles, [
       "resolves relative main path and fills miniflare defaults",
       "preserves explicit compatibilityDate when provided",
+      "throws when incompatible export_commonjs_namespace flag is present",
+      "requires export_commonjs_default when compatibilityDate is older than default-on date",
+      "accepts old compatibilityDate when export_commonjs_default flag is explicitly present",
       "preserves explicit script config",
       "preserves explicit scriptPath config",
       "accepts additional worker export hints in options",

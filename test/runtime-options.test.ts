@@ -37,6 +37,55 @@ describe("resolveRuntimeOptions", () => {
     expect(options.miniflare.compatibilityDate).toBe("2023-10-10");
   });
 
+  test("throws when incompatible export_commonjs_namespace flag is present", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityFlags: ["export_commonjs_namespace"]
+          }
+        },
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      'workers.miniflare.compatibilityFlags must not contain "export_commonjs_namespace".'
+    );
+  });
+
+  test("requires export_commonjs_default when compatibilityDate is older than default-on date", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: "2022-10-30",
+            compatibilityFlags: []
+          }
+        },
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      'workers.miniflare.compatibilityFlags must contain "export_commonjs_default"'
+    );
+  });
+
+  test("accepts old compatibilityDate when export_commonjs_default flag is explicitly present", async () => {
+    const options = await resolveRuntimeOptions(
+      {
+        main: "./src/worker.ts",
+        miniflare: {
+          compatibilityDate: "2022-10-30",
+          compatibilityFlags: ["export_commonjs_default"]
+        }
+      },
+      "/repo/example"
+    );
+
+    expect(options.miniflare.compatibilityDate).toBe("2022-10-30");
+    expect(options.miniflare.compatibilityFlags).toEqual(["export_commonjs_default"]);
+  });
+
   test("preserves explicit script config", async () => {
     const options = await resolveRuntimeOptions(
       {

@@ -40,6 +40,55 @@ export type WorkersRuntimeOptions = z.output<typeof WorkersOptionsSchema> & {
 
 const TYPESCRIPT_ENTRYPOINT_REGEXP = /\.(?:cts|mts|ts|tsx)$/i;
 
+function parseDateOrThrow(dateValue: string): Date {
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid compatibilityDate "${dateValue}".`);
+  }
+  return parsed;
+}
+
+function isDateAtLeast(compatibilityDate: string | undefined, minDate: string): boolean {
+  if (!compatibilityDate) {
+    return false;
+  }
+  return parseDateOrThrow(compatibilityDate) >= parseDateOrThrow(minDate);
+}
+
+function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
+  const flagsValue = options.miniflare.compatibilityFlags;
+  const flags = Array.isArray(flagsValue)
+    ? flagsValue.filter((flag): flag is string => typeof flag === "string")
+    : [];
+
+  const optionsPath = "workers.miniflare";
+  const requiredEnableFlag = "export_commonjs_default";
+  const incompatibleDisableFlag = "export_commonjs_namespace";
+  const defaultOnDate = "2022-10-31";
+
+  if (flags.includes(incompatibleDisableFlag)) {
+    throw new Error(
+      `${optionsPath}.compatibilityFlags must not contain "${incompatibleDisableFlag}". ` +
+        `This flag is incompatible with @cloudflare/rstest-pool-workers.`
+    );
+  }
+
+  const hasEnableFlag = flags.includes(requiredEnableFlag);
+  const hasSufficientDate = isDateAtLeast(
+    typeof options.miniflare.compatibilityDate === "string"
+      ? options.miniflare.compatibilityDate
+      : undefined,
+    defaultOnDate
+  );
+  if (!hasEnableFlag && !hasSufficientDate) {
+    throw new Error(
+      `${optionsPath}.compatibilityFlags must contain "${requiredEnableFlag}", ` +
+        `or ${optionsPath}.compatibilityDate must be >= "${defaultOnDate}". ` +
+        `This flag is required to use @cloudflare/rstest-pool-workers.`
+    );
+  }
+}
+
 async function bundleWorkerEntrypoint(mainPath: string): Promise<string> {
   const result = await esbuildBuild({
     entryPoints: [mainPath],
@@ -166,6 +215,8 @@ export async function resolveRuntimeOptions(
   if (!("compatibilityDate" in resolved.miniflare)) {
     resolved.miniflare.compatibilityDate = "2024-01-01";
   }
+
+  assertCompatibilityFlags(resolved);
 
   return resolved;
 }

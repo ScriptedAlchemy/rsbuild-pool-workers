@@ -4999,7 +4999,9 @@ export default defineConfig({
       "listDurableObjectIds validates namespace argument type",
       "listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity",
       "workflow introspection APIs throw with explicit guidance",
-      "WorkersRuntimeState same-isolate namespace resolution excludes scriptName-scoped bindings"
+      "WorkersRuntimeState same-isolate namespace resolution excludes scriptName-scoped bindings",
+      "WorkersRuntimeState listDurableObjectIds uses scriptName-scoped unique key when configured",
+      "WorkersRuntimeState listDurableObjectIds prefers unsafeUniqueKey when configured"
     ]);
   });
 

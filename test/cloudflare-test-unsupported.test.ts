@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, test } from "@rstest/core";
 import {
   type DurableObjectIdLike,
@@ -50,6 +53,28 @@ function createNamespaceWithAcceptedId(acceptedId: string): DurableObjectNamespa
       if (id !== acceptedId) {
         throw new Error("namespace mismatch");
       }
+      return { toString: () => id } as DurableObjectIdLike;
+    }
+
+    get() {
+      throw new Error("not implemented for this test");
+    }
+  }
+
+  return new LoopbackDurableObjectNamespace() as DurableObjectNamespaceLike;
+}
+
+function createNamespaceAcceptingAnyId(): DurableObjectNamespaceLike {
+  class LoopbackDurableObjectNamespace {
+    newUniqueId() {
+      return { toString: () => "generated-id" } as DurableObjectIdLike;
+    }
+
+    idFromName(name: string) {
+      return { toString: () => name } as DurableObjectIdLike;
+    }
+
+    idFromString(id: string) {
       return { toString: () => id } as DurableObjectIdLike;
     }
 
@@ -334,5 +359,126 @@ describe("unsupported cloudflare:test APIs", () => {
     };
 
     expect(state.getSameIsolateDurableObjectNamespaces()).toEqual([localNamespace]);
+  });
+
+  test("WorkersRuntimeState listDurableObjectIds uses scriptName-scoped unique key when configured", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-scriptname-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const remoteNamespacePath = path.join(durablePersistPath, "remote-worker-Counter");
+      await fs.mkdir(remoteNamespacePath, { recursive: true });
+      await fs.writeFile(path.join(remoteNamespacePath, "remote-id.sqlite"), "");
+
+      const localNamespacePath = path.join(durablePersistPath, "worker-Counter");
+      await fs.mkdir(localNamespacePath, { recursive: true });
+      await fs.writeFile(path.join(localNamespacePath, "local-id.sqlite"), "");
+
+      const state = new WorkersRuntimeState();
+      (
+        state as unknown as {
+          setupReady: boolean;
+          envCache: Record<string, unknown>;
+          resolvedOptions: { miniflare: Record<string, unknown> };
+          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
+        }
+      ).setupReady = true;
+      (
+        state as unknown as {
+          envCache: Record<string, unknown>;
+          resolvedOptions: { miniflare: Record<string, unknown> };
+        }
+      ).envCache = {
+        REMOTE_COUNTER: namespace
+      };
+      (
+        state as unknown as {
+          resolvedOptions: { miniflare: Record<string, unknown> };
+        }
+      ).resolvedOptions = {
+        miniflare: {
+          name: "worker",
+          durableObjects: {
+            REMOTE_COUNTER: {
+              className: "Counter",
+              scriptName: "remote-worker"
+            }
+          }
+        }
+      };
+      (
+        state as unknown as {
+          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
+        }
+      ).miniflare = {
+        unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+      };
+
+      const ids = await state.listDurableObjectIds(namespace);
+      expect(ids.map((id) => id.toString())).toEqual(["remote-id"]);
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
+
+  test("WorkersRuntimeState listDurableObjectIds prefers unsafeUniqueKey when configured", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-uniquekey-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const uniqueKeyPath = path.join(durablePersistPath, "custom-unique-key");
+      await fs.mkdir(uniqueKeyPath, { recursive: true });
+      await fs.writeFile(path.join(uniqueKeyPath, "custom-id.sqlite"), "");
+
+      const scriptNamePath = path.join(durablePersistPath, "remote-worker-Counter");
+      await fs.mkdir(scriptNamePath, { recursive: true });
+      await fs.writeFile(path.join(scriptNamePath, "script-name-id.sqlite"), "");
+
+      const state = new WorkersRuntimeState();
+      (
+        state as unknown as {
+          setupReady: boolean;
+          envCache: Record<string, unknown>;
+          resolvedOptions: { miniflare: Record<string, unknown> };
+          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
+        }
+      ).setupReady = true;
+      (
+        state as unknown as {
+          envCache: Record<string, unknown>;
+          resolvedOptions: { miniflare: Record<string, unknown> };
+        }
+      ).envCache = {
+        REMOTE_COUNTER: namespace
+      };
+      (
+        state as unknown as {
+          resolvedOptions: { miniflare: Record<string, unknown> };
+        }
+      ).resolvedOptions = {
+        miniflare: {
+          name: "worker",
+          durableObjects: {
+            REMOTE_COUNTER: {
+              className: "Counter",
+              scriptName: "remote-worker",
+              unsafeUniqueKey: "custom-unique-key"
+            }
+          }
+        }
+      };
+      (
+        state as unknown as {
+          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
+        }
+      ).miniflare = {
+        unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+      };
+
+      const ids = await state.listDurableObjectIds(namespace);
+      expect(ids.map((id) => id.toString())).toEqual(["custom-id"]);
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
   });
 });

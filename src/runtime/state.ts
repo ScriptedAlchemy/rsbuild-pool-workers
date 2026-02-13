@@ -327,15 +327,10 @@ export class WorkersRuntimeState {
       );
     }
 
-    const namespaceKeys = unsafeUniqueKey
-      ? [unsafeUniqueKey]
-      : Array.from(
-          new Set(
-            [scriptName, miniflareOptions?.name, "", "worker"]
-              .filter((name): name is string => typeof name === "string")
-              .map((name) => `${name}-${className}`)
-          )
-        );
+    const resolvedUniqueKey =
+      unsafeUniqueKey ??
+      `${(scriptName ?? miniflareOptions?.name ?? "worker")}-${className}`;
+    const namespaceKeys = [resolvedUniqueKey];
 
     const ids = new Set<string>();
     for (const namespaceKey of namespaceKeys) {

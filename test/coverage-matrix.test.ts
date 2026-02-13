@@ -1867,6 +1867,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-parenthesized-element-chain-preferred.config.js"
     );
+    const exportedAssertedElementChainPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-asserted-element-chain-preferred.config.ts"
+    );
     const exportedExportsElementToModuleChainPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-exports-element-to-module-chain-preferred.config.js"
@@ -1957,6 +1961,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-namespace-parenthesized-element-access.config.ts"
     );
+    const namespaceAssertedElementAccessConfigPath = path.join(
+      tempDirectory,
+      "rstest-namespace-asserted-element-access.config.ts"
+    );
     const wrappedNamespacePropertyConfigPath = path.join(
       tempDirectory,
       "rstest-wrapped-namespace-property.config.ts"
@@ -2012,6 +2020,10 @@ test("cts title", () => {});
     const parenthesizedComputedIncludeKeyConfigPath = path.join(
       tempDirectory,
       "rstest-parenthesized-computed-include-key.config.ts"
+    );
+    const assertedComputedIncludeKeyConfigPath = path.join(
+      tempDirectory,
+      "rstest-asserted-computed-include-key.config.ts"
     );
     const propertyAccessConfigPath = path.join(tempDirectory, "rstest-property-access.config.ts");
     const elementAccessConfigPath = path.join(tempDirectory, "rstest-element-access.config.ts");
@@ -4944,6 +4956,7 @@ export default defineConfig({
       "SELF.fetch executes worker script and exposes bindings through env",
       "SELF.fetch supports Request inputs with method/body semantics",
       "SELF.fetch supports URL object inputs",
+      "recreateWorkerInstance resets global state when singleWorker is disabled",
       "SELF.fetch supports relative string inputs",
       "SELF.fetch normalizes bare path string inputs",
       "SELF.fetch Request inputs honor init overrides",

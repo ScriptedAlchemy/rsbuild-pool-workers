@@ -102,6 +102,37 @@ describe("Workers runtime state integration", () => {
     expect(await response.text()).toBe("/url-input");
   });
 
+  test("recreateWorkerInstance resets global state when singleWorker is disabled", async () => {
+    setWorkersRuntimeOptionsForTesting({
+      singleWorker: false,
+      miniflare: {
+        modules: true,
+        script: `
+          let count = 0;
+          export default {
+            fetch() {
+              count += 1;
+              return new Response(String(count));
+            }
+          };
+        `
+      }
+    });
+
+    await runtime.setup();
+    expect(runtime.isSingleWorkerEnabled()).toBe(false);
+
+    const first = await SELF.fetch("http://localhost/");
+    const second = await SELF.fetch("http://localhost/");
+    expect(await first.text()).toBe("1");
+    expect(await second.text()).toBe("2");
+
+    await runtime.recreateWorkerInstance();
+
+    const afterRecreate = await SELF.fetch("http://localhost/");
+    expect(await afterRecreate.text()).toBe("1");
+  });
+
   test("SELF.fetch supports relative string inputs", async () => {
     setWorkersRuntimeOptionsForTesting({
       miniflare: {

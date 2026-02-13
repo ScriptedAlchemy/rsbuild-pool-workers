@@ -52,6 +52,7 @@ export class WorkersRuntimeState {
   private miniflare: Miniflare | undefined;
   private envCache: Record<string, unknown> | undefined;
   private setupReady = false;
+  private singleWorker = true;
   private isolatedStorage = true;
   private resolvedOptions: WorkersRuntimeOptions | undefined;
   private snapshotRootPath: string | undefined;
@@ -99,6 +100,7 @@ export class WorkersRuntimeState {
     const rawOptions = readRawWorkersOptionsFromDefine();
     const options = await resolveRuntimeOptions(rawOptions);
     this.resolvedOptions = options;
+    this.singleWorker = options.singleWorker;
     this.isolatedStorage = options.isolatedStorage;
 
     await this.recreateFetchMock();
@@ -117,6 +119,7 @@ export class WorkersRuntimeState {
     this.miniflare = undefined;
     this.envCache = undefined;
     this.setupReady = false;
+    this.singleWorker = true;
     this.isolatedStorage = true;
     this.resolvedOptions = undefined;
 
@@ -148,6 +151,10 @@ export class WorkersRuntimeState {
 
   isIsolatedStorageEnabled(): boolean {
     return this.isolatedStorage;
+  }
+
+  isSingleWorkerEnabled(): boolean {
+    return this.singleWorker;
   }
 
   getEnvSync(): Record<string, unknown> {
@@ -381,6 +388,26 @@ export class WorkersRuntimeState {
     this.envCache = (await this.miniflare.getBindings()) as Record<string, unknown>;
 
     await fs.rm(snapshot.snapshotPath, { recursive: true, force: true });
+  }
+
+  async recreateWorkerInstance(): Promise<void> {
+    await this.setup();
+
+    const existingMf = this.miniflare;
+    if (existingMf) {
+      await existingMf.dispose();
+    }
+
+    const rawOptions = readRawWorkersOptionsFromDefine();
+    const options = await resolveRuntimeOptions(rawOptions);
+    this.resolvedOptions = options;
+    this.singleWorker = options.singleWorker;
+    this.isolatedStorage = options.isolatedStorage;
+    this.miniflare = new Miniflare(
+      this.createMiniflareOptionsWithMockAgent(options.miniflare)
+    );
+    await this.miniflare.ready;
+    this.envCache = (await this.miniflare.getBindings()) as Record<string, unknown>;
   }
 }
 

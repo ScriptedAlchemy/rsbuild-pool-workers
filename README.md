@@ -145,6 +145,7 @@ import {
 - `cloudflare:test-internal` is also aliased to the same runtime helpers for compatibility.
 - `env` bindings exposed by `cloudflare:test` are read-only.
 - `fetchMock` state is reset before each test case via runtime setup hooks.
+- `singleWorker` defaults to `true` (shared runtime with snapshot-based storage isolation); when set to `false`, the runtime recreates the worker isolate before each test case for fresh global state.
 - The package exports `WORKERS_RSBUILD_PLUGIN_NAME` for plugin detection/deduplication scenarios.
 - if you preinstall `workersRsbuildPlugin()` yourself, config helpers dedupe it across sync/async/promise/promise-like exports (including function exports returning thenables), with `plugins` provided as a single value or mixed arrays (for example with falsey entries).
 - `test.poolOptions.workers` can be an object or function. Function mode supports:

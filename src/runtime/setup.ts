@@ -19,12 +19,19 @@ async function installSetup(): Promise<void> {
 
   beforeEach(async () => {
     await runtime.resetFetchMock();
+    if (!runtime.isSingleWorkerEnabled()) {
+      await runtime.recreateWorkerInstance();
+      return;
+    }
     if (runtime.isIsolatedStorageEnabled()) {
       await runtime.pushStorageSnapshot();
     }
   });
 
   afterEach(async () => {
+    if (!runtime.isSingleWorkerEnabled()) {
+      return;
+    }
     if (runtime.isIsolatedStorageEnabled()) {
       await runtime.popStorageSnapshot();
     }

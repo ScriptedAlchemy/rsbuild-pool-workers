@@ -4991,6 +4991,7 @@ export default defineConfig({
       "runInDurableObject validates argument types",
       "runDurableObjectAlarm validates argument types and returns false when unavailable",
       "runInDurableObject rejects stubs outside same-worker namespaces when runtime bindings are available",
+      "runInDurableObject only accepts namespaces designated as same-isolate by runtime metadata",
       "runInDurableObject rejects stubs when runtime bindings contain no Durable Object namespaces",
       "runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace",
       "runDurableObjectAlarm returns false when same-worker stub has no alarm method",

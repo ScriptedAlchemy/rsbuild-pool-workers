@@ -93,16 +93,27 @@ function isDurableObjectNamespaceLike(value: unknown): value is DurableObjectNam
 }
 
 function assertDurableObjectStubFromSameWorker(stub: DurableObjectStubLike): void {
+  let runtimeState:
+    | (ReturnType<typeof runtime> & {
+        getSameIsolateDurableObjectNamespaces?: () => unknown[];
+      })
+    | undefined;
   let bindings: Record<string, unknown>;
   try {
-    bindings = runtime().getEnvSync();
+    runtimeState = runtime() as ReturnType<typeof runtime> & {
+      getSameIsolateDurableObjectNamespaces?: () => unknown[];
+    };
+    bindings = runtimeState.getEnvSync();
   } catch {
     // If runtime hasn't been initialized yet, defer strict same-worker checks.
     return;
   }
 
   const idString = stub.id.toString();
-  const namespaces = Object.values(bindings).filter(isDurableObjectNamespaceLike);
+  const namespaces =
+    runtimeState.getSameIsolateDurableObjectNamespaces?.().filter(
+      isDurableObjectNamespaceLike
+    ) ?? Object.values(bindings).filter(isDurableObjectNamespaceLike);
   if (namespaces.length === 0) {
     throw new Error(
       "Durable Object test helpers can only be used with stubs pointing to objects defined within the same worker."

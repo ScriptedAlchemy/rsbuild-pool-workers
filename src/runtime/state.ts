@@ -187,6 +187,38 @@ export class WorkersRuntimeState {
     return this.envCache;
   }
 
+  getSameIsolateDurableObjectNamespaces(): unknown[] {
+    const bindings = this.getEnvSync();
+    const miniflareOptions = this.resolvedOptions?.miniflare as
+      | { durableObjects?: Record<string, unknown> }
+      | undefined;
+    const designators = miniflareOptions?.durableObjects;
+
+    if (!designators) {
+      return Object.values(bindings).filter(isDurableObjectNamespaceLike);
+    }
+
+    const namespaces: unknown[] = [];
+    for (const [bindingName, designator] of Object.entries(designators)) {
+      const scriptName =
+        typeof designator === "object" &&
+        designator !== null &&
+        typeof (designator as { scriptName?: unknown }).scriptName === "string"
+          ? (designator as { scriptName: string }).scriptName
+          : undefined;
+      if (scriptName !== undefined) {
+        continue;
+      }
+
+      const binding = bindings[bindingName];
+      if (isDurableObjectNamespaceLike(binding)) {
+        namespaces.push(binding);
+      }
+    }
+
+    return namespaces;
+  }
+
   private getMiniflare(): Miniflare {
     if (!this.miniflare) {
       throw new Error(

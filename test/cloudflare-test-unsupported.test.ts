@@ -14,14 +14,16 @@ const RUNTIME_KEY = Symbol.for("@cloudflare/rstest-pool-workers/runtime-state");
 
 function withRuntimeBindings(
   bindings: Record<string, unknown>,
-  run: () => Promise<void>
+  run: () => Promise<void>,
+  runtimeOverrides: Record<string, unknown> = {}
 ): Promise<void> {
   const holder = globalThis as Record<PropertyKey, unknown>;
   const previous = holder[RUNTIME_KEY];
   holder[RUNTIME_KEY] = {
     getEnvSync() {
       return bindings;
-    }
+    },
+    ...runtimeOverrides
   };
 
   return run().finally(() => {
@@ -142,6 +144,31 @@ describe("unsupported cloudflare:test APIs", () => {
         ).rejects.toThrow(
           "Durable Object test helpers can only be used with stubs pointing to objects defined within the same worker."
         );
+      }
+    );
+  });
+
+  test("runInDurableObject only accepts namespaces designated as same-isolate by runtime metadata", async () => {
+    const localNamespace = createNamespaceWithAcceptedId("local-id");
+    const remoteNamespace = createNamespaceWithAcceptedId("remote-id");
+
+    await withRuntimeBindings(
+      {
+        LOCAL_COUNTER: localNamespace,
+        REMOTE_COUNTER: remoteNamespace
+      },
+      async () => {
+        await expect(
+          runInDurableObject(
+            createDurableObjectStub("remote-id"),
+            async () => "value"
+          )
+        ).rejects.toThrow(
+          "Durable Object test helpers can only be used with stubs pointing to objects defined within the same worker."
+        );
+      },
+      {
+        getSameIsolateDurableObjectNamespaces: () => [localNamespace]
       }
     );
   });

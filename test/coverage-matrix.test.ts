@@ -1542,7 +1542,7 @@ test("cts title", () => {});
 
   test("guards every test suite file in the test directory", () => {
     const discovered = listDiscoveredTestSuites(path.join(process.cwd(), "test"));
-    const guarded = [...GUARDED_TEST_SUITES].sort();
+    const guarded: string[] = [...GUARDED_TEST_SUITES].sort();
 
     const missingFromGuard = discovered.filter((suiteFile) => !guarded.includes(suiteFile));
     const unexpectedInGuard = guarded.filter((suiteFile) => !discovered.includes(suiteFile));

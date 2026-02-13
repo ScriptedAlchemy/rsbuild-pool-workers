@@ -56,12 +56,12 @@ function createNamespaceWithAcceptedId(acceptedId: string): DurableObjectNamespa
       return { toString: () => id } as DurableObjectIdLike;
     }
 
-    get() {
+    get(): DurableObjectStubLike {
       throw new Error("not implemented for this test");
     }
   }
 
-  return new LoopbackDurableObjectNamespace() as DurableObjectNamespaceLike;
+  return new LoopbackDurableObjectNamespace() as unknown as DurableObjectNamespaceLike;
 }
 
 function createNamespaceAcceptingAnyId(): DurableObjectNamespaceLike {
@@ -78,12 +78,12 @@ function createNamespaceAcceptingAnyId(): DurableObjectNamespaceLike {
       return { toString: () => id } as DurableObjectIdLike;
     }
 
-    get() {
+    get(): DurableObjectStubLike {
       throw new Error("not implemented for this test");
     }
   }
 
-  return new LoopbackDurableObjectNamespace() as DurableObjectNamespaceLike;
+  return new LoopbackDurableObjectNamespace() as unknown as DurableObjectNamespaceLike;
 }
 
 function createDurableObjectStub(
@@ -105,7 +105,7 @@ function createDurableObjectStub(
     }
   }
 
-  const stub = new WorkerRpc({ toString: () => id }) as DurableObjectStubLike & {
+  const stub = new WorkerRpc({ toString: () => id }) as unknown as DurableObjectStubLike & {
     alarm?: (() => Promise<void> | void) | undefined;
   };
 
@@ -122,8 +122,10 @@ function createDurableObjectStub(
 function createMockedRuntimeState(overrides: Record<string, unknown>): WorkersRuntimeState {
   const state = Object.create(WorkersRuntimeState.prototype) as WorkersRuntimeState &
     Record<string, unknown>;
-  state.setupReady = true;
-  Object.assign(state, overrides);
+  Object.assign(state, {
+    setupReady: true,
+    ...overrides
+  });
   return state;
 }
 
@@ -413,7 +415,7 @@ describe("unsupported cloudflare:test APIs", () => {
         }
       });
 
-      const ids = await state.listDurableObjectIds(namespace);
+      const ids = (await state.listDurableObjectIds(namespace)) as DurableObjectIdLike[];
       expect(ids.map((id) => id.toString())).toEqual(["remote-id"]);
     } finally {
       await fs.rm(durablePersistPath, { recursive: true, force: true });
@@ -454,7 +456,7 @@ describe("unsupported cloudflare:test APIs", () => {
         }
       });
 
-      const ids = await state.listDurableObjectIds(namespace);
+      const ids = (await state.listDurableObjectIds(namespace)) as DurableObjectIdLike[];
       expect(ids.map((id) => id.toString())).toEqual(["custom-id"]);
     } finally {
       await fs.rm(durablePersistPath, { recursive: true, force: true });
@@ -486,7 +488,7 @@ describe("unsupported cloudflare:test APIs", () => {
         }
       });
 
-      const ids = await state.listDurableObjectIds(namespace);
+      const ids = (await state.listDurableObjectIds(namespace)) as DurableObjectIdLike[];
       expect(ids.map((id) => id.toString())).toEqual(["default-worker-id"]);
     } finally {
       await fs.rm(durablePersistPath, { recursive: true, force: true });
@@ -521,7 +523,7 @@ describe("unsupported cloudflare:test APIs", () => {
         }
       });
 
-      const ids = await state.listDurableObjectIds(namespace);
+      const ids = (await state.listDurableObjectIds(namespace)) as DurableObjectIdLike[];
       expect(ids.map((id) => id.toString())).toEqual(["named-worker-id"]);
     } finally {
       await fs.rm(durablePersistPath, { recursive: true, force: true });

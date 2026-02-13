@@ -5048,6 +5048,7 @@ export default defineConfig({
       "runInDurableObject still rejects mismatched stubs when metadata helper throws and fallback is used",
       "runInDurableObject rejects stubs when runtime bindings contain no Durable Object namespaces",
       "runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace",
+      "runDurableObjectAlarm falls back to env namespace discovery if same-isolate metadata helper throws",
       "runDurableObjectAlarm returns false when same-worker stub has no alarm method",
       "runDurableObjectAlarm rejects stubs outside same-worker namespaces when runtime bindings are available",
       "listDurableObjectIds validates namespace argument type",

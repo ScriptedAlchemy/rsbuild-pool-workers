@@ -318,6 +318,37 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(alarmCalls).toBe(1);
   });
 
+  test("runDurableObjectAlarm falls back to env namespace discovery if same-isolate metadata helper throws", async () => {
+    let alarmCalls = 0;
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("fallback-alarm-id")
+      },
+      async () => {
+        const stubWithAlarm = createDurableObjectStub(
+          "fallback-alarm-id"
+        ) as DurableObjectStubLike & {
+          alarm?: () => Promise<void>;
+        };
+        stubWithAlarm.alarm = async () => {
+          alarmCalls += 1;
+        };
+
+        await expect(
+          runDurableObjectAlarm(stubWithAlarm)
+        ).resolves.toBe(true);
+      },
+      {
+        getSameIsolateDurableObjectNamespaces: () => {
+          throw new Error("metadata unavailable");
+        }
+      }
+    );
+
+    expect(alarmCalls).toBe(1);
+  });
+
   test("runDurableObjectAlarm returns false when same-worker stub has no alarm method", async () => {
     await withRuntimeBindings(
       {

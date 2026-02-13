@@ -146,6 +146,7 @@ import {
   - `export_commonjs_namespace` is rejected as incompatible,
   - if `workers.miniflare.compatibilityDate` is older than `2022-10-31`, include `export_commonjs_default`.
   - `workers.miniflare.compatibilityFlags` must be an array of strings, and `workers.miniflare.compatibilityDate` must be a valid `YYYY-MM-DD` calendar date string.
+  - duplicate compatibility flags are normalized away during runtime option resolution.
   - missing `workers.miniflare.compatibilityFlags` values normalize to an empty array.
 - `cloudflare:test-internal` is also aliased to the same runtime helpers for compatibility.
 - `env` bindings exposed by `cloudflare:test` are read-only.

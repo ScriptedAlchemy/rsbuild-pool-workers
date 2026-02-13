@@ -119,6 +119,18 @@ describe("unsupported cloudflare:test APIs", () => {
     ).rejects.toThrow(
       "Failed to execute 'runInDurableObject': parameter 1 is not of type 'DurableObjectStub'."
     );
+
+    await expect(
+      runInDurableObject(
+        {
+          fetch: async () => new Response("ok"),
+          id: { toString: () => "id-plain-object" }
+        } as unknown as DurableObjectStubLike,
+        async () => "value"
+      )
+    ).rejects.toThrow(
+      "Failed to execute 'runInDurableObject': parameter 1 is not of type 'DurableObjectStub'."
+    );
   });
 
   test("runDurableObjectAlarm validates argument types and returns false when unavailable", async () => {
@@ -129,6 +141,17 @@ describe("unsupported cloudflare:test APIs", () => {
     await expect(
       runDurableObjectAlarm(createDurableObjectStub("id-1"))
     ).resolves.toBe(false);
+
+    await expect(
+      runDurableObjectAlarm(
+        {
+          fetch: async () => new Response("ok"),
+          id: { toString: () => "alarm-plain-object" }
+        } as unknown as DurableObjectStubLike
+      )
+    ).rejects.toThrow(
+      "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
+    );
   });
 
   test("runInDurableObject rejects stubs outside same-worker namespaces when runtime bindings are available", async () => {

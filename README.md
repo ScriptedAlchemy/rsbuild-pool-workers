@@ -166,6 +166,7 @@ import {
 - function exports may also return Promise-like values (thenables); helpers normalize them before applying workers wiring.
 - function export failures (sync throw, async rejection, promise rejection, thenable rejection) propagate as test-run failures with surfaced messages.
 - repository maintainers can run `pnpm test:matrix` to execute regression guardrails only (coverage parity, no focused/skipped/todo executable tests, guarded suite list invariants, and parser-cache correctness checks).
+- on constrained Linux hosts, repeated Miniflare/workerd runs may exhaust process/thread limits; if you hit `Worker exited unexpectedly` or `Resource temporarily unavailable`, prefer focused test runs and `pnpm test:matrix` while freeing host resources.
 - default `rstest.config.ts` include patterns are kept in sync with matrix-supported test suffixes (`.test.ts`, `.test.tsx`, `.test.mts`, `.test.cts`, `.test.js`, `.test.jsx`, `.test.mjs`, `.test.cjs`) via guard tests.
 - matrix include-parser guards for `rstest.config.ts` cover `defineConfig` calls through direct import, alias import, default-import namespace access, TypeScript `import = require` bindings, namespace/property or namespace-element access, direct `require("@rstest/core").defineConfig(...)`/`["defineConfig"](...)` calls, and CommonJS `require("@rstest/core")` namespace/destructured bindings.
 - `defineConfig` call matching is scoped to symbols bound from `@rstest/core`, preventing unrelated local helpers from overriding include extraction.

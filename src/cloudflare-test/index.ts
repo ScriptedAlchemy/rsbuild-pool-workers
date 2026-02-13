@@ -70,6 +70,50 @@ function isDurableObjectStub(value: unknown): value is DurableObjectStubLike {
   );
 }
 
+function isDurableObjectNamespaceLike(value: unknown): value is DurableObjectNamespaceLike {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "newUniqueId" in value &&
+    typeof (value as { newUniqueId?: unknown }).newUniqueId === "function" &&
+    "idFromName" in value &&
+    typeof (value as { idFromName?: unknown }).idFromName === "function" &&
+    "idFromString" in value &&
+    typeof (value as { idFromString?: unknown }).idFromString === "function" &&
+    "get" in value &&
+    typeof (value as { get?: unknown }).get === "function"
+  );
+}
+
+function assertDurableObjectStubFromSameWorker(stub: DurableObjectStubLike): void {
+  let bindings: Record<string, unknown>;
+  try {
+    bindings = runtime().getEnvSync();
+  } catch {
+    // If runtime hasn't been initialized yet, defer strict same-worker checks.
+    return;
+  }
+
+  const idString = stub.id.toString();
+  const namespaces = Object.values(bindings).filter(isDurableObjectNamespaceLike);
+  if (namespaces.length === 0) {
+    return;
+  }
+
+  for (const namespace of namespaces) {
+    try {
+      namespace.idFromString(idString);
+      return;
+    } catch {
+      // Try next namespace
+    }
+  }
+
+  throw new Error(
+    "Durable Object test helpers can only be used with stubs pointing to objects defined within the same worker."
+  );
+}
+
 export const env: Readonly<Record<string, unknown>> = new Proxy(
   {},
   {
@@ -143,6 +187,7 @@ export async function runInDurableObject<_ObjectType, _ReturnType>(
       "Failed to execute 'runInDurableObject': parameter 2 is not of type 'function'."
     );
   }
+  assertDurableObjectStubFromSameWorker(stub);
 
   // We can execute RPC-callable instance methods from the same isolate in Rstest,
   // but do not yet have access to the underlying DurableObjectState object.
@@ -174,13 +219,17 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
       "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
     );
   }
-  const maybeAlarm = (stub as { alarm?: unknown }).alarm;
-  if (typeof maybeAlarm !== "function") {
-    return false;
-  }
 
-  await maybeAlarm.call(stub);
-  return true;
+  return runInDurableObject<{ alarm?: () => unknown }, boolean>(
+    stub,
+    async (instance) => {
+      if (typeof instance.alarm !== "function") {
+        return false;
+      }
+      await instance.alarm();
+      return true;
+    }
+  );
 }
 
 export async function listDurableObjectIds(

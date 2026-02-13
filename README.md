@@ -184,7 +184,7 @@ import {
   - `fetchMock`
   - `listDurableObjectIds` (deterministic lexicographic ordering)
   - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`)
-  - `runDurableObjectAlarm` for RPC-callable `alarm()` methods on Durable Object stubs
+  - `runDurableObjectAlarm` for RPC-callable `alarm()` methods on Durable Object stubs from the same worker isolate (returns `false` when no alarm method is available)
   - event/queue helpers and D1 migration helper utilities
 - Some advanced `cloudflare:test` APIs are currently stubs in Rstest mode:
   - Durable Object state access within `runInDurableObject` callbacks

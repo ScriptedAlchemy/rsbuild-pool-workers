@@ -4990,6 +4990,8 @@ export default defineConfig({
     expectTitleCoverage(unsupportedTitles, [
       "runInDurableObject validates argument types",
       "runDurableObjectAlarm validates argument types and returns false when unavailable",
+      "runInDurableObject rejects stubs outside same-worker namespaces when runtime bindings are available",
+      "runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace",
       "listDurableObjectIds validates namespace argument type",
       "workflow introspection APIs throw with explicit guidance"
     ]);

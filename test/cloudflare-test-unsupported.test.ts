@@ -330,10 +330,12 @@ describe("unsupported cloudflare:test APIs", () => {
   });
 
   test("workflow introspection APIs throw with explicit guidance", async () => {
-    await expect(introspectWorkflow(null)).rejects.toThrow(
+    await expect(introspectWorkflow(null as unknown as Record<string, unknown>)).rejects.toThrow(
       "Failed to execute 'introspectWorkflow': parameter 1 is not of type 'Workflow'."
     );
-    await expect(introspectWorkflowInstance(null, "id-1")).rejects.toThrow(
+    await expect(
+      introspectWorkflowInstance(null as unknown as Record<string, unknown>, "id-1")
+    ).rejects.toThrow(
       "Failed to execute 'introspectWorkflowInstance': parameter 1 is not of type 'Workflow'."
     );
     await expect(introspectWorkflowInstance({}, "")).rejects.toThrow(

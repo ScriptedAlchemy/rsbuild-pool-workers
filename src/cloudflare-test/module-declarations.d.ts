@@ -35,6 +35,10 @@ declare module "cloudflare:test" {
     readonly __kind: "DurableObjectStatePlaceholder";
   }
 
+  export interface WorkflowLike {
+    [key: string]: unknown;
+  }
+
   export interface D1Migration {
     name: string;
     queries: string[];
@@ -142,10 +146,10 @@ declare module "cloudflare:test" {
     namespace: DurableObjectNamespaceLike
   ): Promise<DurableObjectIdLike[]>;
   export function introspectWorkflowInstance(
-    workflow: unknown,
+    workflow: WorkflowLike,
     instanceId: string
   ): Promise<never>;
-  export function introspectWorkflow(workflow: unknown): Promise<never>;
+  export function introspectWorkflow(workflow: WorkflowLike): Promise<never>;
 }
 
 declare module "cloudflare:test-internal" {

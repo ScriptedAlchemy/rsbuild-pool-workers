@@ -59,6 +59,10 @@ export interface DurableObjectStatePlaceholder {
   readonly __kind: "DurableObjectStatePlaceholder";
 }
 
+export interface WorkflowLike {
+  [key: string]: unknown;
+}
+
 function isDurableObjectStub(value: unknown): value is DurableObjectStubLike {
   const id = (value as { id?: unknown } | null)?.id;
   const constructorName =
@@ -259,7 +263,7 @@ export async function listDurableObjectIds(
 }
 
 export async function introspectWorkflowInstance(
-  workflow: unknown,
+  workflow: WorkflowLike,
   instanceId: string
 ): Promise<never> {
   if (typeof workflow !== "object" || workflow === null) {
@@ -278,7 +282,7 @@ export async function introspectWorkflowInstance(
   );
 }
 
-export async function introspectWorkflow(workflow: unknown): Promise<never> {
+export async function introspectWorkflow(workflow: WorkflowLike): Promise<never> {
   if (typeof workflow !== "object" || workflow === null) {
     throw new TypeError(
       "Failed to execute 'introspectWorkflow': parameter 1 is not of type 'Workflow'."

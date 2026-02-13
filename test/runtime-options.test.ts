@@ -347,6 +347,22 @@ describe("resolveRuntimeOptions", () => {
     );
   });
 
+  test("reports object received type for compatibilityFlags non-array diagnostics", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityFlags: {}
+          }
+        } as never,
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "Received: object."
+    );
+  });
+
   test("reports null received type for compatibilityFlags non-array diagnostics", async () => {
     await expect(
       resolveRuntimeOptions(
@@ -442,6 +458,23 @@ describe("resolveRuntimeOptions", () => {
       )
     ).rejects.toThrow(
       "Received: number."
+    );
+  });
+
+  test("reports null received type in compatibilityDate non-string diagnostics", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: null,
+            compatibilityFlags: ["export_commonjs_default"]
+          }
+        } as never,
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "Received: null."
     );
   });
 

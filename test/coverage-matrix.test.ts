@@ -4943,6 +4943,8 @@ export default defineConfig({
       "requires export_commonjs_default when compatibilityDate is older than default-on date",
       "accepts old compatibilityDate when export_commonjs_default flag is explicitly present",
       "throws actionable error for invalid compatibilityDate format",
+      "throws actionable error for non-ISO compatibilityDate format",
+      "throws actionable error for impossible calendar compatibilityDate",
       "throws actionable error when compatibilityFlags is not an array",
       "throws actionable error when compatibilityFlags contains non-string values",
       "throws actionable error when compatibilityDate is not a string",

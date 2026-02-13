@@ -101,6 +101,36 @@ describe("resolveRuntimeOptions", () => {
     ).rejects.toThrow('Invalid compatibilityDate "not-a-date".');
   });
 
+  test("throws actionable error for non-ISO compatibilityDate format", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: "2024/01/01",
+            compatibilityFlags: ["export_commonjs_default"]
+          }
+        },
+        "/repo/example"
+      )
+    ).rejects.toThrow('Invalid compatibilityDate "2024/01/01".');
+  });
+
+  test("throws actionable error for impossible calendar compatibilityDate", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: "2024-02-30",
+            compatibilityFlags: ["export_commonjs_default"]
+          }
+        },
+        "/repo/example"
+      )
+    ).rejects.toThrow('Invalid compatibilityDate "2024-02-30".');
+  });
+
   test("throws actionable error when compatibilityFlags is not an array", async () => {
     await expect(
       resolveRuntimeOptions(

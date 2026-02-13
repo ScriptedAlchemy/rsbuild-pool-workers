@@ -41,8 +41,15 @@ export type WorkersRuntimeOptions = z.output<typeof WorkersOptionsSchema> & {
 const TYPESCRIPT_ENTRYPOINT_REGEXP = /\.(?:cts|mts|ts|tsx)$/i;
 
 function parseDateOrThrow(dateValue: string): Date {
-  const parsed = new Date(dateValue);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    throw new Error(`Invalid compatibilityDate "${dateValue}".`);
+  }
+
+  const parsed = new Date(`${dateValue}T00:00:00.000Z`);
   if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid compatibilityDate "${dateValue}".`);
+  }
+  if (parsed.toISOString().slice(0, 10) !== dateValue) {
     throw new Error(`Invalid compatibilityDate "${dateValue}".`);
   }
   return parsed;

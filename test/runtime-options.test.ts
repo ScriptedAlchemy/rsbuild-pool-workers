@@ -152,6 +152,22 @@ describe("resolveRuntimeOptions", () => {
     expect(options.miniflare.compatibilityFlags).not.toBe(flags);
   });
 
+  test("does not mutate input compatibilityFlags arrays during normalization", async () => {
+    const inputFlags = [" export_commonjs_default ", " alpha-flag "];
+    await resolveRuntimeOptions(
+      {
+        main: "./src/worker.ts",
+        miniflare: {
+          compatibilityDate: "2024-01-01",
+          compatibilityFlags: inputFlags
+        }
+      },
+      "/repo/example"
+    );
+
+    expect(inputFlags).toEqual([" export_commonjs_default ", " alpha-flag "]);
+  });
+
   test("deduplicates compatibilityFlags entries during normalization", async () => {
     const options = await resolveRuntimeOptions(
       {

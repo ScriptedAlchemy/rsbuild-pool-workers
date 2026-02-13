@@ -4978,6 +4978,7 @@ export default defineConfig({
       "accepts old compatibilityDate when export_commonjs_default flag is explicitly present",
       "accepts old compatibilityDate when required flag is present after whitespace normalization",
       "normalizes compatibilityFlags into a defensive copy",
+      "does not mutate input compatibilityFlags arrays during normalization",
       "deduplicates compatibilityFlags entries during normalization",
       "deduplicates compatibilityFlags while preserving first-seen order",
       "throws actionable error when compatibilityFlags contains empty entries",

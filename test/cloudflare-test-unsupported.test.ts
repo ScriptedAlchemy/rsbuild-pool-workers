@@ -832,4 +832,33 @@ describe("unsupported cloudflare:test APIs", () => {
     }
   });
 
+  test("WorkersRuntimeState listDurableObjectIds throws when string designator className is empty", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-empty-string-designator-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const state = createMockedRuntimeState({
+        envCache: {
+          COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            durableObjects: {
+              COUNTER: "   "
+            }
+          }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+        }
+      });
+
+      await expect(state.listDurableObjectIds(namespace)).rejects.toThrow(
+        'Could not infer Durable Object class for binding "COUNTER".'
+      );
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
+
 });

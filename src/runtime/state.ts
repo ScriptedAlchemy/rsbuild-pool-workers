@@ -316,7 +316,7 @@ export class WorkersRuntimeState {
     let scriptName: string | undefined;
     let unsafeUniqueKey: string | undefined;
 
-    if (typeof designator === "string") {
+    if (typeof designator === "string" && designator.trim().length > 0) {
       className = designator;
     } else if (designator && typeof designator === "object") {
       const maybeClassName = (designator as { className?: unknown }).className;

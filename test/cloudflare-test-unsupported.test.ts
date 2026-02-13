@@ -361,6 +361,33 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(state.getSameIsolateDurableObjectNamespaces()).toEqual([localNamespace]);
   });
 
+  test("WorkersRuntimeState same-isolate namespace resolution throws for invalid designated bindings", () => {
+    const state = new WorkersRuntimeState();
+    (
+      state as unknown as {
+        envCache: Record<string, unknown>;
+        resolvedOptions: { miniflare: Record<string, unknown> };
+      }
+    ).envCache = {
+      LOCAL_COUNTER: 123
+    };
+    (
+      state as unknown as {
+        resolvedOptions: { miniflare: Record<string, unknown> };
+      }
+    ).resolvedOptions = {
+      miniflare: {
+        durableObjects: {
+          LOCAL_COUNTER: "Counter"
+        }
+      }
+    };
+
+    expect(() => state.getSameIsolateDurableObjectNamespaces()).toThrow(
+      "Expected LOCAL_COUNTER to be a DurableObjectNamespace binding"
+    );
+  });
+
   test("WorkersRuntimeState listDurableObjectIds uses scriptName-scoped unique key when configured", async () => {
     const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-scriptname-"));
     const namespace = createNamespaceAcceptingAnyId();

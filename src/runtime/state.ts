@@ -211,9 +211,12 @@ export class WorkersRuntimeState {
       }
 
       const binding = bindings[bindingName];
-      if (isDurableObjectNamespaceLike(binding)) {
-        namespaces.push(binding);
+      if (!isDurableObjectNamespaceLike(binding)) {
+        throw new Error(
+          `Expected ${bindingName} to be a DurableObjectNamespace binding`
+        );
       }
+      namespaces.push(binding);
     }
 
     return namespaces;

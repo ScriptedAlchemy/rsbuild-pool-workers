@@ -1576,6 +1576,33 @@ test("cts title", () => {});
     expect(readme.includes("pnpm test:matrix")).toBe(true);
   });
 
+  test("CI workflow runs matrix guard with rayon thread cap", () => {
+    const ciWorkflow = fs.readFileSync(
+      path.join(process.cwd(), ".github", "workflows", "ci.yml"),
+      "utf8"
+    );
+
+    expect(ciWorkflow.includes('RAYON_NUM_THREADS: "1"')).toBe(true);
+    expect(ciWorkflow.includes("run: pnpm test:matrix")).toBe(true);
+  });
+
+  test("pkg preview workflow runs typecheck and build before publish", () => {
+    const previewWorkflow = fs.readFileSync(
+      path.join(process.cwd(), ".github", "workflows", "pkg-pr-new.yml"),
+      "utf8"
+    );
+
+    const typecheckIndex = previewWorkflow.indexOf("name: Typecheck");
+    const buildIndex = previewWorkflow.indexOf("name: Build");
+    const publishIndex = previewWorkflow.indexOf("name: Publish preview package");
+
+    expect(typecheckIndex).toBeGreaterThanOrEqual(0);
+    expect(buildIndex).toBeGreaterThanOrEqual(0);
+    expect(publishIndex).toBeGreaterThanOrEqual(0);
+    expect(typecheckIndex).toBeLessThan(publishIndex);
+    expect(buildIndex).toBeLessThan(publishIndex);
+  });
+
   test("documents supported test suffixes in README", () => {
     const readme = fs.readFileSync(path.join(process.cwd(), "README.md"), "utf8");
     const missingSuffixMentions = SUPPORTED_TEST_FILE_SUFFIXES.filter(

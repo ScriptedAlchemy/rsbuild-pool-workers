@@ -137,6 +137,25 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(alarmCalls).toBe(1);
   });
 
+  test("runDurableObjectAlarm rejects stubs outside same-worker namespaces when runtime bindings are available", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("expected-id")
+      },
+      async () => {
+        await expect(
+          runDurableObjectAlarm({
+            fetch: async () => new Response("ok"),
+            id: { toString: () => "different-id" },
+            async alarm() {}
+          } as DurableObjectStubLike)
+        ).rejects.toThrow(
+          "Durable Object test helpers can only be used with stubs pointing to objects defined within the same worker."
+        );
+      }
+    );
+  });
+
   test("listDurableObjectIds validates namespace argument type", async () => {
     await expect(
       listDurableObjectIds({} as never)

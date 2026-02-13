@@ -4970,7 +4970,7 @@ export default defineConfig({
     const titles = readTestTitles(path.join(process.cwd(), "test", "runtime-options.test.ts"));
     expectTitleCoverage(titles, [
       "resolves relative main path and fills miniflare defaults",
-      "preserves explicit compatibilityDate when provided",
+      "preserves explicit compatibilityDate after whitespace normalization",
       "throws when incompatible export_commonjs_namespace flag is present",
       "rejects incompatible export_commonjs_namespace flag after whitespace normalization",
       "requires export_commonjs_default when compatibilityDate is older than default-on date",

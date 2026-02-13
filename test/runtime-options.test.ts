@@ -23,7 +23,7 @@ describe("resolveRuntimeOptions", () => {
     expect(options.additionalExports).toEqual({});
   });
 
-  test("preserves explicit compatibilityDate when provided", async () => {
+  test("preserves explicit compatibilityDate after whitespace normalization", async () => {
     const options = await resolveRuntimeOptions(
       {
         main: "./src/worker.ts",

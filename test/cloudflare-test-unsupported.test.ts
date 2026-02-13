@@ -770,4 +770,66 @@ describe("unsupported cloudflare:test APIs", () => {
     }
   });
 
+  test("WorkersRuntimeState listDurableObjectIds throws when className is not a string", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-invalid-classname-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const state = createMockedRuntimeState({
+        envCache: {
+          COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            durableObjects: {
+              COUNTER: {
+                className: 123
+              }
+            }
+          }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+        }
+      });
+
+      await expect(state.listDurableObjectIds(namespace)).rejects.toThrow(
+        'Could not infer Durable Object class for binding "COUNTER".'
+      );
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
+
+  test("WorkersRuntimeState listDurableObjectIds throws when className is an empty string", async () => {
+    const durablePersistPath = await fs.mkdtemp(path.join(os.tmpdir(), "rstest-workers-do-empty-classname-"));
+    const namespace = createNamespaceAcceptingAnyId();
+
+    try {
+      const state = createMockedRuntimeState({
+        envCache: {
+          COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            durableObjects: {
+              COUNTER: {
+                className: "   "
+              }
+            }
+          }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
+        }
+      });
+
+      await expect(state.listDurableObjectIds(namespace)).rejects.toThrow(
+        'Could not infer Durable Object class for binding "COUNTER".'
+      );
+    } finally {
+      await fs.rm(durablePersistPath, { recursive: true, force: true });
+    }
+  });
+
 });

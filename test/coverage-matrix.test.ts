@@ -5075,7 +5075,9 @@ export default defineConfig({
       "WorkersRuntimeState listDurableObjectIds prefers unsafeUniqueKey when configured",
       "WorkersRuntimeState listDurableObjectIds defaults script name to worker when absent",
       "WorkersRuntimeState listDurableObjectIds uses configured worker name when scriptName is absent",
-      "WorkersRuntimeState listDurableObjectIds throws when no designator exists for resolved binding"
+      "WorkersRuntimeState listDurableObjectIds throws when no designator exists for resolved binding",
+      "WorkersRuntimeState listDurableObjectIds throws when className is not a string",
+      "WorkersRuntimeState listDurableObjectIds throws when className is an empty string"
     ]);
   });
 

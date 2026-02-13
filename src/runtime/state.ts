@@ -319,7 +319,10 @@ export class WorkersRuntimeState {
     if (typeof designator === "string") {
       className = designator;
     } else if (designator && typeof designator === "object") {
-      className = String((designator as { className?: unknown }).className ?? "");
+      const maybeClassName = (designator as { className?: unknown }).className;
+      if (typeof maybeClassName === "string" && maybeClassName.trim().length > 0) {
+        className = maybeClassName;
+      }
       const maybeScript = (designator as { scriptName?: unknown }).scriptName;
       if (typeof maybeScript === "string") {
         scriptName = maybeScript;

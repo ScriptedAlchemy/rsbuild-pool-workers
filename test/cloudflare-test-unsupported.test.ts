@@ -9,6 +9,7 @@ import {
   runDurableObjectAlarm,
   runInDurableObject
 } from "../src/cloudflare-test/index";
+import { WorkersRuntimeState } from "../src/runtime/state";
 
 const RUNTIME_KEY = Symbol.for("@cloudflare/rstest-pool-workers/runtime-state");
 
@@ -277,5 +278,38 @@ describe("unsupported cloudflare:test APIs", () => {
     await expect(introspectWorkflowInstance({}, "id-1")).rejects.toThrow(
       "Workflow introspection helpers are not yet available in Rstest mode"
     );
+  });
+
+  test("WorkersRuntimeState same-isolate namespace resolution excludes scriptName-scoped bindings", () => {
+    const localNamespace = createNamespaceWithAcceptedId("local-id");
+    const remoteNamespace = createNamespaceWithAcceptedId("remote-id");
+
+    const state = new WorkersRuntimeState();
+    (
+      state as unknown as {
+        envCache: Record<string, unknown>;
+        resolvedOptions: { miniflare: Record<string, unknown> };
+      }
+    ).envCache = {
+      LOCAL_COUNTER: localNamespace,
+      REMOTE_COUNTER: remoteNamespace
+    };
+    (
+      state as unknown as {
+        resolvedOptions: { miniflare: Record<string, unknown> };
+      }
+    ).resolvedOptions = {
+      miniflare: {
+        durableObjects: {
+          LOCAL_COUNTER: "Counter",
+          REMOTE_COUNTER: {
+            className: "Counter",
+            scriptName: "remote-worker"
+          }
+        }
+      }
+    };
+
+    expect(state.getSameIsolateDurableObjectNamespaces()).toEqual([localNamespace]);
   });
 });

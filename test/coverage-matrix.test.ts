@@ -4998,7 +4998,8 @@ export default defineConfig({
       "runDurableObjectAlarm rejects stubs outside same-worker namespaces when runtime bindings are available",
       "listDurableObjectIds validates namespace argument type",
       "listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity",
-      "workflow introspection APIs throw with explicit guidance"
+      "workflow introspection APIs throw with explicit guidance",
+      "WorkersRuntimeState same-isolate namespace resolution excludes scriptName-scoped bindings"
     ]);
   });
 

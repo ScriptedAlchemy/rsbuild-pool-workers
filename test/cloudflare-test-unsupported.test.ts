@@ -5,6 +5,7 @@ import { describe, expect, test } from "@rstest/core";
 import {
   type DurableObjectIdLike,
   type DurableObjectNamespaceLike,
+  type DurableObjectStateLike,
   type DurableObjectStubLike,
   introspectWorkflow,
   introspectWorkflowInstance,
@@ -117,6 +118,24 @@ function createDurableObjectStub(
   }
 
   return stub;
+}
+
+function createDurableObjectState(options: {
+  alarmValue?: number | null;
+  onDeleteAlarm?: () => void;
+} = {}): DurableObjectStateLike {
+  let alarmValue = options.alarmValue ?? null;
+  return {
+    storage: {
+      async getAlarm() {
+        return alarmValue;
+      },
+      async deleteAlarm() {
+        options.onDeleteAlarm?.();
+        alarmValue = null;
+      }
+    }
+  };
 }
 
 function createMockedRuntimeState(overrides: Record<string, unknown>): WorkersRuntimeState {
@@ -313,6 +332,26 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject uses stub-exposed DurableObjectState when available", async () => {
+    const state = createDurableObjectState();
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("state-id") as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => receivedState)
+        ).resolves.toBe(state);
+      }
+    );
+  });
+
   test("runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace", async () => {
     let alarmCalls = 0;
 
@@ -451,6 +490,76 @@ describe("unsupported cloudflare:test APIs", () => {
         }
       }
     );
+  });
+
+  test("runDurableObjectAlarm returns false when state storage reports no scheduled alarm", async () => {
+    let alarmCalls = 0;
+    let deleteAlarmCalls = 0;
+    const state = createDurableObjectState({
+      alarmValue: null,
+      onDeleteAlarm: () => {
+        deleteAlarmCalls += 1;
+      }
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("scheduled-alarm-id")
+      },
+      async () => {
+        const stubWithAlarm = createDurableObjectStub(
+          "scheduled-alarm-id",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stubWithAlarm.ctx = state;
+
+        await expect(runDurableObjectAlarm(stubWithAlarm)).resolves.toBe(false);
+      }
+    );
+
+    expect(alarmCalls).toBe(0);
+    expect(deleteAlarmCalls).toBe(0);
+  });
+
+  test("runDurableObjectAlarm clears alarm before invoking alarm handler when state is available", async () => {
+    let alarmCalls = 0;
+    let deleteAlarmCalls = 0;
+    const state = createDurableObjectState({
+      alarmValue: Date.now() + 60_000,
+      onDeleteAlarm: () => {
+        deleteAlarmCalls += 1;
+      }
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("scheduled-alarm-id-present")
+      },
+      async () => {
+        const stubWithAlarm = createDurableObjectStub(
+          "scheduled-alarm-id-present",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stubWithAlarm.ctx = state;
+
+        await expect(runDurableObjectAlarm(stubWithAlarm)).resolves.toBe(true);
+      }
+    );
+
+    expect(deleteAlarmCalls).toBe(1);
+    expect(alarmCalls).toBe(1);
   });
 
   test("listDurableObjectIds validates namespace argument type", async () => {

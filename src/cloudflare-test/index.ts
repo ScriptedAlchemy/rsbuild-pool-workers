@@ -59,6 +59,17 @@ export interface DurableObjectStatePlaceholder {
   readonly __kind: "DurableObjectStatePlaceholder";
 }
 
+export interface DurableObjectStorageLike {
+  getAlarm?: () => Promise<number | null> | number | null;
+  deleteAlarm?: () => Promise<void> | void;
+  [key: string]: unknown;
+}
+
+export interface DurableObjectStateLike {
+  storage: DurableObjectStorageLike;
+  [key: string]: unknown;
+}
+
 export interface WorkflowLike {
   [key: string]: unknown;
 }
@@ -98,6 +109,35 @@ function isDurableObjectNamespaceLike(value: unknown): value is DurableObjectNam
 
 function isWorkflowLike(value: unknown): value is WorkflowLike {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isDurableObjectStateLike(value: unknown): value is DurableObjectStateLike {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  let storage: unknown;
+  try {
+    storage = (value as { storage?: unknown }).storage;
+  } catch {
+    return false;
+  }
+
+  return typeof storage === "object" && storage !== null;
+}
+
+function getDurableObjectStateFromStub(stub: DurableObjectStubLike): DurableObjectStateLike | undefined {
+  const stubCandidate = stub as {
+    ctx?: unknown;
+    state?: unknown;
+  };
+  const maybeState = [stubCandidate.ctx, stubCandidate.state];
+  for (const candidate of maybeState) {
+    if (isDurableObjectStateLike(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
 function assertDurableObjectStubFromSameWorker(stub: DurableObjectStubLike): void {
@@ -209,7 +249,7 @@ export async function runInDurableObject<_ObjectType, _ReturnType>(
   stub: DurableObjectStubLike,
   callback: (
     _instance: _ObjectType,
-    _state: DurableObjectStatePlaceholder
+    _state: DurableObjectStateLike | DurableObjectStatePlaceholder
   ) => _ReturnType | Promise<_ReturnType>
 ): Promise<_ReturnType> {
   if (!isDurableObjectStub(stub)) {
@@ -223,6 +263,11 @@ export async function runInDurableObject<_ObjectType, _ReturnType>(
     );
   }
   assertDurableObjectStubFromSameWorker(stub);
+
+  const runtimeState = getDurableObjectStateFromStub(stub);
+  if (runtimeState) {
+    return callback(stub as _ObjectType, runtimeState);
+  }
 
   // We can execute RPC-callable instance methods from the same isolate in Rstest,
   // but do not yet have access to the underlying DurableObjectState object.
@@ -257,10 +302,23 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
 
   return runInDurableObject<{ alarm?: () => unknown }, boolean>(
     stub,
-    async (instance) => {
+    async (instance, state) => {
       if (typeof instance.alarm !== "function") {
         return false;
       }
+
+      if (isDurableObjectStateLike(state)) {
+        const getAlarm = state.storage.getAlarm;
+        const deleteAlarm = state.storage.deleteAlarm;
+        if (typeof getAlarm === "function" && typeof deleteAlarm === "function") {
+          const scheduledAlarm = await getAlarm.call(state.storage);
+          if (scheduledAlarm === null) {
+            return false;
+          }
+          await deleteAlarm.call(state.storage);
+        }
+      }
+
       await instance.alarm();
       return true;
     }

@@ -1,6 +1,7 @@
 import type {
   DurableObjectIdLike,
   DurableObjectNamespaceLike,
+  DurableObjectStateLike,
   DurableObjectStatePlaceholder,
   DurableObjectStubLike,
   ExecutionContext,
@@ -184,6 +185,18 @@ type _DurableObjectStatePlaceholderContract = Assert<
   IsAssignable<
     DurableObjectStatePlaceholder,
     { __kind: "DurableObjectStatePlaceholder" }
+  >
+>;
+
+type _DurableObjectStateLikeContract = Assert<
+  IsAssignable<
+    {
+      storage: {
+        getAlarm: () => Promise<number | null>;
+        deleteAlarm: () => Promise<void>;
+      };
+    },
+    DurableObjectStateLike
   >
 >;
 

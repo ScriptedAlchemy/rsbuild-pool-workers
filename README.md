@@ -201,10 +201,11 @@ import {
     - empty/whitespace-only `scriptName` and `unsafeUniqueKey` values are ignored during namespace key resolution
   - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`) on stubs from the same worker isolate
   - `runDurableObjectAlarm` for RPC-callable `alarm()` methods on Durable Object stubs from the same worker isolate (returns `false` when no alarm method is available and follows the same same-isolate fallback checks as `runInDurableObject`)
+    - when a state-like `ctx/state` object is exposed on the stub, scheduled-alarm semantics are respected (`getAlarm()`/`deleteAlarm()`); otherwise it falls back to direct `alarm()` invocation behavior
   - Durable Object helper validations intentionally require real runtime Durable Object constructors (`DurableObject`/`WorkerRpc` and `DurableObjectNamespace` variants), not plain-object lookalikes
   - same-worker Durable Object enforcement prefers runtime durable-object binding metadata and excludes bindings configured with non-empty `scriptName` values (remote worker designators), with fallback to environment namespace discovery if metadata lookup is unavailable/invalid (mismatched stubs still reject)
   - event/queue helpers and D1 migration helper utilities
 - Some advanced `cloudflare:test` APIs are currently stubs in Rstest mode:
-  - Durable Object state access within `runInDurableObject` callbacks
+  - Durable Object state access within `runInDurableObject` callbacks when runtime does not expose a state-like `ctx/state` object on the Durable Object stub
   - workflow introspection helpers (argument types are validated before emitting unsupported guidance)
 

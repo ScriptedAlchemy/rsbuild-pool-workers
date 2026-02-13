@@ -35,6 +35,17 @@ declare module "cloudflare:test" {
     readonly __kind: "DurableObjectStatePlaceholder";
   }
 
+  export interface DurableObjectStorageLike {
+    getAlarm?: () => Promise<number | null> | number | null;
+    deleteAlarm?: () => Promise<void> | void;
+    [key: string]: unknown;
+  }
+
+  export interface DurableObjectStateLike {
+    storage: DurableObjectStorageLike;
+    [key: string]: unknown;
+  }
+
   export interface WorkflowLike {
     [key: string]: unknown;
   }
@@ -138,7 +149,7 @@ declare module "cloudflare:test" {
     stub: DurableObjectStubLike,
     callback: (
       _instance: _ObjectType,
-      _state: DurableObjectStatePlaceholder
+      _state: DurableObjectStateLike | DurableObjectStatePlaceholder
     ) => _ReturnType | Promise<_ReturnType>
   ): Promise<_ReturnType>;
   export function runDurableObjectAlarm(stub: DurableObjectStubLike): Promise<boolean>;

@@ -232,6 +232,27 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject falls back to env namespace discovery if same-isolate metadata helper throws", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("expected-id")
+      },
+      async () => {
+        await expect(
+          runInDurableObject(
+            createDurableObjectStub("expected-id"),
+            async () => "value"
+          )
+        ).resolves.toBe("value");
+      },
+      {
+        getSameIsolateDurableObjectNamespaces: () => {
+          throw new Error("metadata unavailable");
+        }
+      }
+    );
+  });
+
   test("runInDurableObject rejects stubs when runtime bindings contain no Durable Object namespaces", async () => {
     await withRuntimeBindings(
       {

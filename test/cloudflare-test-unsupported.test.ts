@@ -119,6 +119,14 @@ function createDurableObjectStub(
   return stub;
 }
 
+function createMockedRuntimeState(overrides: Record<string, unknown>): WorkersRuntimeState {
+  const state = Object.create(WorkersRuntimeState.prototype) as WorkersRuntimeState &
+    Record<string, unknown>;
+  state.setupReady = true;
+  Object.assign(state, overrides);
+  return state;
+}
+
 describe("unsupported cloudflare:test APIs", () => {
   test("runInDurableObject validates argument types", async () => {
     await expect(
@@ -332,56 +340,40 @@ describe("unsupported cloudflare:test APIs", () => {
     const localNamespace = createNamespaceWithAcceptedId("local-id");
     const remoteNamespace = createNamespaceWithAcceptedId("remote-id");
 
-    const state = new WorkersRuntimeState();
-    (
-      state as unknown as {
-        envCache: Record<string, unknown>;
-        resolvedOptions: { miniflare: Record<string, unknown> };
-      }
-    ).envCache = {
-      LOCAL_COUNTER: localNamespace,
-      REMOTE_COUNTER: remoteNamespace
-    };
-    (
-      state as unknown as {
-        resolvedOptions: { miniflare: Record<string, unknown> };
-      }
-    ).resolvedOptions = {
-      miniflare: {
-        durableObjects: {
-          LOCAL_COUNTER: "Counter",
-          REMOTE_COUNTER: {
-            className: "Counter",
-            scriptName: "remote-worker"
+    const state = createMockedRuntimeState({
+      envCache: {
+        LOCAL_COUNTER: localNamespace,
+        REMOTE_COUNTER: remoteNamespace
+      },
+      resolvedOptions: {
+        miniflare: {
+          durableObjects: {
+            LOCAL_COUNTER: "Counter",
+            REMOTE_COUNTER: {
+              className: "Counter",
+              scriptName: "remote-worker"
+            }
           }
         }
       }
-    };
+    });
 
     expect(state.getSameIsolateDurableObjectNamespaces()).toEqual([localNamespace]);
   });
 
   test("WorkersRuntimeState same-isolate namespace resolution throws for invalid designated bindings", () => {
-    const state = new WorkersRuntimeState();
-    (
-      state as unknown as {
-        envCache: Record<string, unknown>;
-        resolvedOptions: { miniflare: Record<string, unknown> };
-      }
-    ).envCache = {
-      LOCAL_COUNTER: 123
-    };
-    (
-      state as unknown as {
-        resolvedOptions: { miniflare: Record<string, unknown> };
-      }
-    ).resolvedOptions = {
-      miniflare: {
-        durableObjects: {
-          LOCAL_COUNTER: "Counter"
+    const state = createMockedRuntimeState({
+      envCache: {
+        LOCAL_COUNTER: 123
+      },
+      resolvedOptions: {
+        miniflare: {
+          durableObjects: {
+            LOCAL_COUNTER: "Counter"
+          }
         }
       }
-    };
+    });
 
     expect(() => state.getSameIsolateDurableObjectNamespaces()).toThrow(
       "Expected LOCAL_COUNTER to be a DurableObjectNamespace binding"
@@ -401,45 +393,25 @@ describe("unsupported cloudflare:test APIs", () => {
       await fs.mkdir(localNamespacePath, { recursive: true });
       await fs.writeFile(path.join(localNamespacePath, "local-id.sqlite"), "");
 
-      const state = new WorkersRuntimeState();
-      (
-        state as unknown as {
-          setupReady: boolean;
-          envCache: Record<string, unknown>;
-          resolvedOptions: { miniflare: Record<string, unknown> };
-          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
-        }
-      ).setupReady = true;
-      (
-        state as unknown as {
-          envCache: Record<string, unknown>;
-          resolvedOptions: { miniflare: Record<string, unknown> };
-        }
-      ).envCache = {
-        REMOTE_COUNTER: namespace
-      };
-      (
-        state as unknown as {
-          resolvedOptions: { miniflare: Record<string, unknown> };
-        }
-      ).resolvedOptions = {
-        miniflare: {
-          name: "worker",
-          durableObjects: {
-            REMOTE_COUNTER: {
-              className: "Counter",
-              scriptName: "remote-worker"
+      const state = createMockedRuntimeState({
+        envCache: {
+          REMOTE_COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            name: "worker",
+            durableObjects: {
+              REMOTE_COUNTER: {
+                className: "Counter",
+                scriptName: "remote-worker"
+              }
             }
           }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
         }
-      };
-      (
-        state as unknown as {
-          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
-        }
-      ).miniflare = {
-        unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
-      };
+      });
 
       const ids = await state.listDurableObjectIds(namespace);
       expect(ids.map((id) => id.toString())).toEqual(["remote-id"]);
@@ -461,46 +433,26 @@ describe("unsupported cloudflare:test APIs", () => {
       await fs.mkdir(scriptNamePath, { recursive: true });
       await fs.writeFile(path.join(scriptNamePath, "script-name-id.sqlite"), "");
 
-      const state = new WorkersRuntimeState();
-      (
-        state as unknown as {
-          setupReady: boolean;
-          envCache: Record<string, unknown>;
-          resolvedOptions: { miniflare: Record<string, unknown> };
-          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
-        }
-      ).setupReady = true;
-      (
-        state as unknown as {
-          envCache: Record<string, unknown>;
-          resolvedOptions: { miniflare: Record<string, unknown> };
-        }
-      ).envCache = {
-        REMOTE_COUNTER: namespace
-      };
-      (
-        state as unknown as {
-          resolvedOptions: { miniflare: Record<string, unknown> };
-        }
-      ).resolvedOptions = {
-        miniflare: {
-          name: "worker",
-          durableObjects: {
-            REMOTE_COUNTER: {
-              className: "Counter",
-              scriptName: "remote-worker",
-              unsafeUniqueKey: "custom-unique-key"
+      const state = createMockedRuntimeState({
+        envCache: {
+          REMOTE_COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            name: "worker",
+            durableObjects: {
+              REMOTE_COUNTER: {
+                className: "Counter",
+                scriptName: "remote-worker",
+                unsafeUniqueKey: "custom-unique-key"
+              }
             }
           }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
         }
-      };
-      (
-        state as unknown as {
-          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
-        }
-      ).miniflare = {
-        unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
-      };
+      });
 
       const ids = await state.listDurableObjectIds(namespace);
       expect(ids.map((id) => id.toString())).toEqual(["custom-id"]);
@@ -518,41 +470,21 @@ describe("unsupported cloudflare:test APIs", () => {
       await fs.mkdir(defaultNamePath, { recursive: true });
       await fs.writeFile(path.join(defaultNamePath, "default-worker-id.sqlite"), "");
 
-      const state = new WorkersRuntimeState();
-      (
-        state as unknown as {
-          setupReady: boolean;
-          envCache: Record<string, unknown>;
-          resolvedOptions: { miniflare: Record<string, unknown> };
-          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
-        }
-      ).setupReady = true;
-      (
-        state as unknown as {
-          envCache: Record<string, unknown>;
-          resolvedOptions: { miniflare: Record<string, unknown> };
-        }
-      ).envCache = {
-        COUNTER: namespace
-      };
-      (
-        state as unknown as {
-          resolvedOptions: { miniflare: Record<string, unknown> };
-        }
-      ).resolvedOptions = {
-        miniflare: {
-          durableObjects: {
-            COUNTER: "Counter"
+      const state = createMockedRuntimeState({
+        envCache: {
+          COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            durableObjects: {
+              COUNTER: "Counter"
+            }
           }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
         }
-      };
-      (
-        state as unknown as {
-          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
-        }
-      ).miniflare = {
-        unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
-      };
+      });
 
       const ids = await state.listDurableObjectIds(namespace);
       expect(ids.map((id) => id.toString())).toEqual(["default-worker-id"]);
@@ -570,44 +502,24 @@ describe("unsupported cloudflare:test APIs", () => {
       await fs.mkdir(namedPath, { recursive: true });
       await fs.writeFile(path.join(namedPath, "named-worker-id.sqlite"), "");
 
-      const state = new WorkersRuntimeState();
-      (
-        state as unknown as {
-          setupReady: boolean;
-          envCache: Record<string, unknown>;
-          resolvedOptions: { miniflare: Record<string, unknown> };
-          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
-        }
-      ).setupReady = true;
-      (
-        state as unknown as {
-          envCache: Record<string, unknown>;
-          resolvedOptions: { miniflare: Record<string, unknown> };
-        }
-      ).envCache = {
-        COUNTER: namespace
-      };
-      (
-        state as unknown as {
-          resolvedOptions: { miniflare: Record<string, unknown> };
-        }
-      ).resolvedOptions = {
-        miniflare: {
-          name: "named-worker",
-          durableObjects: {
-            COUNTER: {
-              className: "Counter"
+      const state = createMockedRuntimeState({
+        envCache: {
+          COUNTER: namespace
+        },
+        resolvedOptions: {
+          miniflare: {
+            name: "named-worker",
+            durableObjects: {
+              COUNTER: {
+                className: "Counter"
+              }
             }
           }
+        },
+        miniflare: {
+          unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
         }
-      };
-      (
-        state as unknown as {
-          miniflare: { unsafeGetPersistPaths: () => Map<string, string> };
-        }
-      ).miniflare = {
-        unsafeGetPersistPaths: () => new Map([["do", durablePersistPath]])
-      };
+      });
 
       const ids = await state.listDurableObjectIds(namespace);
       expect(ids.map((id) => id.toString())).toEqual(["named-worker-id"]);
@@ -615,4 +527,5 @@ describe("unsupported cloudflare:test APIs", () => {
       await fs.rm(durablePersistPath, { recursive: true, force: true });
     }
   });
+
 });

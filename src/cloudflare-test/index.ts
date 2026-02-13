@@ -259,6 +259,12 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
 export async function listDurableObjectIds(
   namespace: DurableObjectNamespaceLike
 ): Promise<DurableObjectIdLike[]> {
+  if (!isDurableObjectNamespaceLike(namespace)) {
+    throw new TypeError(
+      "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+    );
+  }
+
   return runtime().listDurableObjectIds(namespace) as Promise<DurableObjectIdLike[]>;
 }
 

@@ -77,7 +77,7 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
       `${optionsPath}.compatibilityFlags must be an array of strings.`
     );
   }
-  const normalizedFlags = [...(flags as string[])];
+  const normalizedFlags = Array.from(new Set(flags as string[]));
   options.miniflare.compatibilityFlags = normalizedFlags;
 
   const compatibilityDateValue = options.miniflare.compatibilityDate;

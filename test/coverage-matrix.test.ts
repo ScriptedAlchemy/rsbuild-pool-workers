@@ -1764,6 +1764,10 @@ test("cts title", () => {});
       tempDirectory,
       "rstest-exported-wrapped-default-preferred.config.js"
     );
+    const exportedWrappedDefaultIdentifierPreferredPath = path.join(
+      tempDirectory,
+      "rstest-exported-wrapped-default-identifier-preferred.config.js"
+    );
     const exportedWrappedModuleDefaultElementPreferredPath = path.join(
       tempDirectory,
       "rstest-exported-wrapped-module-default-element-preferred.config.js"
@@ -2545,6 +2549,24 @@ void unrelated;
 (exports).default = defineConfig({
   include: ["test/**/*.wrapped-default-preferred.test.ts"]
 });
+`,
+      "utf8"
+    );
+    fs.writeFileSync(
+      exportedWrappedDefaultIdentifierPreferredPath,
+      `
+const { defineConfig } = require("@rstest/core");
+
+const unrelated = defineConfig({
+  include: ["test/**/*.wrapped-default-identifier-should-not-be-read.ts"]
+});
+void unrelated;
+
+const config = defineConfig({
+  include: ["test/**/*.wrapped-default-identifier.test.ts"]
+});
+
+(exports).default = config;
 `,
       "utf8"
     );
@@ -3852,6 +3874,9 @@ export default config;
       ]);
       expect(readRstestIncludePatterns(exportedWrappedDefaultPreferredPath)).toEqual([
         "test/**/*.wrapped-default-preferred.test.ts"
+      ]);
+      expect(readRstestIncludePatterns(exportedWrappedDefaultIdentifierPreferredPath)).toEqual([
+        "test/**/*.wrapped-default-identifier.test.ts"
       ]);
       expect(readRstestIncludePatterns(exportedWrappedModuleDefaultElementPreferredPath)).toEqual([
         "test/**/*.wrapped-module-default-element.test.ts"

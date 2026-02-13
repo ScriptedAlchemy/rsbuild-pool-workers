@@ -157,6 +157,57 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("singleWorker false recreates worker isolate between test cases end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./single-worker-false.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                singleWorker: false
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        let count = 0;
+        export default {
+          fetch() {
+            count += 1;
+            return new Response(String(count));
+          }
+        };
+      `,
+      "single-worker-false.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF } from "cloudflare:test";
+
+        test("first case starts at one", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("1");
+        });
+
+        test("second case also starts at one", async () => {
+          const res = await SELF.fetch("http://localhost/");
+          expect(await res.text()).toBe("1");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("single-worker-false.test.ts");
+    });
+  });
+
   test("supports SELF.fetch Request inputs end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

@@ -101,6 +101,55 @@ describe("resolveRuntimeOptions", () => {
     ).rejects.toThrow('Invalid compatibilityDate "not-a-date".');
   });
 
+  test("throws actionable error when compatibilityFlags is not an array", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityFlags: "export_commonjs_default"
+          }
+        } as never,
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "workers.miniflare.compatibilityFlags must be an array of strings."
+    );
+  });
+
+  test("throws actionable error when compatibilityFlags contains non-string values", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityFlags: ["export_commonjs_default", 1]
+          }
+        } as never,
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "workers.miniflare.compatibilityFlags must be an array of strings."
+    );
+  });
+
+  test("throws actionable error when compatibilityDate is not a string", async () => {
+    await expect(
+      resolveRuntimeOptions(
+        {
+          main: "./src/worker.ts",
+          miniflare: {
+            compatibilityDate: 20240101,
+            compatibilityFlags: ["export_commonjs_default"]
+          }
+        } as never,
+        "/repo/example"
+      )
+    ).rejects.toThrow(
+      "workers.miniflare.compatibilityDate must be a string in YYYY-MM-DD format."
+    );
+  });
+
   test("preserves explicit script config", async () => {
     const options = await resolveRuntimeOptions(
       {

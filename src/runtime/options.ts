@@ -57,11 +57,30 @@ function isDateAtLeast(compatibilityDate: string | undefined, minDate: string): 
 
 function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
   const flagsValue = options.miniflare.compatibilityFlags;
-  const flags = Array.isArray(flagsValue)
-    ? flagsValue.filter((flag): flag is string => typeof flag === "string")
-    : [];
-
   const optionsPath = "workers.miniflare";
+  if (flagsValue !== undefined && !Array.isArray(flagsValue)) {
+    throw new Error(
+      `${optionsPath}.compatibilityFlags must be an array of strings.`
+    );
+  }
+  const flags = (flagsValue ?? []) as unknown[];
+  const nonStringFlag = flags.find((flag) => typeof flag !== "string");
+  if (nonStringFlag !== undefined) {
+    throw new Error(
+      `${optionsPath}.compatibilityFlags must be an array of strings.`
+    );
+  }
+
+  const compatibilityDateValue = options.miniflare.compatibilityDate;
+  if (
+    compatibilityDateValue !== undefined &&
+    typeof compatibilityDateValue !== "string"
+  ) {
+    throw new Error(
+      `${optionsPath}.compatibilityDate must be a string in YYYY-MM-DD format.`
+    );
+  }
+
   const requiredEnableFlag = "export_commonjs_default";
   const incompatibleDisableFlag = "export_commonjs_namespace";
   const defaultOnDate = "2022-10-31";
@@ -75,9 +94,7 @@ function assertCompatibilityFlags(options: WorkersRuntimeOptions): void {
 
   const hasEnableFlag = flags.includes(requiredEnableFlag);
   const hasSufficientDate = isDateAtLeast(
-    typeof options.miniflare.compatibilityDate === "string"
-      ? options.miniflare.compatibilityDate
-      : undefined,
+    compatibilityDateValue,
     defaultOnDate
   );
   if (!hasEnableFlag && !hasSufficientDate) {

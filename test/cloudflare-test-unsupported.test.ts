@@ -307,10 +307,20 @@ describe("unsupported cloudflare:test APIs", () => {
   });
 
   test("listDurableObjectIds validates namespace argument type", async () => {
-    await expect(
-      listDurableObjectIds({} as never)
-    ).rejects.toThrow(
-      "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+    await withRuntimeBindings(
+      {},
+      async () => {
+        await expect(
+          listDurableObjectIds({} as never)
+        ).rejects.toThrow(
+          "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+        );
+      },
+      {
+        listDurableObjectIds: () => {
+          throw new Error("runtime-should-not-be-called");
+        }
+      }
     );
   });
 

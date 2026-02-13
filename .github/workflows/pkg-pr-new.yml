@@ -12,6 +12,8 @@ jobs:
   publish-preview:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.fork == false
+    env:
+      RAYON_NUM_THREADS: "1"
 
     steps:
       - name: Checkout
@@ -38,6 +40,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Regression matrix guard
+        run: pnpm test:matrix
 
       - name: Publish preview package
         id: publish

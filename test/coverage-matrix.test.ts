@@ -1594,13 +1594,18 @@ test("cts title", () => {});
 
     const typecheckIndex = previewWorkflow.indexOf("name: Typecheck");
     const buildIndex = previewWorkflow.indexOf("name: Build");
+    const matrixIndex = previewWorkflow.indexOf("name: Regression matrix guard");
     const publishIndex = previewWorkflow.indexOf("name: Publish preview package");
+    const rayonIndex = previewWorkflow.indexOf('RAYON_NUM_THREADS: "1"');
 
     expect(typecheckIndex).toBeGreaterThanOrEqual(0);
     expect(buildIndex).toBeGreaterThanOrEqual(0);
+    expect(matrixIndex).toBeGreaterThanOrEqual(0);
+    expect(rayonIndex).toBeGreaterThanOrEqual(0);
     expect(publishIndex).toBeGreaterThanOrEqual(0);
     expect(typecheckIndex).toBeLessThan(publishIndex);
     expect(buildIndex).toBeLessThan(publishIndex);
+    expect(matrixIndex).toBeLessThan(publishIndex);
   });
 
   test("documents supported test suffixes in README", () => {

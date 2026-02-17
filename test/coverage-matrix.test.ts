@@ -5132,6 +5132,7 @@ export default defineConfig({
       "supports runInDurableObject transaction-like helpers on synthetic stubs",
       "supports cloudflare:test-internal runtime alias",
       "supports cloudflare:test-internal state-like helpers on synthetic stubs",
+      "supports cloudflare:test-internal transaction-like helpers on synthetic stubs",
       "keeps cloudflare:test env bindings read-only",
       "surfaces actionable error when runInDurableObject state is accessed",
       "surfaces actionable error when runDurableObjectAlarm is used with runtime stubs",

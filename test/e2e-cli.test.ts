@@ -1485,6 +1485,135 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports cloudflare:test-internal transaction-like helpers on synthetic stubs", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-do-transaction-like.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "internal-do-transaction-like.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test-internal";
+
+        test("internal alias supports transaction-like helper pass-through", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const operations: string[] = [];
+
+          class WorkerRpc {
+            id: unknown;
+            state: unknown;
+            constructor(stubId: unknown, stubState: unknown) {
+              this.id = stubId;
+              this.state = stubState;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const state = {
+            storage: {
+              async transaction<T>(closure: (txn: any) => Promise<T>): Promise<T> {
+                operations.push("transaction");
+                const txn = {
+                  async put(key: string, value: unknown) {
+                    operations.push("txn.put:" + key + ":" + String(value));
+                  },
+                  async get<TValue = unknown>(key: string): Promise<TValue> {
+                    operations.push("txn.get:" + key);
+                    return ("txn-value-" + key) as TValue;
+                  }
+                };
+                return closure(txn);
+              },
+              transactionSync<T>(closure: () => T): T {
+                operations.push("transactionSync");
+                return closure();
+              },
+              async getCurrentBookmark(): Promise<string> {
+                operations.push("getCurrentBookmark");
+                return "bookmark-internal";
+              }
+            }
+          };
+
+          const stub = new WorkerRpc(id, state);
+          const result = await runInDurableObject(stub as any, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed state-like object");
+            }
+
+            const txn = await receivedState.storage.transaction?.(async (transaction) => {
+              await transaction.put?.("count", 7);
+              return transaction.get?.<string>("count");
+            });
+            const sync = receivedState.storage.transactionSync?.(() => {
+              operations.push("transactionSync.closure");
+              return "sync-internal";
+            });
+            const bookmark = await receivedState.storage.getCurrentBookmark?.();
+            return { txn, sync, bookmark };
+          });
+
+          expect(result).toEqual({
+            txn: "txn-value-count",
+            sync: "sync-internal",
+            bookmark: "bookmark-internal"
+          });
+          expect(operations).toEqual([
+            "transaction",
+            "txn.put:count:7",
+            "txn.get:count",
+            "transactionSync",
+            "transactionSync.closure",
+            "getCurrentBookmark"
+          ]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-do-transaction-like.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal scheduled dispatch alias", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

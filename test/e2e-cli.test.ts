@@ -4430,6 +4430,52 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("reports clear error for invalid listDurableObjectIds namespace via cloudflare:test-internal", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-list-invalid-internal.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-list-invalid-internal.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { listDurableObjectIds } from "cloudflare:test-internal";
+
+        test("throws type error through internal alias", async () => {
+          await expect(
+            listDurableObjectIds({} as any)
+          ).rejects.toThrow(
+            "Failed to execute 'listDurableObjectIds': parameter 1 is not of type 'DurableObjectNamespace'."
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-list-invalid-internal.test.ts");
+    });
+  });
+
   test("supports function-valued workers options with inject() end-to-end", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

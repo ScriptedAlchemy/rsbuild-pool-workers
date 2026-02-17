@@ -728,6 +728,39 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(deleteAlarmCalls).toBe(1);
   });
 
+  test("runDurableObjectAlarm treats zero getAlarm values as scheduled alarms", async () => {
+    let deleteAlarmCalls = 0;
+    const state: DurableObjectStateLike = {
+      storage: {
+        async getAlarm() {
+          return 0;
+        },
+        async deleteAlarm() {
+          deleteAlarmCalls += 1;
+        }
+      }
+    };
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("scheduled-alarm-zero-value")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "scheduled-alarm-zero-value"
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+        delete (stub as Record<string, unknown>).alarm;
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+      }
+    );
+
+    expect(deleteAlarmCalls).toBe(1);
+  });
+
   test("runDurableObjectAlarm still invokes alarm when deleteAlarm is unavailable", async () => {
     let alarmCalls = 0;
     const state = createDurableObjectState({

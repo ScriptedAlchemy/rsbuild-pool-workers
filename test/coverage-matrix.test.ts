@@ -5074,6 +5074,7 @@ export default defineConfig({
       "runDurableObjectAlarm returns false when state storage getAlarm resolves to undefined",
       "runDurableObjectAlarm clears alarm before invoking alarm handler when state is available",
       "runDurableObjectAlarm returns true when scheduled alarm exists but no alarm method is present",
+      "runDurableObjectAlarm treats zero getAlarm values as scheduled alarms",
       "runDurableObjectAlarm still invokes alarm when deleteAlarm is unavailable",
       "runDurableObjectAlarm propagates deleteAlarm failures before invoking alarm",
       "runDurableObjectAlarm propagates getAlarm failures before evaluating alarm accessor",

@@ -1844,6 +1844,115 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports runInDurableObject when state getter throws and ctx is state-like", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-state-fallback-throwing-state-getter.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-state-fallback-throwing-state-getter.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject, runDurableObjectAlarm } from "cloudflare:test";
+
+        test("callbacks keep using ctx when state getter throws", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const operations: string[] = [];
+          let deleteAlarmCalls = 0;
+
+          class WorkerRpc {
+            id: unknown;
+            ctx: unknown;
+            constructor(stubId: unknown, stateLike: unknown) {
+              this.id = stubId;
+              this.ctx = stateLike;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const state = {
+            storage: {
+              async get<T = unknown>(key: string): Promise<T> {
+                operations.push("get:" + key);
+                return 11 as T;
+              },
+              async getAlarm(): Promise<number | null> {
+                operations.push("getAlarm");
+                return Date.now() + 4_000;
+              },
+              async deleteAlarm(): Promise<void> {
+                operations.push("deleteAlarm");
+                deleteAlarmCalls += 1;
+              }
+            }
+          };
+
+          const stub = new WorkerRpc(id, state) as any;
+          Object.defineProperty(stub, "state", {
+            configurable: true,
+            get() {
+              throw new Error("state getter failed");
+            }
+          });
+
+          const value = await runInDurableObject(stub, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected state-like object");
+            }
+            return receivedState.storage.get?.<number>("count");
+          });
+          await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+
+          expect(value).toBe(11);
+          expect(deleteAlarmCalls).toBe(1);
+          expect(operations).toEqual(["get:count", "getAlarm", "deleteAlarm"]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-state-fallback-throwing-state-getter.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal runtime alias", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2917,6 +3026,115 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("internal-do-state-fallback-throwing-storage.test.ts");
+    });
+  });
+
+  test("supports cloudflare:test-internal when state getter throws and ctx is state-like", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-do-state-fallback-throwing-state-getter.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "internal-do-state-fallback-throwing-state-getter.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject, runDurableObjectAlarm } from "cloudflare:test-internal";
+
+        test("internal alias keeps using ctx when state getter throws", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const operations: string[] = [];
+          let deleteAlarmCalls = 0;
+
+          class WorkerRpc {
+            id: unknown;
+            ctx: unknown;
+            constructor(stubId: unknown, stateLike: unknown) {
+              this.id = stubId;
+              this.ctx = stateLike;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const state = {
+            storage: {
+              async get<T = unknown>(key: string): Promise<T> {
+                operations.push("get:" + key);
+                return 19 as T;
+              },
+              async getAlarm(): Promise<number | null> {
+                operations.push("getAlarm");
+                return Date.now() + 4_500;
+              },
+              async deleteAlarm(): Promise<void> {
+                operations.push("deleteAlarm");
+                deleteAlarmCalls += 1;
+              }
+            }
+          };
+
+          const stub = new WorkerRpc(id, state) as any;
+          Object.defineProperty(stub, "state", {
+            configurable: true,
+            get() {
+              throw new Error("state getter failed");
+            }
+          });
+
+          const value = await runInDurableObject(stub, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected state-like object");
+            }
+            return receivedState.storage.get?.<number>("count");
+          });
+          await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+
+          expect(value).toBe(19);
+          expect(deleteAlarmCalls).toBe(1);
+          expect(operations).toEqual(["get:count", "getAlarm", "deleteAlarm"]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-do-state-fallback-throwing-state-getter.test.ts");
     });
   });
 

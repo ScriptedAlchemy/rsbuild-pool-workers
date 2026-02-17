@@ -5082,6 +5082,7 @@ export default defineConfig({
       "runDurableObjectAlarm translates case-insensitive reserved ALARM RPC errors",
       "runDurableObjectAlarm preserves non-reserved alarm accessor errors",
       "runDurableObjectAlarm preserves reserved-method errors that are not for alarm",
+      "runDurableObjectAlarm preserves alarm errors explicitly stating alarm is not reserved",
       "runDurableObjectAlarm preserves non-reserved string throws from alarm accessor",
       "runDurableObjectAlarm returns false before reading alarm accessor when state reports no scheduled alarm",
       "listDurableObjectIds validates namespace argument type",

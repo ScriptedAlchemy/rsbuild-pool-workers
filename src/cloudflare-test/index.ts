@@ -114,7 +114,11 @@ function isWorkflowLike(value: unknown): value is WorkflowLike {
 
 function isReservedAlarmRpcError(error: unknown): boolean {
   const message = String((error as { message?: unknown } | undefined)?.message ?? error);
-  return /reserved method/i.test(message) && /\balarm\b/i.test(message);
+  return (
+    /reserved method/i.test(message) &&
+    !/\bnot\s+a?\s*reserved method/i.test(message) &&
+    /\balarm\b/i.test(message)
+  );
 }
 
 function isDurableObjectStateLike(value: unknown): value is DurableObjectStateLike {

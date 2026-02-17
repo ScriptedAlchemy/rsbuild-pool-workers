@@ -904,6 +904,27 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm preserves alarm errors explicitly stating alarm is not reserved", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("alarm-not-reserved-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("alarm-not-reserved-id");
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            throw new TypeError("alarm is not a reserved method in this context");
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "alarm is not a reserved method in this context"
+        );
+      }
+    );
+  });
+
   test("runDurableObjectAlarm preserves non-reserved string throws from alarm accessor", async () => {
     await withRuntimeBindings(
       {

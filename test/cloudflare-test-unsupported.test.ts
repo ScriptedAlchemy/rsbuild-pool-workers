@@ -751,6 +751,27 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm translates reserved alarm RPC errors without quoted alarm names", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("reserved-alarm-unquoted-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("reserved-alarm-unquoted-id");
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            throw new TypeError("alarm is a reserved method and cannot be called over RPC.");
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "runDurableObjectAlarm(): invoking alarm() on runtime Durable Object stubs is not yet supported in Rstest mode."
+        );
+      }
+    );
+  });
+
   test("runDurableObjectAlarm preserves non-reserved alarm accessor errors", async () => {
     await withRuntimeBindings(
       {

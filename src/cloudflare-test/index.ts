@@ -112,6 +112,11 @@ function isWorkflowLike(value: unknown): value is WorkflowLike {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isReservedAlarmRpcError(error: unknown): boolean {
+  const message = String((error as { message?: unknown } | undefined)?.message ?? error);
+  return /reserved method/i.test(message) && /\balarm\b/i.test(message);
+}
+
 function isDurableObjectStateLike(value: unknown): value is DurableObjectStateLike {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -317,8 +322,7 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
       try {
         alarmMethod = instance.alarm;
       } catch (error) {
-        const message = String((error as { message?: unknown } | undefined)?.message ?? error);
-        if (message.includes("'alarm' is a reserved method")) {
+        if (isReservedAlarmRpcError(error)) {
           throwReservedAlarmGuidance();
         }
         throw error;
@@ -344,8 +348,7 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
       try {
         await alarmMethod.call(instance);
       } catch (error) {
-        const message = String((error as { message?: unknown } | undefined)?.message ?? error);
-        if (message.includes("'alarm' is a reserved method")) {
+        if (isReservedAlarmRpcError(error)) {
           throwReservedAlarmGuidance();
         }
         throw error;

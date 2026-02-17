@@ -491,6 +491,35 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject ignores throwing state getters when ctx is state-like", async () => {
+    const state = createDurableObjectState();
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-throwing-state-getter-fallback-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-throwing-state-getter-fallback-id"
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+        Object.defineProperty(stub, "state", {
+          configurable: true,
+          get() {
+            throw new Error("state getter failed");
+          }
+        });
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => receivedState)
+        ).resolves.toBe(state);
+      }
+    );
+  });
+
   test("runInDurableObject falls back to state placeholder when ctx getter throws and no state fallback exists", async () => {
     await withRuntimeBindings(
       {
@@ -1159,6 +1188,43 @@ describe("unsupported cloudflare:test APIs", () => {
           }
         });
         stub.state = state;
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+      }
+    );
+
+    expect(alarmCalls).toBe(1);
+  });
+
+  test("runDurableObjectAlarm ignores throwing state getters when ctx is state-like", async () => {
+    let alarmCalls = 0;
+    const state = createDurableObjectState({
+      alarmValue: Date.now() + 50_000
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("alarm-throwing-state-getter-fallback-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "alarm-throwing-state-getter-fallback-id",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+        Object.defineProperty(stub, "state", {
+          configurable: true,
+          get() {
+            throw new Error("state getter failed");
+          }
+        });
 
         await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
       }

@@ -1041,6 +1041,156 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports runInDurableObject transaction-like helpers on synthetic stubs", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-state-transaction-helpers.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-state-transaction-helpers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test";
+
+        test("callbacks can use exposed transaction-like storage helpers", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const operations: string[] = [];
+
+          class WorkerRpc {
+            id: unknown;
+            ctx: unknown;
+            constructor(stubId: unknown, state: unknown) {
+              this.id = stubId;
+              this.ctx = state;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const state = {
+            storage: {
+              async transaction<T>(closure: (txn: any) => Promise<T>): Promise<T> {
+                operations.push("transaction");
+                const txn = {
+                  async put(key: string, value: unknown) {
+                    operations.push("txn.put:" + key + ":" + String(value));
+                  },
+                  async get<TValue = unknown>(key: string): Promise<TValue> {
+                    operations.push("txn.get:" + key);
+                    return ("txn-value-" + key) as TValue;
+                  },
+                  rollback() {
+                    operations.push("txn.rollback");
+                  }
+                };
+                return closure(txn);
+              },
+              transactionSync<T>(closure: () => T): T {
+                operations.push("transactionSync");
+                return closure();
+              },
+              async getCurrentBookmark(): Promise<string> {
+                operations.push("getCurrentBookmark");
+                return "bookmark-1";
+              },
+              async getBookmarkForTime(_timestamp: number | Date): Promise<string> {
+                operations.push("getBookmarkForTime");
+                return "bookmark-2";
+              },
+              async onNextSessionRestoreBookmark(_bookmark: string): Promise<string> {
+                operations.push("onNextSessionRestoreBookmark");
+                return "bookmark-3";
+              }
+            }
+          };
+
+          const stub = new WorkerRpc(id, state);
+          const result = await runInDurableObject(stub as any, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed state-like object");
+            }
+
+            const txnResult = await receivedState.storage.transaction?.(async (txn) => {
+              await txn.put?.("count", 5);
+              await txn.get?.("count");
+              txn.rollback?.();
+              return "transaction-complete";
+            });
+            const syncResult = receivedState.storage.transactionSync?.(() => {
+              operations.push("transactionSync.closure");
+              return "sync-complete";
+            });
+            const bookmarks = [
+              await receivedState.storage.getCurrentBookmark?.(),
+              await receivedState.storage.getBookmarkForTime?.(Date.now()),
+              await receivedState.storage.onNextSessionRestoreBookmark?.("bookmark-1")
+            ];
+
+            return { txnResult, syncResult, bookmarks };
+          });
+
+          expect(result).toEqual({
+            txnResult: "transaction-complete",
+            syncResult: "sync-complete",
+            bookmarks: ["bookmark-1", "bookmark-2", "bookmark-3"]
+          });
+          expect(operations).toEqual([
+            "transaction",
+            "txn.put:count:5",
+            "txn.get:count",
+            "txn.rollback",
+            "transactionSync",
+            "transactionSync.closure",
+            "getCurrentBookmark",
+            "getBookmarkForTime",
+            "onNextSessionRestoreBookmark"
+          ]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-state-transaction-helpers.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal runtime alias", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

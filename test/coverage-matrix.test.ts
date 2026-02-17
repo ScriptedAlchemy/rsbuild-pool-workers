@@ -5129,6 +5129,7 @@ export default defineConfig({
       "supports SELF.scheduled through cloudflare:test",
       "supports runInDurableObject for RPC-callable methods",
       "supports runInDurableObject state-like storage helpers on synthetic stubs",
+      "supports runInDurableObject transaction-like helpers on synthetic stubs",
       "supports cloudflare:test-internal runtime alias",
       "supports cloudflare:test-internal state-like helpers on synthetic stubs",
       "keeps cloudflare:test env bindings read-only",

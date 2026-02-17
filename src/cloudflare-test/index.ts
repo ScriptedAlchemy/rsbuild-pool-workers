@@ -318,18 +318,16 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
         );
       };
 
-      let alarmMethod: unknown;
-      try {
-        alarmMethod = instance.alarm;
-      } catch (error) {
-        if (isReservedAlarmRpcError(error)) {
-          throwReservedAlarmGuidance();
+      const resolveAlarmMethod = (): unknown => {
+        try {
+          return instance.alarm;
+        } catch (error) {
+          if (isReservedAlarmRpcError(error)) {
+            throwReservedAlarmGuidance();
+          }
+          throw error;
         }
-        throw error;
-      }
-      if (typeof alarmMethod !== "function") {
-        return false;
-      }
+      };
 
       if (isDurableObjectStateLike(state)) {
         const getAlarm = state.storage.getAlarm;
@@ -343,6 +341,11 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
             await deleteAlarm.call(state.storage);
           }
         }
+      }
+
+      const alarmMethod = resolveAlarmMethod();
+      if (typeof alarmMethod !== "function") {
+        return false;
       }
 
       try {

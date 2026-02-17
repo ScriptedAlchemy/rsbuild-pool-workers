@@ -896,6 +896,34 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm returns false before reading alarm accessor when state reports no scheduled alarm", async () => {
+    const state = createDurableObjectState({
+      alarmValue: null
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-no-schedule-before-accessor")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-no-schedule-before-accessor"
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            throw new TypeError("'alarm' is a reserved method and cannot be called over RPC.");
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(false);
+      }
+    );
+  });
+
   test("listDurableObjectIds validates namespace argument type", async () => {
     await withRuntimeBindings(
       {},

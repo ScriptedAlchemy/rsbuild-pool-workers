@@ -204,6 +204,7 @@ import {
     - when a state-like `ctx/state` object is exposed on the stub, scheduled-alarm semantics are respected (`getAlarm()`/best-effort `deleteAlarm()`), returning `false` when no alarm is scheduled
     - with state-like scheduling data, a scheduled alarm still returns `true` even if no callable `alarm()` method is exposed
     - when no state-like object is exposed, it falls back to direct `alarm()` invocation behavior
+    - reserved-RPC alarm diagnostics are translated to actionable guidance only for alarm-specific reserved-method failures; unrelated accessor errors still propagate
   - Durable Object helper validations intentionally reject plain-object lookalikes (for stubs/namespaces, constructor identity must be non-`Object` and method contracts must match)
   - same-worker Durable Object enforcement prefers runtime durable-object binding metadata and excludes bindings configured with non-empty `scriptName` values (remote worker designators), with fallback to environment namespace discovery if metadata lookup is unavailable/invalid (mismatched stubs still reject)
   - event/queue helpers and D1 migration helper utilities

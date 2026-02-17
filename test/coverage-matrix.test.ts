@@ -5166,6 +5166,7 @@ export default defineConfig({
       "supports cloudflare:test-internal when state getter throws and ctx is state-like",
       "keeps cloudflare:test env bindings read-only",
       "surfaces actionable error when runInDurableObject state is accessed",
+      "surfaces actionable error when runInDurableObject state is accessed via cloudflare:test-internal",
       "surfaces actionable error when runDurableObjectAlarm is used with runtime stubs",
       "surfaces actionable error when runDurableObjectAlarm is used via cloudflare:test-internal",
       "supports runDurableObjectAlarm with same-isolate synthetic stubs end-to-end",

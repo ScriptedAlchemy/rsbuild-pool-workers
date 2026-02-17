@@ -3808,6 +3808,71 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces actionable error when runInDurableObject state is accessed via cloudflare:test-internal", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-state-access-internal.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async ping() {
+            return "pong";
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-state-access-internal.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test-internal";
+
+        test("internal alias state access throws explicit guidance", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+            get(id: unknown): unknown;
+          };
+          const stub = namespace.get(namespace.idFromName("singleton"));
+
+          await expect(
+            runInDurableObject(stub as any, async (_instance, state) => {
+              return String((state as any).storage);
+            })
+          ).rejects.toThrow("DurableObjectState access is not yet available in Rstest mode");
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-state-access-internal.test.ts");
+    });
+  });
+
   test("surfaces actionable error when runDurableObjectAlarm is used with runtime stubs", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

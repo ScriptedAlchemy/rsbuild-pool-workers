@@ -5131,6 +5131,7 @@ export default defineConfig({
       "supports runInDurableObject for RPC-callable methods",
       "supports runInDurableObject state-like storage helpers on synthetic stubs",
       "supports runInDurableObject transaction-like helpers on synthetic stubs",
+      "supports runInDurableObject state id and waitUntil helpers on synthetic stubs",
       "supports cloudflare:test-internal runtime alias",
       "supports cloudflare:test-internal state-like helpers on synthetic stubs",
       "supports cloudflare:test-internal transaction-like helpers on synthetic stubs",

@@ -1938,6 +1938,110 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports runDurableObjectAlarm preserving ctx getAlarm failures over stub.state fallback", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-alarm-preserve-ctx-error.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-alarm-preserve-ctx-error.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runDurableObjectAlarm } from "cloudflare:test";
+
+        test("ctx getAlarm failures are preserved when fallback state exists", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const operations: string[] = [];
+          let alarmCalls = 0;
+
+          class WorkerRpc {
+            id: unknown;
+            ctx: unknown;
+            state: unknown;
+            constructor(stubId: unknown, ctxState: unknown, stateState: unknown) {
+              this.id = stubId;
+              this.ctx = ctxState;
+              this.state = stateState;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+
+          const stub = new WorkerRpc(
+            id,
+            {
+              storage: {
+                async getAlarm() {
+                  operations.push("ctx.getAlarm");
+                  throw new Error("ctx-getAlarm-failure");
+                }
+              }
+            },
+            {
+              storage: {
+                async getAlarm(): Promise<number | null> {
+                  operations.push("state.getAlarm");
+                  return Date.now() + 12_000;
+                },
+                async deleteAlarm(): Promise<void> {
+                  operations.push("state.deleteAlarm");
+                }
+              }
+            }
+          );
+
+          await expect(runDurableObjectAlarm(stub as any)).rejects.toThrow("ctx-getAlarm-failure");
+          expect(alarmCalls).toBe(0);
+          expect(operations).toEqual(["ctx.getAlarm"]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-alarm-preserve-ctx-error.test.ts");
+    });
+  });
+
   test("supports runInDurableObject fallback to stub.state when ctx storage getter throws", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -3326,6 +3430,110 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("internal-do-alarm-prefer-ctx-metadata.test.ts");
+    });
+  });
+
+  test("supports cloudflare:test-internal runDurableObjectAlarm preserving ctx getAlarm failures over stub.state fallback", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-do-alarm-preserve-ctx-error.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "internal-do-alarm-preserve-ctx-error.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runDurableObjectAlarm } from "cloudflare:test-internal";
+
+        test("internal ctx getAlarm failures are preserved when fallback state exists", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const operations: string[] = [];
+          let alarmCalls = 0;
+
+          class WorkerRpc {
+            id: unknown;
+            ctx: unknown;
+            state: unknown;
+            constructor(stubId: unknown, ctxState: unknown, stateState: unknown) {
+              this.id = stubId;
+              this.ctx = ctxState;
+              this.state = stateState;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+
+          const stub = new WorkerRpc(
+            id,
+            {
+              storage: {
+                async getAlarm() {
+                  operations.push("ctx.getAlarm");
+                  throw new Error("ctx-getAlarm-failure");
+                }
+              }
+            },
+            {
+              storage: {
+                async getAlarm(): Promise<number | null> {
+                  operations.push("state.getAlarm");
+                  return Date.now() + 13_000;
+                },
+                async deleteAlarm(): Promise<void> {
+                  operations.push("state.deleteAlarm");
+                }
+              }
+            }
+          );
+
+          await expect(runDurableObjectAlarm(stub as any)).rejects.toThrow("ctx-getAlarm-failure");
+          expect(alarmCalls).toBe(0);
+          expect(operations).toEqual(["ctx.getAlarm"]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-do-alarm-preserve-ctx-error.test.ts");
     });
   });
 

@@ -791,6 +791,27 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm translates reserved alarm RPC string throws from alarm accessor", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("reserved-alarm-string-throw-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("reserved-alarm-string-throw-id");
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            throw "reserved method alarm cannot be called over rpc";
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "runDurableObjectAlarm(): invoking alarm() on runtime Durable Object stubs is not yet supported in Rstest mode."
+        );
+      }
+    );
+  });
+
   test("runDurableObjectAlarm translates case-insensitive reserved ALARM RPC errors", async () => {
     await withRuntimeBindings(
       {
@@ -849,6 +870,27 @@ describe("unsupported cloudflare:test APIs", () => {
 
         await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
           "fetch is a reserved method and cannot be called over RPC."
+        );
+      }
+    );
+  });
+
+  test("runDurableObjectAlarm preserves non-reserved string throws from alarm accessor", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("non-reserved-string-throw-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("non-reserved-string-throw-id");
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            throw "custom string alarm accessor failure";
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "custom string alarm accessor failure"
         );
       }
     );

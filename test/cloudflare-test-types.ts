@@ -232,6 +232,8 @@ type _DurableObjectStateLikeConcurrencyContract = Assert<
   IsAssignable<
     {
       storage: {};
+      props: { featureFlag: boolean };
+      container: { name: string };
       blockConcurrencyWhile: <Result = unknown>(
         _closure: () => Promise<Result>
       ) => Promise<Result>;

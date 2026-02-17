@@ -201,6 +201,7 @@ import {
     - empty/whitespace-only `scriptName` and `unsafeUniqueKey` values are ignored during namespace key resolution
   - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`) on stubs from the same worker isolate
     - when a state-like `ctx/state` object is exposed on the stub, callback state receives that object directly (including common `storage` helpers like `get`/`put`/`list`/`delete`/`setAlarm`, transaction helpers, alarm/bookmark APIs, exposed `id`/`props`/`container`/`waitUntil` helpers, and WebSocket helper methods when available)
+    - TypeScript callback-state typing narrows automatically to `DurableObjectStateLike` when the stub is typed with exposed `ctx/state`; otherwise it remains `DurableObjectStateLike | DurableObjectStatePlaceholder`
   - `runDurableObjectAlarm` for same-isolate Durable Object stubs (follows the same same-isolate fallback checks as `runInDurableObject`)
     - when a state-like `ctx/state` object is exposed on the stub, scheduled-alarm semantics are respected (`getAlarm()`/best-effort `deleteAlarm()`), returning `false` when no alarm is scheduled
     - with state-like scheduling data, a scheduled alarm still returns `true` even if no callable `alarm()` method is exposed

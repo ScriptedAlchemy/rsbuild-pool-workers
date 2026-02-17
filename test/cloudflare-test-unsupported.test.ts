@@ -1158,6 +1158,45 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(alarmCalls).toBe(1);
   });
 
+  test("runDurableObjectAlarm uses stub.state alarm metadata when ctx lacks getAlarm helper", async () => {
+    let alarmCalls = 0;
+    let deleteAlarmCalls = 0;
+    const fallbackState = createDurableObjectState({
+      alarmValue: Date.now() + 35_000,
+      onDeleteAlarm: () => {
+        deleteAlarmCalls += 1;
+      }
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("alarm-ctx-no-getalarm-fallback-state")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "alarm-ctx-no-getalarm-fallback-state",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = {
+          storage: {}
+        };
+        stub.state = fallbackState;
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+      }
+    );
+
+    expect(deleteAlarmCalls).toBe(1);
+    expect(alarmCalls).toBe(1);
+  });
+
   test("runDurableObjectAlarm ignores ctx values with throwing storage getters and uses stub.state alarm metadata", async () => {
     let alarmCalls = 0;
     const state = createDurableObjectState({

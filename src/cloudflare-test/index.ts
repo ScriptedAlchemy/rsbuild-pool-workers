@@ -306,20 +306,55 @@ function isDurableObjectStateLike(value: unknown): value is DurableObjectStateLi
   return typeof storage === "object" && storage !== null;
 }
 
+function getDurableObjectStateFromStubKey(
+  stub: DurableObjectStubLike,
+  key: "ctx" | "state"
+): DurableObjectStateLike | undefined {
+  let candidate: unknown;
+  try {
+    candidate = (stub as Record<string, unknown>)[key];
+  } catch {
+    return undefined;
+  }
+  return isDurableObjectStateLike(candidate) ? candidate : undefined;
+}
+
 function getDurableObjectStateFromStub(stub: DurableObjectStubLike): DurableObjectStateLike | undefined {
-  const stubCandidate = stub as Record<string, unknown>;
   for (const key of ["ctx", "state"] as const) {
-    let candidate: unknown;
-    try {
-      candidate = stubCandidate[key];
-    } catch {
-      continue;
-    }
-    if (isDurableObjectStateLike(candidate)) {
-      return candidate;
+    const state = getDurableObjectStateFromStubKey(stub, key);
+    if (state) {
+      return state;
     }
   }
   return undefined;
+}
+
+function getDurableObjectAlarmStateFromStub(
+  stub: DurableObjectStubLike,
+  callbackState: DurableObjectStateLike | DurableObjectStatePlaceholder
+): DurableObjectStateLike | undefined {
+  const candidates: DurableObjectStateLike[] = [];
+  const pushCandidate = (candidate: DurableObjectStateLike | undefined) => {
+    if (!candidate) {
+      return;
+    }
+    if (!candidates.includes(candidate)) {
+      candidates.push(candidate);
+    }
+  };
+
+  if (isDurableObjectStateLike(callbackState)) {
+    pushCandidate(callbackState);
+  }
+  pushCandidate(getDurableObjectStateFromStubKey(stub, "ctx"));
+  pushCandidate(getDurableObjectStateFromStubKey(stub, "state"));
+
+  for (const candidate of candidates) {
+    if (typeof candidate.storage.getAlarm === "function") {
+      return candidate;
+    }
+  }
+  return candidates[0];
 }
 
 function assertDurableObjectStubFromSameWorker(stub: DurableObjectStubLike): void {
@@ -504,17 +539,18 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
       };
 
       let hadScheduledAlarm = false;
-      if (isDurableObjectStateLike(state)) {
-        const getAlarm = state.storage.getAlarm;
-        const deleteAlarm = state.storage.deleteAlarm;
+      const alarmState = getDurableObjectAlarmStateFromStub(stub, state);
+      if (alarmState) {
+        const getAlarm = alarmState.storage.getAlarm;
+        const deleteAlarm = alarmState.storage.deleteAlarm;
         if (typeof getAlarm === "function") {
-          const scheduledAlarm = await getAlarm.call(state.storage);
+          const scheduledAlarm = await getAlarm.call(alarmState.storage);
           if (scheduledAlarm === null || scheduledAlarm === undefined) {
             return false;
           }
           hadScheduledAlarm = true;
           if (typeof deleteAlarm === "function") {
-            await deleteAlarm.call(state.storage);
+            await deleteAlarm.call(alarmState.storage);
           }
         }
       }

@@ -5076,6 +5076,7 @@ export default defineConfig({
       "runDurableObjectAlarm still invokes alarm when deleteAlarm is unavailable",
       "runDurableObjectAlarm translates reserved alarm RPC errors into actionable guidance",
       "runDurableObjectAlarm translates reserved alarm RPC errors without quoted alarm names",
+      "runDurableObjectAlarm translates reserved alarm RPC errors raised during alarm invocation",
       "runDurableObjectAlarm preserves non-reserved alarm accessor errors",
       "listDurableObjectIds validates namespace argument type",
       "listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity",

@@ -5167,6 +5167,8 @@ export default defineConfig({
       "supports cloudflare:test-internal fallback to stub.state when ctx storage getter throws",
       "supports cloudflare:test-internal when state getter throws and ctx is state-like",
       "keeps cloudflare:test env bindings read-only",
+      "surfaces actionable error when workflow introspection helpers are used",
+      "surfaces actionable error when workflow introspection helpers are used via cloudflare:test-internal",
       "surfaces actionable error when runInDurableObject state is accessed",
       "surfaces actionable error when runInDurableObject state is accessed via cloudflare:test-internal",
       "surfaces actionable error when runDurableObjectAlarm is used with runtime stubs",

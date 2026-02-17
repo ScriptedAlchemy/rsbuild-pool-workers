@@ -3951,6 +3951,100 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces actionable error when workflow introspection helpers are used", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./workflow-introspection-unsupported.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "workflow-introspection-unsupported.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { introspectWorkflow, introspectWorkflowInstance } from "cloudflare:test";
+
+        test("workflow helper calls throw explicit unsupported guidance", async () => {
+          await expect(introspectWorkflow({} as any)).rejects.toThrow(
+            "Workflow introspection helpers are not yet available in Rstest mode"
+          );
+          await expect(introspectWorkflowInstance({} as any, "instance-1")).rejects.toThrow(
+            "Workflow introspection helpers are not yet available in Rstest mode"
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("workflow-introspection-unsupported.test.ts");
+    });
+  });
+
+  test("surfaces actionable error when workflow introspection helpers are used via cloudflare:test-internal", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./workflow-introspection-unsupported-internal.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "workflow-introspection-unsupported-internal.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { introspectWorkflow, introspectWorkflowInstance } from "cloudflare:test-internal";
+
+        test("internal alias workflow helper calls throw explicit unsupported guidance", async () => {
+          await expect(introspectWorkflow({} as any)).rejects.toThrow(
+            "Workflow introspection helpers are not yet available in Rstest mode"
+          );
+          await expect(introspectWorkflowInstance({} as any, "instance-1")).rejects.toThrow(
+            "Workflow introspection helpers are not yet available in Rstest mode"
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("workflow-introspection-unsupported-internal.test.ts");
+    });
+  });
+
   test("surfaces actionable error when runInDurableObject state is accessed", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

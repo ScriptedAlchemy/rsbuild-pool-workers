@@ -5089,6 +5089,7 @@ export default defineConfig({
       "runDurableObjectAlarm preserves reserved-method errors that are not for alarm",
       "runDurableObjectAlarm preserves alarm errors explicitly stating alarm is not reserved",
       "runDurableObjectAlarm preserves method-is-not-reserved phrasing for alarm errors",
+      "runDurableObjectAlarm preserves reserved alarm errors without rpc hints",
       "runDurableObjectAlarm preserves alarm errors explicitly stating alarm isn't reserved",
       "runDurableObjectAlarm preserves alarm errors using unicode apostrophe negation wording",
       "runDurableObjectAlarm preserves non-reserved string throws from alarm accessor",

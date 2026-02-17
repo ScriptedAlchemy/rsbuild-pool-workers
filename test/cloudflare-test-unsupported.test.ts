@@ -1109,6 +1109,27 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm preserves reserved alarm errors without rpc hints", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("reserved-without-rpc-hint-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("reserved-without-rpc-hint-id");
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            throw new TypeError("alarm is a reserved method in this application");
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "alarm is a reserved method in this application"
+        );
+      }
+    );
+  });
+
   test("runDurableObjectAlarm preserves alarm errors explicitly stating alarm isn't reserved", async () => {
     await withRuntimeBindings(
       {

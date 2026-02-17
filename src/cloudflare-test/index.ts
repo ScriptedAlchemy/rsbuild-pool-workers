@@ -118,6 +118,9 @@ function isReservedAlarmRpcError(error: unknown): boolean {
     /reserved method/i.test(message) ||
     /\bmethod\b.*\breserved\b/i.test(message) ||
     /\breserved\b.*\bmethod\b/i.test(message);
+  const hasRpcHint =
+    /\brpc\b/i.test(message) ||
+    /cannot be called/i.test(message);
   const hasNegatedReservedPhrase =
     /\bnot\s+reserved\b/i.test(message) ||
     /\bmethod\b.*\bnot\s+reserved\b/i.test(message) ||
@@ -125,6 +128,7 @@ function isReservedAlarmRpcError(error: unknown): boolean {
     /\bisn['’]?\s*t\s+a?\s*reserved method/i.test(message);
   return (
     hasReservedPhrase &&
+    hasRpcHint &&
     !hasNegatedReservedPhrase &&
     /\balarm\b/i.test(message)
   );

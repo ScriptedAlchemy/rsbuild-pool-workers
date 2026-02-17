@@ -5140,6 +5140,7 @@ export default defineConfig({
     expectTitleCoverage(titles, [
       "runs cloudflare:test through defineWorkersConfig end-to-end",
       "supports SELF.scheduled through cloudflare:test",
+      "supports cloudflare:test utility helpers end-to-end",
       "supports runInDurableObject for RPC-callable methods",
       "supports runInDurableObject state-like storage helpers on synthetic stubs",
       "supports runInDurableObject transaction-like helpers on synthetic stubs",
@@ -5166,6 +5167,7 @@ export default defineConfig({
       "supports cloudflare:test-internal runDurableObjectAlarm preserving ctx getAlarm failures over stub.state fallback",
       "supports cloudflare:test-internal fallback to stub.state when ctx storage getter throws",
       "supports cloudflare:test-internal when state getter throws and ctx is state-like",
+      "supports cloudflare:test-internal utility helpers end-to-end",
       "keeps cloudflare:test env bindings read-only",
       "keeps cloudflare:test-internal env bindings read-only",
       "surfaces actionable error when workflow introspection helpers are used",

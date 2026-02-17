@@ -846,6 +846,252 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports cloudflare:test utility helpers end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./cloudflare-test-helpers-e2e.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "cloudflare-test-helpers-e2e.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import {
+          applyD1Migrations,
+          createExecutionContext,
+          createMessageBatch,
+          createPagesEventContext,
+          createScheduledController,
+          getQueueResult,
+          waitOnExecutionContext
+        } from "cloudflare:test";
+
+        test("core utility helpers are wired", async () => {
+          const order: string[] = [];
+          const execCtx = createExecutionContext();
+          execCtx.waitUntil(Promise.resolve().then(() => order.push("waited")));
+          await waitOnExecutionContext(execCtx);
+          expect(order).toEqual(["waited"]);
+
+          const scheduled = createScheduledController({
+            scheduledTime: 123,
+            cron: "0 * * * *"
+          });
+          scheduled.noRetry();
+          expect(scheduled.scheduledTime).toBe(123);
+          expect(scheduled.cron).toBe("0 * * * *");
+
+          const batch = createMessageBatch("jobs", [
+            { id: "a", timestamp: Date.now(), body: { value: 1 }, attempts: 1 },
+            { id: "b", timestamp: Date.now(), body: { value: 2 }, attempts: 2 }
+          ]);
+          batch.messages[0]!.ack();
+          batch.messages[1]!.retry();
+
+          const queueResult = await getQueueResult(batch, createExecutionContext());
+          expect(queueResult.explicitAcks).toEqual(["a"]);
+          expect(queueResult.retryMessages).toEqual([{ msgId: "b" }]);
+          expect(queueResult.ackAll).toBe(false);
+
+          const pagesCtx = createPagesEventContext({
+            request: new Request("http://localhost/original"),
+            functionPath: "/api/test",
+            next: async (request: Request) => new Response(new URL(request.url).pathname),
+            params: { id: "123" },
+            data: { userId: "u-1" },
+            env: { TOKEN: "abc" }
+          });
+          expect(pagesCtx.functionPath).toBe("/api/test");
+          expect(pagesCtx.params.id).toBe("123");
+          expect(pagesCtx.data.userId).toBe("u-1");
+          expect((pagesCtx.env as Record<string, string>).TOKEN).toBe("abc");
+          const nextResponse = await pagesCtx.next(new Request("http://localhost/next-path"));
+          expect(await nextResponse.text()).toBe("/next-path");
+
+          const executed: string[] = [];
+          const seen = new Set<string>();
+          const db = {
+            prepare(sql: string) {
+              return {
+                bind(...args: unknown[]) {
+                  const name = String(args[0]);
+                  return {
+                    first: async () => (seen.has(name) ? { name } : null)
+                  };
+                },
+                async run() {
+                  executed.push(sql);
+                  const match = sql.match(/INSERT INTO d1_migrations\\(name\\) VALUES \\('([^']+)'\\)/);
+                  if (match?.[1]) {
+                    seen.add(match[1]);
+                  }
+                }
+              };
+            }
+          };
+
+          await applyD1Migrations(db as any, [
+            { name: "001_init", queries: ["CREATE TABLE demo(id INTEGER PRIMARY KEY)"] },
+            { name: "002_more", queries: ["ALTER TABLE demo ADD COLUMN name TEXT"] }
+          ]);
+          await applyD1Migrations(db as any, [
+            { name: "001_init", queries: ["CREATE TABLE demo(id INTEGER PRIMARY KEY)"] },
+            { name: "002_more", queries: ["ALTER TABLE demo ADD COLUMN name TEXT"] }
+          ]);
+
+          expect(executed.filter((sql) => sql.includes("CREATE TABLE demo")).length).toBe(1);
+          expect(executed.filter((sql) => sql.includes("ALTER TABLE demo")).length).toBe(1);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("cloudflare-test-helpers-e2e.test.ts");
+    });
+  });
+
+  test("supports cloudflare:test-internal utility helpers end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./cloudflare-test-internal-helpers-e2e.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "cloudflare-test-internal-helpers-e2e.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import {
+          applyD1Migrations,
+          createExecutionContext,
+          createMessageBatch,
+          createPagesEventContext,
+          createScheduledController,
+          getQueueResult,
+          waitOnExecutionContext
+        } from "cloudflare:test-internal";
+
+        test("internal alias utility helpers are wired", async () => {
+          const order: string[] = [];
+          const execCtx = createExecutionContext();
+          execCtx.waitUntil(Promise.resolve().then(() => order.push("waited")));
+          await waitOnExecutionContext(execCtx);
+          expect(order).toEqual(["waited"]);
+
+          const scheduled = createScheduledController({
+            scheduledTime: 456,
+            cron: "*/5 * * * *"
+          });
+          scheduled.noRetry();
+          expect(scheduled.scheduledTime).toBe(456);
+          expect(scheduled.cron).toBe("*/5 * * * *");
+
+          const batch = createMessageBatch("jobs", [
+            { id: "a", timestamp: Date.now(), body: { value: 1 }, attempts: 1 },
+            { id: "b", timestamp: Date.now(), body: { value: 2 }, attempts: 2 }
+          ]);
+          batch.messages[0]!.ack();
+          batch.messages[1]!.retry();
+
+          const queueResult = await getQueueResult(batch, createExecutionContext());
+          expect(queueResult.explicitAcks).toEqual(["a"]);
+          expect(queueResult.retryMessages).toEqual([{ msgId: "b" }]);
+          expect(queueResult.ackAll).toBe(false);
+
+          const pagesCtx = createPagesEventContext({
+            request: new Request("http://localhost/original"),
+            functionPath: "/api/internal",
+            next: async (request: Request) => new Response(new URL(request.url).pathname),
+            params: { id: "456" },
+            data: { userId: "u-2" },
+            env: { TOKEN: "xyz" }
+          });
+          expect(pagesCtx.functionPath).toBe("/api/internal");
+          expect(pagesCtx.params.id).toBe("456");
+          expect(pagesCtx.data.userId).toBe("u-2");
+          expect((pagesCtx.env as Record<string, string>).TOKEN).toBe("xyz");
+          const nextResponse = await pagesCtx.next(new Request("http://localhost/internal-next"));
+          expect(await nextResponse.text()).toBe("/internal-next");
+
+          const executed: string[] = [];
+          const seen = new Set<string>();
+          const db = {
+            prepare(sql: string) {
+              return {
+                bind(...args: unknown[]) {
+                  const name = String(args[0]);
+                  return {
+                    first: async () => (seen.has(name) ? { name } : null)
+                  };
+                },
+                async run() {
+                  executed.push(sql);
+                  const match = sql.match(/INSERT INTO d1_migrations\\(name\\) VALUES \\('([^']+)'\\)/);
+                  if (match?.[1]) {
+                    seen.add(match[1]);
+                  }
+                }
+              };
+            }
+          };
+
+          await applyD1Migrations(db as any, [
+            { name: "001_init", queries: ["CREATE TABLE internal_demo(id INTEGER PRIMARY KEY)"] },
+            { name: "002_more", queries: ["ALTER TABLE internal_demo ADD COLUMN name TEXT"] }
+          ]);
+          await applyD1Migrations(db as any, [
+            { name: "001_init", queries: ["CREATE TABLE internal_demo(id INTEGER PRIMARY KEY)"] },
+            { name: "002_more", queries: ["ALTER TABLE internal_demo ADD COLUMN name TEXT"] }
+          ]);
+
+          expect(executed.filter((sql) => sql.includes("CREATE TABLE internal_demo")).length).toBe(1);
+          expect(executed.filter((sql) => sql.includes("ALTER TABLE internal_demo")).length).toBe(1);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("cloudflare-test-internal-helpers-e2e.test.ts");
+    });
+  });
+
   test("supports runInDurableObject for RPC-callable methods", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

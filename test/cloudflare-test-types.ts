@@ -271,7 +271,7 @@ type _DurableObjectStoragePutContract = Assert<
         _value: unknown
       ): Promise<void> | void;
       (
-        _entries: Record<string, unknown> | Map<string, unknown>
+        _entries: Record<string, unknown>
       ): Promise<void> | void;
     }
   >

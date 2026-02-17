@@ -463,17 +463,14 @@ describe("unsupported cloudflare:test APIs", () => {
   test("runInDurableObject callbacks can use extended storage helpers when state is exposed", async () => {
     const callSequence: string[] = [];
     const put = (async (
-      keyOrEntries: string | Record<string, unknown> | Map<string, unknown>,
+      keyOrEntries: string | Record<string, unknown>,
       valueOrOptions?: unknown
     ) => {
       if (typeof keyOrEntries === "string") {
         callSequence.push(`put:${keyOrEntries}:${String(valueOrOptions)}`);
         return;
       }
-      const entries =
-        keyOrEntries instanceof Map
-          ? Array.from(keyOrEntries.entries())
-          : Object.entries(keyOrEntries);
+      const entries = Object.entries(keyOrEntries);
       callSequence.push(`put-many:${entries.length}`);
     }) as NonNullable<DurableObjectStateLike["storage"]["put"]>;
 

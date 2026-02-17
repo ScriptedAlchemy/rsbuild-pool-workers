@@ -48,6 +48,7 @@ declare module "cloudflare:test" {
 
   export interface DurableObjectStorageDeleteOptionsLike {
     allowConcurrency?: boolean;
+    allowUnconfirmed?: boolean;
     noCache?: boolean;
   }
 
@@ -138,7 +139,7 @@ declare module "cloudflare:test" {
         options?: DurableObjectStoragePutOptionsLike
       ): Promise<void> | void;
       (
-        entries: Record<string, unknown> | Map<string, unknown>,
+        entries: Record<string, unknown>,
         options?: DurableObjectStoragePutOptionsLike
       ): Promise<void> | void;
     };

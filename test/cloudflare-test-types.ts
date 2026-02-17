@@ -44,6 +44,10 @@ type RunDurableObjectAlarmReturn = ReturnType<typeof runDurableObjectAlarm>;
 type RunInDurableObjectReturn = ReturnType<
   typeof runInDurableObject<{ ping: () => Promise<string> }, string>
 >;
+type RunInDurableObjectCallback = Parameters<
+  typeof runInDurableObject<{ ping: () => Promise<string> }, string>
+>[1];
+type RunInDurableObjectStateParam = Parameters<RunInDurableObjectCallback>[1];
 type WaitOnExecutionContextReturn = ReturnType<typeof waitOnExecutionContext>;
 type CreatedPagesEventContext = ReturnType<
   typeof createPagesEventContext<{ userId: string }>
@@ -52,6 +56,10 @@ type ListDurableObjectIdsInternalReturn = ReturnType<typeof listDurableObjectIds
 type RunInDurableObjectInternalReturn = ReturnType<
   typeof runInDurableObjectInternal<{ ping: () => Promise<string> }, string>
 >;
+type RunInDurableObjectInternalCallback = Parameters<
+  typeof runInDurableObjectInternal<{ ping: () => Promise<string> }, string>
+>[1];
+type RunInDurableObjectInternalStateParam = Parameters<RunInDurableObjectInternalCallback>[1];
 
 type _ExecutionContextContract = Assert<
   IsAssignable<
@@ -116,6 +124,18 @@ type _RunInDurableObjectContract = Assert<
     Promise<string>
   >
 >;
+type _RunInDurableObjectStateParamContract = Assert<
+  IsAssignable<
+    RunInDurableObjectStateParam,
+    DurableObjectStateLike | DurableObjectStatePlaceholder
+  >
+>;
+type _RunInDurableObjectStateParamReverseContract = Assert<
+  IsAssignable<
+    DurableObjectStateLike | DurableObjectStatePlaceholder,
+    RunInDurableObjectStateParam
+  >
+>;
 type _WaitOnExecutionContextContract = Assert<
   IsAssignable<
     WaitOnExecutionContextReturn,
@@ -153,6 +173,12 @@ type _RunInDurableObjectInternalContract = Assert<
   IsAssignable<
     RunInDurableObjectInternalReturn,
     Promise<string>
+  >
+>;
+type _RunInDurableObjectInternalStateParamContract = Assert<
+  IsAssignable<
+    RunInDurableObjectInternalStateParam,
+    DurableObjectStateLike | DurableObjectStatePlaceholder
   >
 >;
 type _EnvInternalReadonlyContract = Assert<
@@ -195,6 +221,14 @@ type _DurableObjectStateLikeContract = Assert<
         getAlarm: () => Promise<number | null>;
         deleteAlarm: () => Promise<void>;
       };
+    },
+    DurableObjectStateLike
+  >
+>;
+type _DurableObjectStateLikePartialStorageContract = Assert<
+  IsAssignable<
+    {
+      storage: {};
     },
     DurableObjectStateLike
   >

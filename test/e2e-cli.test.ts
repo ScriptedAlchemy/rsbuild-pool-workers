@@ -1214,6 +1214,127 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports cloudflare:test-internal state-like helpers on synthetic stubs", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-do-state-like.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "internal-do-state-like.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject, runDurableObjectAlarm } from "cloudflare:test-internal";
+
+        test("internal alias supports state-like helper pass-through on synthetic stubs", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          let value = 0;
+          const operations: string[] = [];
+          let deleteAlarmCalls = 0;
+
+          class WorkerRpc {
+            id: unknown;
+            state: unknown;
+            constructor(stubId: unknown, stubState: unknown) {
+              this.id = stubId;
+              this.state = stubState;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const state = {
+            storage: {
+              async put(key: string, nextValue: number) {
+                operations.push("put:" + key);
+                value = nextValue;
+              },
+              async get<T = unknown>(key: string): Promise<T | undefined> {
+                operations.push("get:" + key);
+                return value as T;
+              },
+              async getAlarm(): Promise<number | null> {
+                operations.push("getAlarm");
+                return Date.now() + 10_000;
+              },
+              async deleteAlarm(): Promise<void> {
+                operations.push("deleteAlarm");
+                deleteAlarmCalls += 1;
+              }
+            },
+            async blockConcurrencyWhile<T>(closure: () => Promise<T>): Promise<T> {
+              operations.push("blockConcurrencyWhile");
+              return closure();
+            }
+          };
+
+          const stub = new WorkerRpc(id, state);
+
+          const loaded = await runInDurableObject(stub as any, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed state-like object");
+            }
+            return receivedState.blockConcurrencyWhile?.(async () => {
+              await receivedState.storage.put?.("count", 99);
+              return receivedState.storage.get?.<number>("count");
+            });
+          });
+
+          await expect(runDurableObjectAlarm(stub as any)).resolves.toBe(true);
+          expect(loaded).toBe(99);
+          expect(deleteAlarmCalls).toBe(1);
+          expect(operations).toEqual([
+            "blockConcurrencyWhile",
+            "put:count",
+            "get:count",
+            "getAlarm",
+            "deleteAlarm"
+          ]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-do-state-like.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal scheduled dispatch alias", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

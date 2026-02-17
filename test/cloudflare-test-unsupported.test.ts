@@ -699,6 +699,35 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(alarmCalls).toBe(1);
   });
 
+  test("runDurableObjectAlarm returns true when scheduled alarm exists but no alarm method is present", async () => {
+    let deleteAlarmCalls = 0;
+    const state = createDurableObjectState({
+      alarmValue: Date.now() + 5_000,
+      onDeleteAlarm: () => {
+        deleteAlarmCalls += 1;
+      }
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("scheduled-alarm-no-method")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "scheduled-alarm-no-method"
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+        delete (stub as Record<string, unknown>).alarm;
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+      }
+    );
+
+    expect(deleteAlarmCalls).toBe(1);
+  });
+
   test("runDurableObjectAlarm still invokes alarm when deleteAlarm is unavailable", async () => {
     let alarmCalls = 0;
     const state = createDurableObjectState({

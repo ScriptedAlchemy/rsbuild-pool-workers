@@ -329,6 +329,7 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
         }
       };
 
+      let hadScheduledAlarm = false;
       if (isDurableObjectStateLike(state)) {
         const getAlarm = state.storage.getAlarm;
         const deleteAlarm = state.storage.deleteAlarm;
@@ -337,6 +338,7 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
           if (scheduledAlarm === null || scheduledAlarm === undefined) {
             return false;
           }
+          hadScheduledAlarm = true;
           if (typeof deleteAlarm === "function") {
             await deleteAlarm.call(state.storage);
           }
@@ -345,7 +347,7 @@ export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promis
 
       const alarmMethod = resolveAlarmMethod();
       if (typeof alarmMethod !== "function") {
-        return false;
+        return hadScheduledAlarm;
       }
 
       try {

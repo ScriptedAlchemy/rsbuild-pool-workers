@@ -200,8 +200,9 @@ import {
     - designators must resolve to a non-empty class name (`"ClassName"` or object-form `className`)
     - empty/whitespace-only `scriptName` and `unsafeUniqueKey` values are ignored during namespace key resolution
   - `runInDurableObject` for RPC-callable instance methods (for classes extending `DurableObject`) on stubs from the same worker isolate
-  - `runDurableObjectAlarm` for same-isolate stubs with callable `alarm()` methods (follows the same same-isolate fallback checks as `runInDurableObject`)
+  - `runDurableObjectAlarm` for same-isolate Durable Object stubs (follows the same same-isolate fallback checks as `runInDurableObject`)
     - when a state-like `ctx/state` object is exposed on the stub, scheduled-alarm semantics are respected (`getAlarm()`/best-effort `deleteAlarm()`), returning `false` when no alarm is scheduled
+    - with state-like scheduling data, a scheduled alarm still returns `true` even if no callable `alarm()` method is exposed
     - when no state-like object is exposed, it falls back to direct `alarm()` invocation behavior
   - Durable Object helper validations intentionally reject plain-object lookalikes (for stubs/namespaces, constructor identity must be non-`Object` and method contracts must match)
   - same-worker Durable Object enforcement prefers runtime durable-object binding metadata and excludes bindings configured with non-empty `scriptName` values (remote worker designators), with fallback to environment namespace discovery if metadata lookup is unavailable/invalid (mismatched stubs still reject)

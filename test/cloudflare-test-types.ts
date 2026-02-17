@@ -225,12 +225,79 @@ type _DurableObjectStateLikeContract = Assert<
     DurableObjectStateLike
   >
 >;
+type _DurableObjectStateLikeConcurrencyContract = Assert<
+  IsAssignable<
+    {
+      storage: {};
+      blockConcurrencyWhile: <Result = unknown>(
+        _closure: () => Promise<Result>
+      ) => Promise<Result>;
+      waitUntil: (_promise: Promise<unknown>) => void;
+      id: DurableObjectIdLike;
+    },
+    DurableObjectStateLike
+  >
+>;
 type _DurableObjectStateLikePartialStorageContract = Assert<
   IsAssignable<
     {
       storage: {};
     },
     DurableObjectStateLike
+  >
+>;
+type _DurableObjectStorageGetContract = Assert<
+  IsAssignable<
+    NonNullable<DurableObjectStateLike["storage"]["get"]>,
+    {
+      <Value = unknown>(
+        _key: string
+      ): Promise<Value | undefined> | Value | undefined;
+      <Value = unknown>(
+        _keys: string[]
+      ): Promise<Map<string, Value>> | Map<string, Value>;
+    }
+  >
+>;
+type _DurableObjectStoragePutContract = Assert<
+  IsAssignable<
+    NonNullable<DurableObjectStateLike["storage"]["put"]>,
+    {
+      (
+        _key: string,
+        _value: unknown
+      ): Promise<void> | void;
+      (
+        _entries: Record<string, unknown> | Map<string, unknown>
+      ): Promise<void> | void;
+    }
+  >
+>;
+type _DurableObjectStorageListContract = Assert<
+  IsAssignable<
+    NonNullable<DurableObjectStateLike["storage"]["list"]>,
+    <Value = unknown>() => Promise<Map<string, Value>> | Map<string, Value>
+  >
+>;
+type _DurableObjectStorageDeleteContract = Assert<
+  IsAssignable<
+    NonNullable<DurableObjectStateLike["storage"]["delete"]>,
+    {
+      (_key: string): Promise<boolean> | boolean;
+      (_keys: string[]): Promise<number> | number;
+    }
+  >
+>;
+type _DurableObjectStorageDeleteAllContract = Assert<
+  IsAssignable<
+    NonNullable<DurableObjectStateLike["storage"]["deleteAll"]>,
+    () => Promise<void> | void
+  >
+>;
+type _DurableObjectStorageSetAlarmContract = Assert<
+  IsAssignable<
+    NonNullable<DurableObjectStateLike["storage"]["setAlarm"]>,
+    (_scheduledTime: number | Date) => Promise<void> | void
   >
 >;
 

@@ -459,6 +459,115 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject callbacks can use extended storage helpers when state is exposed", async () => {
+    const callSequence: string[] = [];
+    const put = (async (
+      keyOrEntries: string | Record<string, unknown> | Map<string, unknown>,
+      valueOrOptions?: unknown
+    ) => {
+      if (typeof keyOrEntries === "string") {
+        callSequence.push(`put:${keyOrEntries}:${String(valueOrOptions)}`);
+        return;
+      }
+      const entries =
+        keyOrEntries instanceof Map
+          ? Array.from(keyOrEntries.entries())
+          : Object.entries(keyOrEntries);
+      callSequence.push(`put-many:${entries.length}`);
+    }) as NonNullable<DurableObjectStateLike["storage"]["put"]>;
+
+    const get = (async <Value = unknown>(
+      keyOrKeys: string | string[]
+    ): Promise<Value | Map<string, Value> | undefined> => {
+      if (typeof keyOrKeys === "string") {
+        callSequence.push(`get:${keyOrKeys}`);
+        return `value-for-${keyOrKeys}` as Value;
+      }
+      callSequence.push(`get-many:${keyOrKeys.length}`);
+      return new Map<string, Value>(keyOrKeys.map((key) => [key, `value-for-${key}` as Value]));
+    }) as NonNullable<DurableObjectStateLike["storage"]["get"]>;
+
+    const deleteEntry = (async (
+      keyOrKeys: string | string[]
+    ): Promise<boolean | number> => {
+      if (typeof keyOrKeys === "string") {
+        callSequence.push(`delete:${keyOrKeys}`);
+        return true;
+      }
+      callSequence.push(`delete-many:${keyOrKeys.length}`);
+      return keyOrKeys.length;
+    }) as NonNullable<DurableObjectStateLike["storage"]["delete"]>;
+
+    const state: DurableObjectStateLike = {
+      storage: {
+        put,
+        get,
+        async list<Value = unknown>() {
+          callSequence.push("list");
+          return new Map<string, Value>([["entry", "listed-value" as Value]]);
+        },
+        delete: deleteEntry,
+        async deleteAll() {
+          callSequence.push("deleteAll");
+        },
+        async setAlarm(_scheduledTime: number | Date) {
+          callSequence.push("setAlarm");
+        }
+      },
+      async blockConcurrencyWhile(closure) {
+        callSequence.push("blockConcurrencyWhile");
+        return closure();
+      }
+    };
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-storage-methods-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-storage-methods-id"
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed DurableObjectStateLike");
+            }
+            await receivedState.blockConcurrencyWhile?.(async () => {
+              await receivedState.storage.put?.("alpha", "one");
+              const loaded = await receivedState.storage.get?.<string>("alpha");
+              const listed = await receivedState.storage.list?.<string>();
+              await receivedState.storage.delete?.("alpha");
+              await receivedState.storage.deleteAll?.();
+              await receivedState.storage.setAlarm?.(Date.now() + 1_000);
+
+              return {
+                loaded,
+                listed: listed ? Array.from(listed.values()) : []
+              };
+            });
+
+            return "ok";
+          })
+        ).resolves.toBe("ok");
+      }
+    );
+
+    expect(callSequence).toEqual([
+      "blockConcurrencyWhile",
+      "put:alpha:one",
+      "get:alpha",
+      "list",
+      "delete:alpha",
+      "deleteAll",
+      "setAlarm"
+    ]);
+  });
+
   test("runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace", async () => {
     let alarmCalls = 0;
 

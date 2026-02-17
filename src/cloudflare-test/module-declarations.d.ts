@@ -35,14 +35,87 @@ declare module "cloudflare:test" {
     readonly __kind: "DurableObjectStatePlaceholder";
   }
 
+  export interface DurableObjectStorageGetOptionsLike {
+    allowConcurrency?: boolean;
+    noCache?: boolean;
+  }
+
+  export interface DurableObjectStoragePutOptionsLike {
+    allowConcurrency?: boolean;
+    allowUnconfirmed?: boolean;
+    noCache?: boolean;
+  }
+
+  export interface DurableObjectStorageDeleteOptionsLike {
+    allowConcurrency?: boolean;
+    noCache?: boolean;
+  }
+
+  export interface DurableObjectStorageListOptionsLike {
+    start?: string;
+    startAfter?: string;
+    end?: string;
+    prefix?: string;
+    reverse?: boolean;
+    limit?: number;
+    allowConcurrency?: boolean;
+    noCache?: boolean;
+  }
+
   export interface DurableObjectStorageLike {
+    get?: {
+      <Value = unknown>(
+        key: string,
+        options?: DurableObjectStorageGetOptionsLike
+      ): Promise<Value | undefined> | Value | undefined;
+      <Value = unknown>(
+        keys: string[],
+        options?: DurableObjectStorageGetOptionsLike
+      ): Promise<Map<string, Value>> | Map<string, Value>;
+    };
+    put?: {
+      (
+        key: string,
+        value: unknown,
+        options?: DurableObjectStoragePutOptionsLike
+      ): Promise<void> | void;
+      (
+        entries: Record<string, unknown> | Map<string, unknown>,
+        options?: DurableObjectStoragePutOptionsLike
+      ): Promise<void> | void;
+    };
+    list?: <Value = unknown>(
+      options?: DurableObjectStorageListOptionsLike
+    ) => Promise<Map<string, Value>> | Map<string, Value>;
+    delete?: {
+      (
+        key: string,
+        options?: DurableObjectStorageDeleteOptionsLike
+      ): Promise<boolean> | boolean;
+      (
+        keys: string[],
+        options?: DurableObjectStorageDeleteOptionsLike
+      ): Promise<number> | number;
+    };
+    deleteAll?: (options?: DurableObjectStorageDeleteOptionsLike) => Promise<void> | void;
+    transaction?: <Result = unknown>(
+      closure: (txn: DurableObjectStorageLike) => Promise<Result> | Result
+    ) => Promise<Result> | Result;
+    sync?: () => Promise<void> | void;
+    setAlarm?: (scheduledTime: number | Date) => Promise<void> | void;
     getAlarm?: () => Promise<number | null> | number | null;
     deleteAlarm?: () => Promise<void> | void;
+    sql?: unknown;
     [key: string]: unknown;
   }
 
   export interface DurableObjectStateLike {
     storage: DurableObjectStorageLike;
+    blockConcurrencyWhile?: <Result = unknown>(
+      closure: () => Promise<Result>
+    ) => Promise<Result>;
+    waitUntil?: (promise: Promise<unknown>) => void;
+    id?: DurableObjectIdLike;
     [key: string]: unknown;
   }
 

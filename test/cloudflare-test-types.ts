@@ -21,6 +21,8 @@ import type {
   createScheduledController,
   getQueueResult,
   listDurableObjectIds,
+  introspectWorkflow,
+  introspectWorkflowInstance,
   runDurableObjectAlarm,
   runInDurableObject,
   waitOnExecutionContext
@@ -29,6 +31,8 @@ import type {
   createExecutionContext as createExecutionContextInternal,
   env as envInternal,
   fetchMock as fetchMockInternal,
+  introspectWorkflow as introspectWorkflowInternal,
+  introspectWorkflowInstance as introspectWorkflowInstanceInternal,
   listDurableObjectIds as listDurableObjectIdsInternal,
   runInDurableObject as runInDurableObjectInternal,
   SELF as SELFInternal
@@ -44,6 +48,8 @@ type CreatedScheduledController = ReturnType<typeof createScheduledController>;
 type CreatedMessageBatch = ReturnType<typeof createMessageBatch<{ value: number }>>;
 type GetQueueResultReturn = ReturnType<typeof getQueueResult>;
 type ListDurableObjectIdsReturn = ReturnType<typeof listDurableObjectIds>;
+type IntrospectWorkflowReturn = ReturnType<typeof introspectWorkflow>;
+type IntrospectWorkflowInstanceReturn = ReturnType<typeof introspectWorkflowInstance>;
 type RunDurableObjectAlarmReturn = ReturnType<typeof runDurableObjectAlarm>;
 type RunInDurableObjectReturn = ReturnType<
   typeof runInDurableObject<{ ping: () => Promise<string> }, string>
@@ -57,6 +63,8 @@ type CreatedPagesEventContext = ReturnType<
   typeof createPagesEventContext<{ userId: string }>
 >;
 type ListDurableObjectIdsInternalReturn = ReturnType<typeof listDurableObjectIdsInternal>;
+type IntrospectWorkflowInternalReturn = ReturnType<typeof introspectWorkflowInternal>;
+type IntrospectWorkflowInstanceInternalReturn = ReturnType<typeof introspectWorkflowInstanceInternal>;
 type RunInDurableObjectInternalReturn = ReturnType<
   typeof runInDurableObjectInternal<{ ping: () => Promise<string> }, string>
 >;
@@ -122,6 +130,18 @@ type _RunDurableObjectAlarmContract = Assert<
     Promise<boolean>
   >
 >;
+type _IntrospectWorkflowContract = Assert<
+  IsAssignable<
+    IntrospectWorkflowReturn,
+    Promise<never>
+  >
+>;
+type _IntrospectWorkflowInstanceContract = Assert<
+  IsAssignable<
+    IntrospectWorkflowInstanceReturn,
+    Promise<never>
+  >
+>;
 type _RunInDurableObjectContract = Assert<
   IsAssignable<
     RunInDurableObjectReturn,
@@ -171,6 +191,18 @@ type _ListDurableObjectIdsInternalContract = Assert<
   IsAssignable<
     ListDurableObjectIdsInternalReturn,
     Promise<DurableObjectIdLike[]>
+  >
+>;
+type _IntrospectWorkflowInternalContract = Assert<
+  IsAssignable<
+    IntrospectWorkflowInternalReturn,
+    Promise<never>
+  >
+>;
+type _IntrospectWorkflowInstanceInternalContract = Assert<
+  IsAssignable<
+    IntrospectWorkflowInstanceInternalReturn,
+    Promise<never>
   >
 >;
 type _RunInDurableObjectInternalContract = Assert<

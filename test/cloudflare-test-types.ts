@@ -34,6 +34,7 @@ import type {
   introspectWorkflow as introspectWorkflowInternal,
   introspectWorkflowInstance as introspectWorkflowInstanceInternal,
   listDurableObjectIds as listDurableObjectIdsInternal,
+  runDurableObjectAlarm as runDurableObjectAlarmInternal,
   runInDurableObject as runInDurableObjectInternal,
   SELF as SELFInternal
 } from "cloudflare:test-internal";
@@ -112,6 +113,7 @@ type CreatedPagesEventContext = ReturnType<
 type ListDurableObjectIdsInternalReturn = ReturnType<typeof listDurableObjectIdsInternal>;
 type IntrospectWorkflowInternalReturn = ReturnType<typeof introspectWorkflowInternal>;
 type IntrospectWorkflowInstanceInternalReturn = ReturnType<typeof introspectWorkflowInstanceInternal>;
+type RunDurableObjectAlarmInternalReturn = ReturnType<typeof runDurableObjectAlarmInternal>;
 type RunInDurableObjectInternalReturn = ReturnType<
   typeof runInDurableObjectInternal<{ ping: () => Promise<string> }, string>
 >;
@@ -372,6 +374,12 @@ type _IntrospectWorkflowInstanceInternalContract = Assert<
   IsAssignable<
     IntrospectWorkflowInstanceInternalReturn,
     Promise<never>
+  >
+>;
+type _RunDurableObjectAlarmInternalContract = Assert<
+  IsAssignable<
+    RunDurableObjectAlarmInternalReturn,
+    Promise<boolean>
   >
 >;
 type _RunInDurableObjectInternalContract = Assert<

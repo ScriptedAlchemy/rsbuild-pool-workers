@@ -1290,6 +1290,96 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports runInDurableObject state props on synthetic stubs", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-state-props.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-state-props.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test";
+
+        test("callbacks can read exposed state props", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+
+          class WorkerRpc {
+            id: unknown;
+            ctx: unknown;
+            constructor(stubId: unknown, state: unknown) {
+              this.id = stubId;
+              this.ctx = state;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const stub = new WorkerRpc(id, {
+            props: {
+              tenant: "acme",
+              featureFlag: true
+            },
+            storage: {}
+          });
+
+          const props = await runInDurableObject(stub as any, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed state-like object");
+            }
+            return receivedState.props;
+          });
+
+          expect(props).toEqual({
+            tenant: "acme",
+            featureFlag: true
+          });
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-state-props.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal runtime alias", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

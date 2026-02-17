@@ -732,6 +732,40 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject callbacks can read state container when exposed", async () => {
+    const state: DurableObjectStateLike = {
+      container: {
+        env: "test"
+      },
+      storage: {}
+    };
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-container-helper-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-container-helper-id"
+        ) as DurableObjectStubLike & {
+          state?: DurableObjectStateLike;
+        };
+        stub.state = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed DurableObjectStateLike");
+            }
+            return receivedState.container;
+          })
+        ).resolves.toEqual({
+          env: "test"
+        });
+      }
+    );
+  });
+
   test("runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace", async () => {
     let alarmCalls = 0;
 

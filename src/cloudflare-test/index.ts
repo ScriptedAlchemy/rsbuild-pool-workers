@@ -113,13 +113,13 @@ export interface DurableObjectTransactionLike {
     ): Promise<Map<string, Value>> | Map<string, Value>;
   };
   put?: {
-    (
+    <Value = unknown>(
       key: string,
-      value: unknown,
+      value: Value,
       options?: DurableObjectStoragePutOptionsLike
     ): Promise<void> | void;
-    (
-      entries: Record<string, unknown>,
+    <Value = unknown>(
+      entries: Record<string, Value>,
       options?: DurableObjectStoragePutOptionsLike
     ): Promise<void> | void;
   };
@@ -162,13 +162,13 @@ export interface DurableObjectStorageLike {
     ): Promise<Map<string, Value>> | Map<string, Value>;
   };
   put?: {
-    (
+    <Value = unknown>(
       key: string,
-      value: unknown,
+      value: Value,
       options?: DurableObjectStoragePutOptionsLike
     ): Promise<void> | void;
-    (
-      entries: Record<string, unknown>,
+    <Value = unknown>(
+      entries: Record<string, Value>,
       options?: DurableObjectStoragePutOptionsLike
     ): Promise<void> | void;
   };

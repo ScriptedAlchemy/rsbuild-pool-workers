@@ -292,12 +292,12 @@ type _DurableObjectStoragePutContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectStateLike["storage"]["put"]>,
     {
-      (
+      <Value = unknown>(
         _key: string,
-        _value: unknown
+        _value: Value
       ): Promise<void> | void;
-      (
-        _entries: Record<string, unknown>
+      <Value = unknown>(
+        _entries: Record<string, Value>
       ): Promise<void> | void;
     }
   >
@@ -385,12 +385,12 @@ type _DurableObjectTransactionPutContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectTransactionLike["put"]>,
     {
-      (
+      <Value = unknown>(
         _key: string,
-        _value: unknown
+        _value: Value
       ): Promise<void> | void;
-      (
-        _entries: Record<string, unknown>
+      <Value = unknown>(
+        _entries: Record<string, Value>
       ): Promise<void> | void;
     }
   >

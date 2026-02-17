@@ -212,6 +212,11 @@ declare module "cloudflare:test" {
     [key: string]: unknown;
   }
 
+  type DurableObjectStateFromStub<Stub extends DurableObjectStubLike> =
+    [Extract<Stub extends { ctx?: infer CtxState } ? CtxState : never, DurableObjectStateLike>] extends [never]
+      ? Extract<Stub extends { state?: infer StateValue } ? StateValue : never, DurableObjectStateLike>
+      : Extract<Stub extends { ctx?: infer CtxState } ? CtxState : never, DurableObjectStateLike>;
+
   export interface D1Migration {
     name: string;
     queries: string[];
@@ -316,11 +321,9 @@ declare module "cloudflare:test" {
     callback: (
       _instance: _ObjectType,
       _state:
-        Stub extends { ctx: DurableObjectStateLike }
-          ? DurableObjectStateLike
-          : Stub extends { state: DurableObjectStateLike }
-            ? DurableObjectStateLike
-            : DurableObjectStateLike | DurableObjectStatePlaceholder
+        DurableObjectStateFromStub<Stub> extends never
+          ? DurableObjectStateLike | DurableObjectStatePlaceholder
+          : DurableObjectStateFromStub<Stub>
     ) => _ReturnType | Promise<_ReturnType>
   ): Promise<_ReturnType>;
   export function runDurableObjectAlarm(stub: DurableObjectStubLike): Promise<boolean>;

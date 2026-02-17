@@ -236,6 +236,11 @@ export interface WorkflowLike {
   [key: string]: unknown;
 }
 
+type DurableObjectStateFromStub<Stub extends DurableObjectStubLike> =
+  [Extract<Stub extends { ctx?: infer CtxState } ? CtxState : never, DurableObjectStateLike>] extends [never]
+    ? Extract<Stub extends { state?: infer StateValue } ? StateValue : never, DurableObjectStateLike>
+    : Extract<Stub extends { ctx?: infer CtxState } ? CtxState : never, DurableObjectStateLike>;
+
 function isDurableObjectStub(value: unknown): value is DurableObjectStubLike {
   const id = (value as { id?: unknown } | null)?.id;
   const constructorName =
@@ -476,11 +481,9 @@ export async function runInDurableObject<
   callback: (
     _instance: _ObjectType,
     _state:
-      Stub extends { ctx: DurableObjectStateLike }
-        ? DurableObjectStateLike
-        : Stub extends { state: DurableObjectStateLike }
-          ? DurableObjectStateLike
-          : DurableObjectStateLike | DurableObjectStatePlaceholder
+      DurableObjectStateFromStub<Stub> extends never
+        ? DurableObjectStateLike | DurableObjectStatePlaceholder
+        : DurableObjectStateFromStub<Stub>
   ) => _ReturnType | Promise<_ReturnType>
 ): Promise<_ReturnType> {
   if (!isDurableObjectStub(stub)) {

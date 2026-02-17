@@ -74,6 +74,19 @@ type RunInDurableObjectStateStateCallback = Parameters<
   >
 >[1];
 type RunInDurableObjectStateStateParam = Parameters<RunInDurableObjectStateStateCallback>[1];
+type TypedCtxStateLike = DurableObjectStateLike<{ featureFlag: boolean }> & {
+  marker: "ctx-state";
+};
+type RunInDurableObjectTypedCtxStateCallback = Parameters<
+  typeof runInDurableObject<
+    { ping: () => Promise<string> },
+    string,
+    DurableObjectStubLike & { ctx: TypedCtxStateLike }
+  >
+>[1];
+type RunInDurableObjectTypedCtxStateParam = Parameters<
+  RunInDurableObjectTypedCtxStateCallback
+>[1];
 type WaitOnExecutionContextReturn = ReturnType<typeof waitOnExecutionContext>;
 type CreatedPagesEventContext = ReturnType<
   typeof createPagesEventContext<{ userId: string }>
@@ -107,6 +120,16 @@ type RunInDurableObjectInternalStateStateCallback = Parameters<
 >[1];
 type RunInDurableObjectInternalStateStateParam = Parameters<
   RunInDurableObjectInternalStateStateCallback
+>[1];
+type RunInDurableObjectInternalTypedCtxStateCallback = Parameters<
+  typeof runInDurableObjectInternal<
+    { ping: () => Promise<string> },
+    string,
+    DurableObjectStubLike & { ctx: TypedCtxStateLike }
+  >
+>[1];
+type RunInDurableObjectInternalTypedCtxStateParam = Parameters<
+  RunInDurableObjectInternalTypedCtxStateCallback
 >[1];
 
 type _ExecutionContextContract = Assert<
@@ -218,6 +241,18 @@ type _RunInDurableObjectStateStateParamReverseContract = Assert<
   IsAssignable<
     DurableObjectStateLike,
     RunInDurableObjectStateStateParam
+  >
+>;
+type _RunInDurableObjectTypedCtxStateParamContract = Assert<
+  IsAssignable<
+    RunInDurableObjectTypedCtxStateParam,
+    TypedCtxStateLike
+  >
+>;
+type _RunInDurableObjectTypedCtxStateParamReverseContract = Assert<
+  IsAssignable<
+    TypedCtxStateLike,
+    RunInDurableObjectTypedCtxStateParam
   >
 >;
 type _RunInDurableObjectCtxStateOverloadContract = Assert<
@@ -347,6 +382,18 @@ type _RunInDurableObjectInternalStateStateParamReverseContract = Assert<
   IsAssignable<
     DurableObjectStateLike,
     RunInDurableObjectInternalStateStateParam
+  >
+>;
+type _RunInDurableObjectInternalTypedCtxStateParamContract = Assert<
+  IsAssignable<
+    RunInDurableObjectInternalTypedCtxStateParam,
+    TypedCtxStateLike
+  >
+>;
+type _RunInDurableObjectInternalTypedCtxStateParamReverseContract = Assert<
+  IsAssignable<
+    TypedCtxStateLike,
+    RunInDurableObjectInternalTypedCtxStateParam
   >
 >;
 type _EnvInternalReadonlyContract = Assert<

@@ -766,6 +766,108 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject callbacks can use websocket helper methods when exposed", async () => {
+    const websocketRef = {} as WebSocket;
+    const callSequence: string[] = [];
+
+    const state: DurableObjectStateLike = {
+      storage: {},
+      acceptWebSocket(ws, tags) {
+        callSequence.push(`acceptWebSocket:${String(tags?.join(","))}`);
+        expect(ws).toBe(websocketRef);
+      },
+      getWebSockets(tag) {
+        callSequence.push(`getWebSockets:${String(tag)}`);
+        return [websocketRef];
+      },
+      setWebSocketAutoResponse(pair) {
+        callSequence.push(`setWebSocketAutoResponse:${String((pair as { request?: string } | undefined)?.request)}`);
+      },
+      getWebSocketAutoResponse() {
+        callSequence.push("getWebSocketAutoResponse");
+        return { request: "ping", response: "pong" };
+      },
+      getWebSocketAutoResponseTimestamp(ws) {
+        callSequence.push("getWebSocketAutoResponseTimestamp");
+        expect(ws).toBe(websocketRef);
+        return new Date(123);
+      },
+      setHibernatableWebSocketEventTimeout(timeoutMs) {
+        callSequence.push(`setHibernatableWebSocketEventTimeout:${String(timeoutMs)}`);
+      },
+      getHibernatableWebSocketEventTimeout() {
+        callSequence.push("getHibernatableWebSocketEventTimeout");
+        return 25;
+      },
+      getTags(ws) {
+        callSequence.push("getTags");
+        expect(ws).toBe(websocketRef);
+        return ["alpha", "beta"];
+      },
+      abort(reason) {
+        callSequence.push(`abort:${String(reason)}`);
+      }
+    };
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-websocket-helper-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-websocket-helper-id"
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed DurableObjectStateLike");
+            }
+
+            receivedState.acceptWebSocket?.(websocketRef, ["alpha"]);
+            const sockets = receivedState.getWebSockets?.("alpha");
+            receivedState.setWebSocketAutoResponse?.({ request: "ping", response: "pong" });
+            const autoResponse = receivedState.getWebSocketAutoResponse?.();
+            const timestamp = receivedState.getWebSocketAutoResponseTimestamp?.(websocketRef);
+            receivedState.setHibernatableWebSocketEventTimeout?.(25);
+            const timeout = receivedState.getHibernatableWebSocketEventTimeout?.();
+            const tags = receivedState.getTags?.(websocketRef);
+            receivedState.abort?.("test-abort");
+
+            return {
+              socketCount: sockets?.length ?? 0,
+              autoResponse,
+              timestamp: timestamp?.getTime(),
+              timeout,
+              tags
+            };
+          })
+        ).resolves.toEqual({
+          socketCount: 1,
+          autoResponse: { request: "ping", response: "pong" },
+          timestamp: 123,
+          timeout: 25,
+          tags: ["alpha", "beta"]
+        });
+      }
+    );
+
+    expect(callSequence).toEqual([
+      "acceptWebSocket:alpha",
+      "getWebSockets:alpha",
+      "setWebSocketAutoResponse:ping",
+      "getWebSocketAutoResponse",
+      "getWebSocketAutoResponseTimestamp",
+      "setHibernatableWebSocketEventTimeout:25",
+      "getHibernatableWebSocketEventTimeout",
+      "getTags",
+      "abort:test-abort"
+    ]);
+  });
+
   test("runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace", async () => {
     let alarmCalls = 0;
 

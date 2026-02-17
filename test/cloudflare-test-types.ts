@@ -243,6 +243,23 @@ type _DurableObjectStateLikeConcurrencyContract = Assert<
     DurableObjectStateLike
   >
 >;
+type _DurableObjectStateLikeWebSocketContract = Assert<
+  IsAssignable<
+    {
+      storage: {};
+      acceptWebSocket: (_ws: WebSocket, _tags?: string[]) => void;
+      getWebSockets: (_tag?: string) => WebSocket[];
+      setWebSocketAutoResponse: (_pair?: unknown) => void;
+      getWebSocketAutoResponse: () => unknown | null;
+      getWebSocketAutoResponseTimestamp: (_ws: WebSocket) => Date | null;
+      setHibernatableWebSocketEventTimeout: (_timeoutMs?: number) => void;
+      getHibernatableWebSocketEventTimeout: () => number | null;
+      getTags: (_ws: WebSocket) => string[];
+      abort: (_reason?: string) => void;
+    },
+    DurableObjectStateLike
+  >
+>;
 type _DurableObjectStateLikePartialStorageContract = Assert<
   IsAssignable<
     {

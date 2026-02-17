@@ -5068,6 +5068,7 @@ export default defineConfig({
       "runInDurableObject callbacks can access state id and waitUntil helpers when exposed",
       "runInDurableObject callbacks can read state props when exposed",
       "runInDurableObject callbacks can read state container when exposed",
+      "runInDurableObject callbacks can use websocket helper methods when exposed",
       "runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace",
       "runDurableObjectAlarm falls back to env namespace discovery if same-isolate metadata helper throws",
       "runDurableObjectAlarm falls back when metadata helper returns non-array value",

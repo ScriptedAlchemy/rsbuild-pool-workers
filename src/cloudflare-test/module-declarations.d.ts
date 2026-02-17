@@ -191,6 +191,15 @@ declare module "cloudflare:test" {
     ) => Promise<Result>;
     waitUntil?: (promise: Promise<unknown>) => void;
     id?: DurableObjectIdLike;
+    acceptWebSocket?: (ws: WebSocket, tags?: string[]) => void;
+    getWebSockets?: (tag?: string) => WebSocket[];
+    setWebSocketAutoResponse?: (pair?: unknown) => void;
+    getWebSocketAutoResponse?: () => unknown | null;
+    getWebSocketAutoResponseTimestamp?: (ws: WebSocket) => Date | null;
+    setHibernatableWebSocketEventTimeout?: (timeoutMs?: number) => void;
+    getHibernatableWebSocketEventTimeout?: () => number | null;
+    getTags?: (ws: WebSocket) => string[];
+    abort?: (reason?: string) => void;
     [key: string]: unknown;
   }
 

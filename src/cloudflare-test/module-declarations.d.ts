@@ -307,11 +307,20 @@ declare module "cloudflare:test" {
     env?: Record<string, unknown>;
   }): PagesEventContext<T>;
 
-  export function runInDurableObject<_ObjectType, _ReturnType>(
-    stub: DurableObjectStubLike,
+  export function runInDurableObject<
+    _ObjectType,
+    _ReturnType,
+    Stub extends DurableObjectStubLike = DurableObjectStubLike
+  >(
+    stub: Stub,
     callback: (
       _instance: _ObjectType,
-      _state: DurableObjectStateLike | DurableObjectStatePlaceholder
+      _state:
+        Stub extends { ctx: DurableObjectStateLike }
+          ? DurableObjectStateLike
+          : Stub extends { state: DurableObjectStateLike }
+            ? DurableObjectStateLike
+            : DurableObjectStateLike | DurableObjectStatePlaceholder
     ) => _ReturnType | Promise<_ReturnType>
   ): Promise<_ReturnType>;
   export function runDurableObjectAlarm(stub: DurableObjectStubLike): Promise<boolean>;

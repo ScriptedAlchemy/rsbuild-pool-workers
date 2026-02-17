@@ -467,11 +467,20 @@ export const fetchMock = new Proxy(
   }
 ) as MockAgent;
 
-export async function runInDurableObject<_ObjectType, _ReturnType>(
-  stub: DurableObjectStubLike,
+export async function runInDurableObject<
+  _ObjectType,
+  _ReturnType,
+  Stub extends DurableObjectStubLike = DurableObjectStubLike
+>(
+  stub: Stub,
   callback: (
     _instance: _ObjectType,
-    _state: DurableObjectStateLike | DurableObjectStatePlaceholder
+    _state:
+      Stub extends { ctx: DurableObjectStateLike }
+        ? DurableObjectStateLike
+        : Stub extends { state: DurableObjectStateLike }
+          ? DurableObjectStateLike
+          : DurableObjectStateLike | DurableObjectStatePlaceholder
   ) => _ReturnType | Promise<_ReturnType>
 ): Promise<_ReturnType> {
   if (!isDurableObjectStub(stub)) {
@@ -488,7 +497,7 @@ export async function runInDurableObject<_ObjectType, _ReturnType>(
 
   const runtimeState = getDurableObjectStateFromStub(stub);
   if (runtimeState) {
-    return callback(stub as _ObjectType, runtimeState);
+    return callback(stub as unknown as _ObjectType, runtimeState as never);
   }
 
   // We can execute RPC-callable instance methods from the same isolate in Rstest,
@@ -512,7 +521,7 @@ export async function runInDurableObject<_ObjectType, _ReturnType>(
     }
   );
 
-  return callback(stub as _ObjectType, statePlaceholder);
+  return callback(stub as unknown as _ObjectType, statePlaceholder as never);
 }
 
 export async function runDurableObjectAlarm(stub: DurableObjectStubLike): Promise<boolean> {

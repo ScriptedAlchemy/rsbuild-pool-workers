@@ -160,6 +160,30 @@ type _RunInDurableObjectStateParamReverseContract = Assert<
     RunInDurableObjectStateParam
   >
 >;
+type _RunInDurableObjectCtxStateOverloadContract = Assert<
+  IsAssignable<
+    typeof runInDurableObject,
+    <_ObjectType, _ReturnType>(
+      _stub: DurableObjectStubLike & { ctx: DurableObjectStateLike },
+      _callback: (
+        _instance: _ObjectType,
+        _state: DurableObjectStateLike
+      ) => _ReturnType | Promise<_ReturnType>
+    ) => Promise<_ReturnType>
+  >
+>;
+type _RunInDurableObjectStateStateOverloadContract = Assert<
+  IsAssignable<
+    typeof runInDurableObject,
+    <_ObjectType, _ReturnType>(
+      _stub: DurableObjectStubLike & { state: DurableObjectStateLike },
+      _callback: (
+        _instance: _ObjectType,
+        _state: DurableObjectStateLike
+      ) => _ReturnType | Promise<_ReturnType>
+    ) => Promise<_ReturnType>
+  >
+>;
 type _WaitOnExecutionContextContract = Assert<
   IsAssignable<
     WaitOnExecutionContextReturn,
@@ -209,6 +233,30 @@ type _RunInDurableObjectInternalContract = Assert<
   IsAssignable<
     RunInDurableObjectInternalReturn,
     Promise<string>
+  >
+>;
+type _RunInDurableObjectInternalCtxStateOverloadContract = Assert<
+  IsAssignable<
+    typeof runInDurableObjectInternal,
+    <_ObjectType, _ReturnType>(
+      _stub: DurableObjectStubLike & { ctx: DurableObjectStateLike },
+      _callback: (
+        _instance: _ObjectType,
+        _state: DurableObjectStateLike
+      ) => _ReturnType | Promise<_ReturnType>
+    ) => Promise<_ReturnType>
+  >
+>;
+type _RunInDurableObjectInternalStateStateOverloadContract = Assert<
+  IsAssignable<
+    typeof runInDurableObjectInternal,
+    <_ObjectType, _ReturnType>(
+      _stub: DurableObjectStubLike & { state: DurableObjectStateLike },
+      _callback: (
+        _instance: _ObjectType,
+        _state: DurableObjectStateLike
+      ) => _ReturnType | Promise<_ReturnType>
+    ) => Promise<_ReturnType>
   >
 >;
 type _RunInDurableObjectInternalStateParamContract = Assert<

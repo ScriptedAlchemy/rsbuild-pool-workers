@@ -1501,6 +1501,88 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports runDurableObjectAlarm with same-isolate synthetic stubs end-to-end", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-alarm-synthetic-stub.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-alarm-synthetic-stub.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runDurableObjectAlarm } from "cloudflare:test";
+
+        test("synthetic same-isolate stubs execute alarm and no-alarm branches", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+
+          class WorkerRpc {
+            id: unknown;
+            constructor(stubId: unknown) {
+              this.id = stubId;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+            async alarm() {}
+          }
+
+          class WorkerRpcNoAlarm {
+            id: unknown;
+            constructor(stubId: unknown) {
+              this.id = stubId;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          await expect(runDurableObjectAlarm(new WorkerRpc(id) as any)).resolves.toBe(true);
+          await expect(runDurableObjectAlarm(new WorkerRpcNoAlarm(id) as any)).resolves.toBe(false);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-alarm-synthetic-stub.test.ts");
+    });
+  });
+
   test("lists Durable Object IDs via cloudflare:test helper", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

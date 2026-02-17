@@ -437,6 +437,30 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject ignores non-state-like ctx values and falls back to stub.state", async () => {
+    const state = createDurableObjectState();
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-invalid-ctx-fallback-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-invalid-ctx-fallback-id"
+        ) as DurableObjectStubLike & {
+          ctx?: unknown;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = { notStorage: true };
+        stub.state = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => receivedState)
+        ).resolves.toBe(state);
+      }
+    );
+  });
+
   test("runInDurableObject falls back to state placeholder when ctx getter throws and no state fallback exists", async () => {
     await withRuntimeBindings(
       {
@@ -1041,6 +1065,38 @@ describe("unsupported cloudflare:test APIs", () => {
 
     expect(alarmCalls).toBe(0);
     expect(deleteAlarmCalls).toBe(0);
+  });
+
+  test("runDurableObjectAlarm ignores non-state-like ctx values and uses stub.state alarm metadata", async () => {
+    let alarmCalls = 0;
+    const state = createDurableObjectState({
+      alarmValue: Date.now() + 30_000
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("alarm-invalid-ctx-fallback-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "alarm-invalid-ctx-fallback-id",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: unknown;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = { storage: null };
+        stub.state = state;
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+      }
+    );
+
+    expect(alarmCalls).toBe(1);
   });
 
   test("runDurableObjectAlarm returns false when state storage getAlarm resolves to undefined", async () => {

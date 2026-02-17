@@ -5065,6 +5065,7 @@ export default defineConfig({
       "runInDurableObject tolerates throwing ctx getters when state fallback exists",
       "runInDurableObject falls back to state placeholder when ctx getter throws and no state fallback exists",
       "runInDurableObject callbacks can use extended storage helpers when state is exposed",
+      "runInDurableObject callbacks can access state id and waitUntil helpers when exposed",
       "runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace",
       "runDurableObjectAlarm falls back to env namespace discovery if same-isolate metadata helper throws",
       "runDurableObjectAlarm falls back when metadata helper returns non-array value",

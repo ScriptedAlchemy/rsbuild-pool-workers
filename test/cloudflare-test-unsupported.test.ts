@@ -650,6 +650,52 @@ describe("unsupported cloudflare:test APIs", () => {
     ]);
   });
 
+  test("runInDurableObject callbacks can access state id and waitUntil helpers when exposed", async () => {
+    let waitUntilCalls = 0;
+    let waitUntilSettled = false;
+
+    const state: DurableObjectStateLike = {
+      id: {
+        toString: () => "state-id-helper-value"
+      },
+      storage: {},
+      waitUntil(promise) {
+        waitUntilCalls += 1;
+        void promise.then(() => {
+          waitUntilSettled = true;
+        });
+      }
+    };
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-id-helper-value")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-id-helper-value"
+        ) as DurableObjectStubLike & {
+          state?: DurableObjectStateLike;
+        };
+        stub.state = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed DurableObjectStateLike");
+            }
+            receivedState.waitUntil?.(Promise.resolve());
+            return receivedState.id?.toString();
+          })
+        ).resolves.toBe("state-id-helper-value");
+      }
+    );
+
+    await Promise.resolve();
+    expect(waitUntilCalls).toBe(1);
+    expect(waitUntilSettled).toBe(true);
+  });
+
   test("runDurableObjectAlarm executes alarm method when stub belongs to same-worker namespace", async () => {
     let alarmCalls = 0;
 

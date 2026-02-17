@@ -28,15 +28,21 @@ import type {
   waitOnExecutionContext
 } from "cloudflare:test";
 import type {
+  applyD1Migrations as applyD1MigrationsInternal,
+  createMessageBatch as createMessageBatchInternal,
+  createPagesEventContext as createPagesEventContextInternal,
+  createScheduledController as createScheduledControllerInternal,
   createExecutionContext as createExecutionContextInternal,
   env as envInternal,
   fetchMock as fetchMockInternal,
+  getQueueResult as getQueueResultInternal,
   introspectWorkflow as introspectWorkflowInternal,
   introspectWorkflowInstance as introspectWorkflowInstanceInternal,
   listDurableObjectIds as listDurableObjectIdsInternal,
   runDurableObjectAlarm as runDurableObjectAlarmInternal,
   runInDurableObject as runInDurableObjectInternal,
-  SELF as SELFInternal
+  SELF as SELFInternal,
+  waitOnExecutionContext as waitOnExecutionContextInternal
 } from "cloudflare:test-internal";
 import { WORKERS_RSBUILD_PLUGIN_NAME } from "../src/index";
 
@@ -46,8 +52,11 @@ type IsAssignable<T, U> = [T] extends [U] ? true : false;
 type CreatedExecutionContext = ReturnType<typeof createExecutionContext>;
 type CreatedExecutionContextInternal = ReturnType<typeof createExecutionContextInternal>;
 type CreatedScheduledController = ReturnType<typeof createScheduledController>;
+type CreatedScheduledControllerInternal = ReturnType<typeof createScheduledControllerInternal>;
 type CreatedMessageBatch = ReturnType<typeof createMessageBatch<{ value: number }>>;
+type CreatedMessageBatchInternal = ReturnType<typeof createMessageBatchInternal<{ value: number }>>;
 type GetQueueResultReturn = ReturnType<typeof getQueueResult>;
+type GetQueueResultInternalReturn = ReturnType<typeof getQueueResultInternal>;
 type ListDurableObjectIdsReturn = ReturnType<typeof listDurableObjectIds>;
 type IntrospectWorkflowReturn = ReturnType<typeof introspectWorkflow>;
 type IntrospectWorkflowInstanceReturn = ReturnType<typeof introspectWorkflowInstance>;
@@ -107,9 +116,14 @@ type RunInDurableObjectOptionalCtxStateParam = Parameters<
   RunInDurableObjectOptionalCtxStateCallback
 >[1];
 type WaitOnExecutionContextReturn = ReturnType<typeof waitOnExecutionContext>;
+type WaitOnExecutionContextInternalReturn = ReturnType<typeof waitOnExecutionContextInternal>;
 type CreatedPagesEventContext = ReturnType<
   typeof createPagesEventContext<{ userId: string }>
 >;
+type CreatedPagesEventContextInternal = ReturnType<
+  typeof createPagesEventContextInternal<{ userId: string }>
+>;
+type ApplyD1MigrationsInternalReturn = ReturnType<typeof applyD1MigrationsInternal>;
 type ListDurableObjectIdsInternalReturn = ReturnType<typeof listDurableObjectIdsInternal>;
 type IntrospectWorkflowInternalReturn = ReturnType<typeof introspectWorkflowInternal>;
 type IntrospectWorkflowInstanceInternalReturn = ReturnType<typeof introspectWorkflowInstanceInternal>;
@@ -205,15 +219,33 @@ type _ScheduledControllerContract = Assert<
     ScheduledController
   >
 >;
+type _ScheduledControllerInternalContract = Assert<
+  IsAssignable<
+    CreatedScheduledControllerInternal,
+    ScheduledController
+  >
+>;
 type _QueueControllerContract = Assert<
   IsAssignable<
     CreatedMessageBatch,
     QueueController<{ value: number }>
   >
 >;
+type _QueueControllerInternalContract = Assert<
+  IsAssignable<
+    CreatedMessageBatchInternal,
+    QueueController<{ value: number }>
+  >
+>;
 type _QueueResultContract = Assert<
   IsAssignable<
     GetQueueResultReturn,
+    Promise<QueueResult>
+  >
+>;
+type _QueueResultInternalContract = Assert<
+  IsAssignable<
+    GetQueueResultInternalReturn,
     Promise<QueueResult>
   >
 >;
@@ -337,10 +369,28 @@ type _WaitOnExecutionContextContract = Assert<
     Promise<void>
   >
 >;
+type _WaitOnExecutionContextInternalContract = Assert<
+  IsAssignable<
+    WaitOnExecutionContextInternalReturn,
+    Promise<void>
+  >
+>;
 type _PagesEventContextContract = Assert<
   IsAssignable<
     CreatedPagesEventContext,
     PagesEventContext<{ userId: string }>
+  >
+>;
+type _PagesEventContextInternalContract = Assert<
+  IsAssignable<
+    CreatedPagesEventContextInternal,
+    PagesEventContext<{ userId: string }>
+  >
+>;
+type _ApplyD1MigrationsInternalContract = Assert<
+  IsAssignable<
+    ApplyD1MigrationsInternalReturn,
+    Promise<void>
   >
 >;
 type _FetchMockInternalContract = Assert<

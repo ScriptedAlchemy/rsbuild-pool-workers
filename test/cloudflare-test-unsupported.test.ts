@@ -1197,6 +1197,89 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(alarmCalls).toBe(1);
   });
 
+  test("runDurableObjectAlarm prefers ctx alarm metadata when both ctx and state expose getAlarm", async () => {
+    let alarmCalls = 0;
+    let stateDeleteAlarmCalls = 0;
+    const fallbackState = createDurableObjectState({
+      alarmValue: Date.now() + 90_000,
+      onDeleteAlarm: () => {
+        stateDeleteAlarmCalls += 1;
+      }
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("alarm-prefer-ctx-state-metadata")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "alarm-prefer-ctx-state-metadata",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = {
+          storage: {
+            async getAlarm() {
+              return null;
+            }
+          }
+        };
+        stub.state = fallbackState;
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(false);
+      }
+    );
+
+    expect(alarmCalls).toBe(0);
+    expect(stateDeleteAlarmCalls).toBe(0);
+  });
+
+  test("runDurableObjectAlarm preserves ctx getAlarm failures when state also exposes alarm metadata", async () => {
+    let alarmCalls = 0;
+    const fallbackState = createDurableObjectState({
+      alarmValue: Date.now() + 95_000
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("alarm-preserve-ctx-getAlarm-error")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "alarm-preserve-ctx-getAlarm-error",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = {
+          storage: {
+            async getAlarm() {
+              throw new Error("ctx-getAlarm-failure");
+            }
+          }
+        };
+        stub.state = fallbackState;
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "ctx-getAlarm-failure"
+        );
+      }
+    );
+
+    expect(alarmCalls).toBe(0);
+  });
+
   test("runDurableObjectAlarm ignores ctx values with throwing storage getters and uses stub.state alarm metadata", async () => {
     let alarmCalls = 0;
     const state = createDurableObjectState({

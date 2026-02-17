@@ -5082,6 +5082,8 @@ export default defineConfig({
       "runDurableObjectAlarm ignores non-state-like ctx values and uses stub.state alarm metadata",
       "runDurableObjectAlarm uses stub.state alarm metadata when ctx lacks getAlarm helper",
       "runDurableObjectAlarm ignores ctx values with throwing storage getters and uses stub.state alarm metadata",
+      "runDurableObjectAlarm prefers ctx alarm metadata when both ctx and state expose getAlarm",
+      "runDurableObjectAlarm preserves ctx getAlarm failures when state also exposes alarm metadata",
       "runDurableObjectAlarm ignores throwing state getters when ctx is state-like",
       "runDurableObjectAlarm returns false when state storage getAlarm resolves to undefined",
       "runDurableObjectAlarm clears alarm before invoking alarm handler when state is available",

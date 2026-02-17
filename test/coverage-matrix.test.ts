@@ -5096,6 +5096,7 @@ export default defineConfig({
       "runDurableObjectAlarm preserves non-reserved errors thrown by alarm invocation",
       "runDurableObjectAlarm returns false when alarm accessor resolves to non-function without schedule metadata",
       "runDurableObjectAlarm returns false before reading alarm accessor when state reports no scheduled alarm",
+      "runDurableObjectAlarm returns false before reading non-reserved alarm accessors when no alarm is scheduled",
       "listDurableObjectIds validates namespace argument type",
       "listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity",
       "listDurableObjectIds accepts class-based namespaces with non-Object constructors",

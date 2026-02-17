@@ -1264,6 +1264,38 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm returns false before reading non-reserved alarm accessors when no alarm is scheduled", async () => {
+    let alarmAccessorReads = 0;
+    const state = createDurableObjectState({
+      alarmValue: null
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-no-schedule-non-reserved-accessor")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-no-schedule-non-reserved-accessor"
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            alarmAccessorReads += 1;
+            throw new Error("alarm-accessor-non-reserved-error");
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(false);
+      }
+    );
+
+    expect(alarmAccessorReads).toBe(0);
+  });
+
   test("listDurableObjectIds validates namespace argument type", async () => {
     await withRuntimeBindings(
       {},

@@ -759,6 +759,79 @@ describe("unsupported cloudflare:test APIs", () => {
     expect(alarmCalls).toBe(1);
   });
 
+  test("runDurableObjectAlarm propagates deleteAlarm failures before invoking alarm", async () => {
+    let alarmCalls = 0;
+    const state: DurableObjectStateLike = {
+      storage: {
+        async getAlarm() {
+          return Date.now() + 30_000;
+        },
+        async deleteAlarm() {
+          throw new Error("deleteAlarm-failure");
+        }
+      }
+    };
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("delete-alarm-failure-id")
+      },
+      async () => {
+        const stubWithAlarm = createDurableObjectStub(
+          "delete-alarm-failure-id",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stubWithAlarm.ctx = state;
+
+        await expect(runDurableObjectAlarm(stubWithAlarm)).rejects.toThrow(
+          "deleteAlarm-failure"
+        );
+      }
+    );
+
+    expect(alarmCalls).toBe(0);
+  });
+
+  test("runDurableObjectAlarm propagates getAlarm failures before evaluating alarm accessor", async () => {
+    let alarmAccessorReads = 0;
+    const state: DurableObjectStateLike = {
+      storage: {
+        async getAlarm() {
+          throw new Error("getAlarm-failure");
+        }
+      }
+    };
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("get-alarm-failure-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("get-alarm-failure-id") as DurableObjectStubLike & {
+          ctx?: DurableObjectStateLike;
+        };
+        stub.ctx = state;
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            alarmAccessorReads += 1;
+            throw new Error("alarm-accessor-should-not-run");
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow("getAlarm-failure");
+      }
+    );
+
+    expect(alarmAccessorReads).toBe(0);
+  });
+
   test("runDurableObjectAlarm translates reserved alarm RPC errors into actionable guidance", async () => {
     await withRuntimeBindings(
       {

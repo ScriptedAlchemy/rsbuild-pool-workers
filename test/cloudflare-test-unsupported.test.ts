@@ -6,6 +6,7 @@ import {
   type DurableObjectIdLike,
   type DurableObjectNamespaceLike,
   type DurableObjectStateLike,
+  type DurableObjectTransactionLike,
   type DurableObjectStubLike,
   introspectWorkflow,
   introspectWorkflowInstance,
@@ -512,6 +513,64 @@ describe("unsupported cloudflare:test APIs", () => {
         },
         async setAlarm(_scheduledTime: number | Date) {
           callSequence.push("setAlarm");
+        },
+        async getAlarm(options?: { allowConcurrency?: boolean }) {
+          callSequence.push(`getAlarm:${String(options?.allowConcurrency ?? false)}`);
+          return Date.now() + 1_000;
+        },
+        async deleteAlarm(options?: { allowConcurrency?: boolean }) {
+          callSequence.push(`deleteAlarm:${String(options?.allowConcurrency ?? false)}`);
+        },
+        async transaction<Result = unknown>(
+          closure: (txn: DurableObjectTransactionLike) => Promise<Result> | Result
+        ): Promise<Result> {
+          callSequence.push("transaction");
+          const txnPut = (async (
+            keyOrEntries: string | Record<string, unknown>,
+            valueOrOptions?: unknown
+          ) => {
+            if (typeof keyOrEntries === "string") {
+              callSequence.push(`txn.put:${keyOrEntries}:${String(valueOrOptions)}`);
+              return;
+            }
+            callSequence.push(`txn.put-many:${Object.keys(keyOrEntries).length}`);
+          }) as NonNullable<DurableObjectTransactionLike["put"]>;
+          const txnGet = (async <Value = unknown>(
+            keyOrKeys: string | string[]
+          ): Promise<Value | Map<string, Value> | undefined> => {
+            if (typeof keyOrKeys === "string") {
+              callSequence.push(`txn.get:${keyOrKeys}`);
+              return `txn-value-for-${keyOrKeys}` as Value;
+            }
+            callSequence.push(`txn.get-many:${keyOrKeys.length}`);
+            return new Map<string, Value>(
+              keyOrKeys.map((key) => [key, `txn-value-for-${key}` as Value])
+            );
+          }) as NonNullable<DurableObjectTransactionLike["get"]>;
+          const txn: DurableObjectTransactionLike = {
+            put: txnPut,
+            get: txnGet,
+            rollback() {
+              callSequence.push("txn.rollback");
+            }
+          };
+          return closure(txn);
+        },
+        transactionSync<Result = unknown>(closure: () => Result): Result {
+          callSequence.push("transactionSync");
+          return closure();
+        },
+        getCurrentBookmark() {
+          callSequence.push("getCurrentBookmark");
+          return "bookmark-1";
+        },
+        getBookmarkForTime(_timestamp: number | Date) {
+          callSequence.push("getBookmarkForTime");
+          return "bookmark-at-time";
+        },
+        onNextSessionRestoreBookmark(_bookmark: string) {
+          callSequence.push("onNextSessionRestoreBookmark");
+          return "bookmark-restored";
         }
       },
       async blockConcurrencyWhile(closure) {
@@ -544,6 +603,21 @@ describe("unsupported cloudflare:test APIs", () => {
               await receivedState.storage.delete?.("alpha");
               await receivedState.storage.deleteAll?.();
               await receivedState.storage.setAlarm?.(Date.now() + 1_000);
+              await receivedState.storage.getAlarm?.({ allowConcurrency: true });
+              await receivedState.storage.deleteAlarm?.({ allowConcurrency: true });
+              await receivedState.storage.transaction?.(async (txn) => {
+                await txn.put?.("beta", 2);
+                await txn.get?.("beta");
+                txn.rollback?.();
+                return "txn-result";
+              });
+              receivedState.storage.transactionSync?.(() => {
+                callSequence.push("transactionSync.closure");
+                return "sync-result";
+              });
+              await receivedState.storage.getCurrentBookmark?.();
+              await receivedState.storage.getBookmarkForTime?.(Date.now());
+              await receivedState.storage.onNextSessionRestoreBookmark?.("bookmark-1");
 
               return {
                 loaded,
@@ -564,7 +638,18 @@ describe("unsupported cloudflare:test APIs", () => {
       "list",
       "delete:alpha",
       "deleteAll",
-      "setAlarm"
+      "setAlarm",
+      "getAlarm:true",
+      "deleteAlarm:true",
+      "transaction",
+      "txn.put:beta:2",
+      "txn.get:beta",
+      "txn.rollback",
+      "transactionSync",
+      "transactionSync.closure",
+      "getCurrentBookmark",
+      "getBookmarkForTime",
+      "onNextSessionRestoreBookmark"
     ]);
   });
 

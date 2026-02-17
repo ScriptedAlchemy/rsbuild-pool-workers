@@ -51,6 +51,15 @@ declare module "cloudflare:test" {
     noCache?: boolean;
   }
 
+  export interface DurableObjectStorageGetAlarmOptionsLike {
+    allowConcurrency?: boolean;
+  }
+
+  export interface DurableObjectStorageSetAlarmOptionsLike {
+    allowConcurrency?: boolean;
+    allowUnconfirmed?: boolean;
+  }
+
   export interface DurableObjectStorageListOptionsLike {
     start?: string;
     startAfter?: string;
@@ -60,6 +69,55 @@ declare module "cloudflare:test" {
     limit?: number;
     allowConcurrency?: boolean;
     noCache?: boolean;
+  }
+
+  export interface DurableObjectTransactionLike {
+    get?: {
+      <Value = unknown>(
+        key: string,
+        options?: DurableObjectStorageGetOptionsLike
+      ): Promise<Value | undefined> | Value | undefined;
+      <Value = unknown>(
+        keys: string[],
+        options?: DurableObjectStorageGetOptionsLike
+      ): Promise<Map<string, Value>> | Map<string, Value>;
+    };
+    put?: {
+      (
+        key: string,
+        value: unknown,
+        options?: DurableObjectStoragePutOptionsLike
+      ): Promise<void> | void;
+      (
+        entries: Record<string, unknown>,
+        options?: DurableObjectStoragePutOptionsLike
+      ): Promise<void> | void;
+    };
+    list?: <Value = unknown>(
+      options?: DurableObjectStorageListOptionsLike
+    ) => Promise<Map<string, Value>> | Map<string, Value>;
+    delete?: {
+      (
+        key: string,
+        options?: DurableObjectStorageDeleteOptionsLike
+      ): Promise<boolean> | boolean;
+      (
+        keys: string[],
+        options?: DurableObjectStorageDeleteOptionsLike
+      ): Promise<number> | number;
+    };
+    rollback?: () => void;
+    getAlarm?: (
+      options?: DurableObjectStorageGetAlarmOptionsLike
+    ) => Promise<number | null> | number | null;
+    setAlarm?: (
+      scheduledTime: number | Date,
+      options?: DurableObjectStorageSetAlarmOptionsLike
+    ) => Promise<void> | void;
+    deleteAlarm?: (
+      options?: DurableObjectStorageSetAlarmOptionsLike
+    ) => Promise<void> | void;
+    [key: string]: unknown;
   }
 
   export interface DurableObjectStorageLike {
@@ -99,13 +157,27 @@ declare module "cloudflare:test" {
     };
     deleteAll?: (options?: DurableObjectStorageDeleteOptionsLike) => Promise<void> | void;
     transaction?: <Result = unknown>(
-      closure: (txn: DurableObjectStorageLike) => Promise<Result> | Result
+      closure: (txn: DurableObjectTransactionLike) => Promise<Result> | Result
     ) => Promise<Result> | Result;
+    transactionSync?: <Result = unknown>(
+      closure: () => Result
+    ) => Result;
     sync?: () => Promise<void> | void;
-    setAlarm?: (scheduledTime: number | Date) => Promise<void> | void;
-    getAlarm?: () => Promise<number | null> | number | null;
-    deleteAlarm?: () => Promise<void> | void;
+    getAlarm?: (
+      options?: DurableObjectStorageGetAlarmOptionsLike
+    ) => Promise<number | null> | number | null;
+    setAlarm?: (
+      scheduledTime: number | Date,
+      options?: DurableObjectStorageSetAlarmOptionsLike
+    ) => Promise<void> | void;
+    deleteAlarm?: (
+      options?: DurableObjectStorageSetAlarmOptionsLike
+    ) => Promise<void> | void;
     sql?: unknown;
+    kv?: unknown;
+    getCurrentBookmark?: () => Promise<string> | string;
+    getBookmarkForTime?: (timestamp: number | Date) => Promise<string> | string;
+    onNextSessionRestoreBookmark?: (bookmark: string) => Promise<string> | string;
     [key: string]: unknown;
   }
 

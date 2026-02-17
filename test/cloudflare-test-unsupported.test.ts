@@ -1019,6 +1019,27 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm preserves alarm errors using unicode apostrophe negation wording", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("alarm-unicode-negation-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("alarm-unicode-negation-id");
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            throw new TypeError("alarm isn’t a reserved method in this context");
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "alarm isn’t a reserved method in this context"
+        );
+      }
+    );
+  });
+
   test("runDurableObjectAlarm preserves non-reserved string throws from alarm accessor", async () => {
     await withRuntimeBindings(
       {

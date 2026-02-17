@@ -269,6 +269,12 @@ type _DurableObjectStateLikePartialStorageContract = Assert<
     DurableObjectStateLike
   >
 >;
+type _DurableObjectStateLikeGenericPropsContract = Assert<
+  IsAssignable<
+    DurableObjectStateLike<{ featureFlag: boolean }>["props"],
+    { featureFlag: boolean } | undefined
+  >
+>;
 type _DurableObjectStorageGetContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectStateLike["storage"]["get"]>,

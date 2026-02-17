@@ -187,9 +187,9 @@ declare module "cloudflare:test" {
     [key: string]: unknown;
   }
 
-  export interface DurableObjectStateLike {
+  export interface DurableObjectStateLike<Props = unknown> {
     storage: DurableObjectStorageLike;
-    props?: unknown;
+    props?: Props;
     container?: unknown;
     blockConcurrencyWhile?: <Result = unknown>(
       closure: () => Promise<Result>

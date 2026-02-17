@@ -1713,6 +1713,105 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports cloudflare:test-internal state id and waitUntil helpers on synthetic stubs", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-do-state-id-waituntil.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "internal-do-state-id-waituntil.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test-internal";
+
+        test("internal alias callbacks can read state id and call waitUntil", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          let waitUntilCalls = 0;
+          let waitUntilSettled = false;
+
+          class WorkerRpc {
+            id: unknown;
+            state: unknown;
+            constructor(stubId: unknown, stubState: unknown) {
+              this.id = stubId;
+              this.state = stubState;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const state = {
+            id: {
+              toString: () => "internal-state-id-value"
+            },
+            storage: {},
+            waitUntil(promise: Promise<unknown>) {
+              waitUntilCalls += 1;
+              void promise.then(() => {
+                waitUntilSettled = true;
+              });
+            }
+          };
+
+          const stub = new WorkerRpc(id, state);
+          const result = await runInDurableObject(stub as any, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed state-like object");
+            }
+            receivedState.waitUntil?.(Promise.resolve("done"));
+            return receivedState.id?.toString();
+          });
+
+          await Promise.resolve();
+          expect(result).toBe("internal-state-id-value");
+          expect(waitUntilCalls).toBe(1);
+          expect(waitUntilSettled).toBe(true);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-do-state-id-waituntil.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal scheduled dispatch alias", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

@@ -602,7 +602,7 @@ describe("unsupported cloudflare:test APIs", () => {
           callSequence.push(`deleteAlarm:${String(options?.allowConcurrency ?? false)}`);
         },
         async transaction<Result = unknown>(
-          closure: (txn: DurableObjectTransactionLike) => Promise<Result> | Result
+          closure: (txn: DurableObjectTransactionLike) => Promise<Result>
         ): Promise<Result> {
           callSequence.push("transaction");
           const txnPut = (async (
@@ -634,21 +634,21 @@ describe("unsupported cloudflare:test APIs", () => {
               callSequence.push("txn.rollback");
             }
           };
-          return closure(txn);
+          return await closure(txn);
         },
         transactionSync<Result = unknown>(closure: () => Result): Result {
           callSequence.push("transactionSync");
           return closure();
         },
-        getCurrentBookmark() {
+        async getCurrentBookmark(): Promise<string> {
           callSequence.push("getCurrentBookmark");
           return "bookmark-1";
         },
-        getBookmarkForTime(_timestamp: number | Date) {
+        async getBookmarkForTime(_timestamp: number | Date): Promise<string> {
           callSequence.push("getBookmarkForTime");
           return "bookmark-at-time";
         },
-        onNextSessionRestoreBookmark(_bookmark: string) {
+        async onNextSessionRestoreBookmark(_bookmark: string): Promise<string> {
           callSequence.push("onNextSessionRestoreBookmark");
           return "bookmark-restored";
         }

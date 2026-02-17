@@ -281,10 +281,10 @@ type _DurableObjectStorageGetContract = Assert<
     {
       <Value = unknown>(
         _key: string
-      ): Promise<Value | undefined> | Value | undefined;
+      ): Promise<Value | undefined>;
       <Value = unknown>(
         _keys: string[]
-      ): Promise<Map<string, Value>> | Map<string, Value>;
+      ): Promise<Map<string, Value>>;
     }
   >
 >;
@@ -295,32 +295,32 @@ type _DurableObjectStoragePutContract = Assert<
       <Value = unknown>(
         _key: string,
         _value: Value
-      ): Promise<void> | void;
+      ): Promise<void>;
       <Value = unknown>(
         _entries: Record<string, Value>
-      ): Promise<void> | void;
+      ): Promise<void>;
     }
   >
 >;
 type _DurableObjectStorageListContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectStateLike["storage"]["list"]>,
-    <Value = unknown>() => Promise<Map<string, Value>> | Map<string, Value>
+    <Value = unknown>() => Promise<Map<string, Value>>
   >
 >;
 type _DurableObjectStorageDeleteContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectStateLike["storage"]["delete"]>,
     {
-      (_key: string): Promise<boolean> | boolean;
-      (_keys: string[]): Promise<number> | number;
+      (_key: string): Promise<boolean>;
+      (_keys: string[]): Promise<number>;
     }
   >
 >;
 type _DurableObjectStorageDeleteAllContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectStateLike["storage"]["deleteAll"]>,
-    () => Promise<void> | void
+    () => Promise<void>
   >
 >;
 type _DurableObjectStorageSetAlarmContract = Assert<
@@ -329,7 +329,7 @@ type _DurableObjectStorageSetAlarmContract = Assert<
     (
       _scheduledTime: number | Date,
       _options?: DurableObjectStorageSetAlarmOptionsLike
-    ) => Promise<void> | void
+    ) => Promise<void>
   >
 >;
 type _DurableObjectStorageGetAlarmContract = Assert<
@@ -337,7 +337,7 @@ type _DurableObjectStorageGetAlarmContract = Assert<
     NonNullable<DurableObjectStateLike["storage"]["getAlarm"]>,
     (
       _options?: DurableObjectStorageGetAlarmOptionsLike
-    ) => Promise<number | null> | number | null
+    ) => Promise<number | null>
   >
 >;
 type _DurableObjectStorageDeleteAlarmContract = Assert<
@@ -345,15 +345,15 @@ type _DurableObjectStorageDeleteAlarmContract = Assert<
     NonNullable<DurableObjectStateLike["storage"]["deleteAlarm"]>,
     (
       _options?: DurableObjectStorageSetAlarmOptionsLike
-    ) => Promise<void> | void
+    ) => Promise<void>
   >
 >;
 type _DurableObjectStorageTransactionContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectStateLike["storage"]["transaction"]>,
     <Result = unknown>(
-      _closure: (txn: DurableObjectTransactionLike) => Promise<Result> | Result
-    ) => Promise<Result> | Result
+      _closure: (txn: DurableObjectTransactionLike) => Promise<Result>
+    ) => Promise<Result>
   >
 >;
 type _DurableObjectStorageTransactionSyncContract = Assert<
@@ -365,7 +365,19 @@ type _DurableObjectStorageTransactionSyncContract = Assert<
 type _DurableObjectStorageBookmarkContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectStateLike["storage"]["getCurrentBookmark"]>,
-    () => Promise<string> | string
+    () => Promise<string>
+  >
+>;
+type _DurableObjectStorageBookmarkForTimeContract = Assert<
+  IsAssignable<
+    NonNullable<DurableObjectStateLike["storage"]["getBookmarkForTime"]>,
+    (_timestamp: number | Date) => Promise<string>
+  >
+>;
+type _DurableObjectStorageRestoreBookmarkContract = Assert<
+  IsAssignable<
+    NonNullable<DurableObjectStateLike["storage"]["onNextSessionRestoreBookmark"]>,
+    (_bookmark: string) => Promise<string>
   >
 >;
 type _DurableObjectTransactionGetContract = Assert<
@@ -374,10 +386,10 @@ type _DurableObjectTransactionGetContract = Assert<
     {
       <Value = unknown>(
         _key: string
-      ): Promise<Value | undefined> | Value | undefined;
+      ): Promise<Value | undefined>;
       <Value = unknown>(
         _keys: string[]
-      ): Promise<Map<string, Value>> | Map<string, Value>;
+      ): Promise<Map<string, Value>>;
     }
   >
 >;
@@ -388,10 +400,10 @@ type _DurableObjectTransactionPutContract = Assert<
       <Value = unknown>(
         _key: string,
         _value: Value
-      ): Promise<void> | void;
+      ): Promise<void>;
       <Value = unknown>(
         _entries: Record<string, Value>
-      ): Promise<void> | void;
+      ): Promise<void>;
     }
   >
 >;
@@ -399,8 +411,8 @@ type _DurableObjectTransactionDeleteContract = Assert<
   IsAssignable<
     NonNullable<DurableObjectTransactionLike["delete"]>,
     {
-      (_key: string): Promise<boolean> | boolean;
-      (_keys: string[]): Promise<number> | number;
+      (_key: string): Promise<boolean>;
+      (_keys: string[]): Promise<number>;
     }
   >
 >;
@@ -416,7 +428,7 @@ type _DurableObjectTransactionAlarmContract = Assert<
     (
       _scheduledTime: number | Date,
       _options?: DurableObjectStorageSetAlarmOptionsLike
-    ) => Promise<void> | void
+    ) => Promise<void>
   >
 >;
 type _DurableObjectTransactionGetAlarmContract = Assert<
@@ -424,7 +436,7 @@ type _DurableObjectTransactionGetAlarmContract = Assert<
     NonNullable<DurableObjectTransactionLike["getAlarm"]>,
     (
       _options?: DurableObjectStorageGetAlarmOptionsLike
-    ) => Promise<number | null> | number | null
+    ) => Promise<number | null>
   >
 >;
 type _DurableObjectTransactionDeleteAlarmContract = Assert<
@@ -432,7 +444,7 @@ type _DurableObjectTransactionDeleteAlarmContract = Assert<
     NonNullable<DurableObjectTransactionLike["deleteAlarm"]>,
     (
       _options?: DurableObjectStorageSetAlarmOptionsLike
-    ) => Promise<void> | void
+    ) => Promise<void>
   >
 >;
 

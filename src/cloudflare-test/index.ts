@@ -106,47 +106,47 @@ export interface DurableObjectTransactionLike {
     <Value = unknown>(
       key: string,
       options?: DurableObjectStorageGetOptionsLike
-    ): Promise<Value | undefined> | Value | undefined;
+    ): Promise<Value | undefined>;
     <Value = unknown>(
       keys: string[],
       options?: DurableObjectStorageGetOptionsLike
-    ): Promise<Map<string, Value>> | Map<string, Value>;
+    ): Promise<Map<string, Value>>;
   };
   put?: {
     <Value = unknown>(
       key: string,
       value: Value,
       options?: DurableObjectStoragePutOptionsLike
-    ): Promise<void> | void;
+    ): Promise<void>;
     <Value = unknown>(
       entries: Record<string, Value>,
       options?: DurableObjectStoragePutOptionsLike
-    ): Promise<void> | void;
+    ): Promise<void>;
   };
   list?: <Value = unknown>(
     options?: DurableObjectStorageListOptionsLike
-  ) => Promise<Map<string, Value>> | Map<string, Value>;
+  ) => Promise<Map<string, Value>>;
   delete?: {
     (
       key: string,
       options?: DurableObjectStorageDeleteOptionsLike
-    ): Promise<boolean> | boolean;
+    ): Promise<boolean>;
     (
       keys: string[],
       options?: DurableObjectStorageDeleteOptionsLike
-    ): Promise<number> | number;
+    ): Promise<number>;
   };
   rollback?: () => void;
   getAlarm?: (
     options?: DurableObjectStorageGetAlarmOptionsLike
-  ) => Promise<number | null> | number | null;
+  ) => Promise<number | null>;
   setAlarm?: (
     scheduledTime: number | Date,
     options?: DurableObjectStorageSetAlarmOptionsLike
-  ) => Promise<void> | void;
+  ) => Promise<void>;
   deleteAlarm?: (
     options?: DurableObjectStorageSetAlarmOptionsLike
-  ) => Promise<void> | void;
+  ) => Promise<void>;
   [key: string]: unknown;
 }
 
@@ -155,59 +155,59 @@ export interface DurableObjectStorageLike {
     <Value = unknown>(
       key: string,
       options?: DurableObjectStorageGetOptionsLike
-    ): Promise<Value | undefined> | Value | undefined;
+    ): Promise<Value | undefined>;
     <Value = unknown>(
       keys: string[],
       options?: DurableObjectStorageGetOptionsLike
-    ): Promise<Map<string, Value>> | Map<string, Value>;
+    ): Promise<Map<string, Value>>;
   };
   put?: {
     <Value = unknown>(
       key: string,
       value: Value,
       options?: DurableObjectStoragePutOptionsLike
-    ): Promise<void> | void;
+    ): Promise<void>;
     <Value = unknown>(
       entries: Record<string, Value>,
       options?: DurableObjectStoragePutOptionsLike
-    ): Promise<void> | void;
+    ): Promise<void>;
   };
   list?: <Value = unknown>(
     options?: DurableObjectStorageListOptionsLike
-  ) => Promise<Map<string, Value>> | Map<string, Value>;
+  ) => Promise<Map<string, Value>>;
   delete?: {
     (
       key: string,
       options?: DurableObjectStorageDeleteOptionsLike
-    ): Promise<boolean> | boolean;
+    ): Promise<boolean>;
     (
       keys: string[],
       options?: DurableObjectStorageDeleteOptionsLike
-    ): Promise<number> | number;
+    ): Promise<number>;
   };
-  deleteAll?: (options?: DurableObjectStorageDeleteOptionsLike) => Promise<void> | void;
+  deleteAll?: (options?: DurableObjectStorageDeleteOptionsLike) => Promise<void>;
   transaction?: <Result = unknown>(
-    closure: (txn: DurableObjectTransactionLike) => Promise<Result> | Result
-  ) => Promise<Result> | Result;
+    closure: (txn: DurableObjectTransactionLike) => Promise<Result>
+  ) => Promise<Result>;
   transactionSync?: <Result = unknown>(
     closure: () => Result
   ) => Result;
-  sync?: () => Promise<void> | void;
+  sync?: () => Promise<void>;
   getAlarm?: (
     options?: DurableObjectStorageGetAlarmOptionsLike
-  ) => Promise<number | null> | number | null;
+  ) => Promise<number | null>;
   setAlarm?: (
     scheduledTime: number | Date,
     options?: DurableObjectStorageSetAlarmOptionsLike
-  ) => Promise<void> | void;
+  ) => Promise<void>;
   deleteAlarm?: (
     options?: DurableObjectStorageSetAlarmOptionsLike
-  ) => Promise<void> | void;
+  ) => Promise<void>;
   sql?: unknown;
   kv?: unknown;
-  getCurrentBookmark?: () => Promise<string> | string;
-  getBookmarkForTime?: (timestamp: number | Date) => Promise<string> | string;
-  onNextSessionRestoreBookmark?: (bookmark: string) => Promise<string> | string;
+  getCurrentBookmark?: () => Promise<string>;
+  getBookmarkForTime?: (timestamp: number | Date) => Promise<string>;
+  onNextSessionRestoreBookmark?: (bookmark: string) => Promise<string>;
   [key: string]: unknown;
 }
 

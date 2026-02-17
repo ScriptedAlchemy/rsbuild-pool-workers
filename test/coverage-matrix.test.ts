@@ -5169,6 +5169,8 @@ export default defineConfig({
       "keeps cloudflare:test env bindings read-only",
       "surfaces actionable error when workflow introspection helpers are used",
       "surfaces actionable error when workflow introspection helpers are used via cloudflare:test-internal",
+      "surfaces type errors for workflow introspection helper arguments",
+      "surfaces type errors for workflow introspection helper arguments via cloudflare:test-internal",
       "surfaces actionable error when runInDurableObject state is accessed",
       "surfaces actionable error when runInDurableObject state is accessed via cloudflare:test-internal",
       "surfaces actionable error when runDurableObjectAlarm is used with runtime stubs",

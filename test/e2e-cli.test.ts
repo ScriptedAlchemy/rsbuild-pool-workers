@@ -4045,6 +4045,110 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces type errors for workflow introspection helper arguments", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./workflow-introspection-type-errors.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "workflow-introspection-type-errors.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { introspectWorkflow, introspectWorkflowInstance } from "cloudflare:test";
+
+        test("workflow helper argument validation errors are explicit", async () => {
+          await expect(
+            introspectWorkflow(null as unknown as Record<string, unknown>)
+          ).rejects.toThrow(
+            "Failed to execute 'introspectWorkflow': parameter 1 is not of type 'Workflow'."
+          );
+
+          await expect(
+            introspectWorkflowInstance({}, "" as unknown as string)
+          ).rejects.toThrow(
+            "Failed to execute 'introspectWorkflowInstance': parameter 2 is not of type 'string'."
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("workflow-introspection-type-errors.test.ts");
+    });
+  });
+
+  test("surfaces type errors for workflow introspection helper arguments via cloudflare:test-internal", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./workflow-introspection-type-errors-internal.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts"
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "workflow-introspection-type-errors-internal.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { introspectWorkflow, introspectWorkflowInstance } from "cloudflare:test-internal";
+
+        test("internal alias workflow helper argument validation errors are explicit", async () => {
+          await expect(
+            introspectWorkflow(null as unknown as Record<string, unknown>)
+          ).rejects.toThrow(
+            "Failed to execute 'introspectWorkflow': parameter 1 is not of type 'Workflow'."
+          );
+
+          await expect(
+            introspectWorkflowInstance({}, "" as unknown as string)
+          ).rejects.toThrow(
+            "Failed to execute 'introspectWorkflowInstance': parameter 2 is not of type 'string'."
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("workflow-introspection-type-errors-internal.test.ts");
+    });
+  });
+
   test("surfaces actionable error when runInDurableObject state is accessed", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

@@ -920,6 +920,127 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports runInDurableObject state-like storage helpers on synthetic stubs", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-state-storage-helpers.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-state-storage-helpers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test";
+
+        test("callbacks receive exposed state-like storage helpers", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const calls: string[] = [];
+          let storedValue: unknown;
+
+          class WorkerRpc {
+            id: unknown;
+            ctx: unknown;
+            constructor(stubId: unknown, state: unknown) {
+              this.id = stubId;
+              this.ctx = state;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const state = {
+            storage: {
+              async put(key: string, value: unknown) {
+                calls.push("put:" + key);
+                storedValue = value;
+              },
+              async get<T = unknown>(key: string): Promise<T | undefined> {
+                calls.push("get:" + key);
+                return storedValue as T | undefined;
+              },
+              async list<T = unknown>() {
+                calls.push("list");
+                return new Map<string, T>([["entry", storedValue as T]]);
+              }
+            },
+            async blockConcurrencyWhile<T>(closure: () => Promise<T>): Promise<T> {
+              calls.push("blockConcurrencyWhile");
+              return closure();
+            }
+          };
+
+          const stub = new WorkerRpc(id, state);
+          const result = await runInDurableObject(stub as any, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed state-like object");
+            }
+
+            return receivedState.blockConcurrencyWhile?.(async () => {
+              await receivedState.storage.put?.("count", 123);
+              const loaded = await receivedState.storage.get?.<number>("count");
+              const listed = await receivedState.storage.list?.<number>();
+              return {
+                loaded,
+                listed: listed ? Array.from(listed.values()) : []
+              };
+            });
+          });
+
+          expect(result).toEqual({
+            loaded: 123,
+            listed: [123]
+          });
+          expect(calls).toEqual([
+            "blockConcurrencyWhile",
+            "put:count",
+            "get:count",
+            "list"
+          ]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-state-storage-helpers.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal runtime alias", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

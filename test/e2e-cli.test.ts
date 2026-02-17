@@ -1426,6 +1426,81 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces actionable error when runDurableObjectAlarm is used via cloudflare:test-internal", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-runtime-alarm-internal-guidance.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async alarm() {
+            await this.ctx.storage.put("alarm-ran", "yes");
+          }
+          async fetch(request) {
+            if (new URL(request.url).pathname === "/set") {
+              await this.ctx.storage.setAlarm(Date.now() + 1_000);
+              return new Response("set");
+            }
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          async fetch(_request, env) {
+            const id = env.COUNTER.idFromName("singleton");
+            await env.COUNTER.get(id).fetch("http://localhost/set");
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-runtime-alarm-internal-guidance.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { SELF, env, runDurableObjectAlarm } from "cloudflare:test-internal";
+
+        test("runtime alarm stubs throw actionable guidance through internal alias", async () => {
+          await SELF.fetch("http://localhost/");
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+            get(id: unknown): unknown;
+          };
+          const stub = namespace.get(namespace.idFromName("singleton"));
+
+          await expect(
+            runDurableObjectAlarm(stub as any)
+          ).rejects.toThrow(
+            "runDurableObjectAlarm(): invoking alarm() on runtime Durable Object stubs is not yet supported in Rstest mode."
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-runtime-alarm-internal-guidance.test.ts");
+    });
+  });
+
   test("lists Durable Object IDs via cloudflare:test helper", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

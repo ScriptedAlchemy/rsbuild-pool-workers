@@ -5123,6 +5123,7 @@ export default defineConfig({
       "keeps cloudflare:test env bindings read-only",
       "surfaces actionable error when runInDurableObject state is accessed",
       "surfaces actionable error when runDurableObjectAlarm is used with runtime stubs",
+      "surfaces actionable error when runDurableObjectAlarm is used via cloudflare:test-internal",
       "lists Durable Object IDs via cloudflare:test helper",
       "reports clear error for invalid listDurableObjectIds namespace"
     ]);

@@ -35,6 +35,11 @@ declare module "cloudflare:test" {
     readonly __kind: "DurableObjectStatePlaceholder";
   }
 
+  export interface WebSocketRequestResponsePairLike {
+    request: string;
+    response: string;
+  }
+
   export interface DurableObjectStorageGetOptionsLike {
     allowConcurrency?: boolean;
     noCache?: boolean;
@@ -193,8 +198,8 @@ declare module "cloudflare:test" {
     id?: DurableObjectIdLike;
     acceptWebSocket?: (ws: WebSocket, tags?: string[]) => void;
     getWebSockets?: (tag?: string) => WebSocket[];
-    setWebSocketAutoResponse?: (pair?: unknown) => void;
-    getWebSocketAutoResponse?: () => unknown | null;
+    setWebSocketAutoResponse?: (pair?: WebSocketRequestResponsePairLike) => void;
+    getWebSocketAutoResponse?: () => WebSocketRequestResponsePairLike | null;
     getWebSocketAutoResponseTimestamp?: (ws: WebSocket) => Date | null;
     setHibernatableWebSocketEventTimeout?: (timeoutMs?: number) => void;
     getHibernatableWebSocketEventTimeout?: () => number | null;

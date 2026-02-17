@@ -6,6 +6,7 @@ import type {
   DurableObjectTransactionLike,
   DurableObjectStateLike,
   DurableObjectStatePlaceholder,
+  WebSocketRequestResponsePairLike,
   DurableObjectStubLike,
   ExecutionContext,
   SELF,
@@ -249,8 +250,8 @@ type _DurableObjectStateLikeWebSocketContract = Assert<
       storage: {};
       acceptWebSocket: (_ws: WebSocket, _tags?: string[]) => void;
       getWebSockets: (_tag?: string) => WebSocket[];
-      setWebSocketAutoResponse: (_pair?: unknown) => void;
-      getWebSocketAutoResponse: () => unknown | null;
+      setWebSocketAutoResponse: (_pair?: WebSocketRequestResponsePairLike) => void;
+      getWebSocketAutoResponse: () => WebSocketRequestResponsePairLike | null;
       getWebSocketAutoResponseTimestamp: (_ws: WebSocket) => Date | null;
       setHibernatableWebSocketEventTimeout: (_timeoutMs?: number) => void;
       getHibernatableWebSocketEventTimeout: () => number | null;

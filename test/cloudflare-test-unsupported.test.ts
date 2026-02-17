@@ -1097,6 +1097,49 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm preserves non-reserved errors thrown by alarm invocation", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("non-reserved-invocation-error-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "non-reserved-invocation-error-id",
+          {
+            async alarm() {
+              throw new Error("custom alarm invocation failure");
+            }
+          }
+        );
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "custom alarm invocation failure"
+        );
+      }
+    );
+  });
+
+  test("runDurableObjectAlarm returns false when alarm accessor resolves to non-function without schedule metadata", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("non-function-alarm-no-schedule-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "non-function-alarm-no-schedule-id"
+        ) as DurableObjectStubLike;
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            return 42;
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(false);
+      }
+    );
+  });
+
   test("runDurableObjectAlarm returns false before reading alarm accessor when state reports no scheduled alarm", async () => {
     const state = createDurableObjectState({
       alarmValue: null

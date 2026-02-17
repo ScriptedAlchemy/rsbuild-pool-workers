@@ -5074,6 +5074,7 @@ export default defineConfig({
       "runDurableObjectAlarm returns false when state storage getAlarm resolves to undefined",
       "runDurableObjectAlarm clears alarm before invoking alarm handler when state is available",
       "runDurableObjectAlarm still invokes alarm when deleteAlarm is unavailable",
+      "runDurableObjectAlarm translates reserved alarm RPC errors into actionable guidance",
       "listDurableObjectIds validates namespace argument type",
       "listDurableObjectIds rejects namespace-like objects without DurableObjectNamespace constructor identity",
       "listDurableObjectIds accepts class-based namespaces with non-Object constructors",

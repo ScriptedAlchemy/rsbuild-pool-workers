@@ -114,11 +114,17 @@ function isWorkflowLike(value: unknown): value is WorkflowLike {
 
 function isReservedAlarmRpcError(error: unknown): boolean {
   const message = String((error as { message?: unknown } | undefined)?.message ?? error);
+  const hasReservedPhrase =
+    /reserved method/i.test(message) ||
+    /\bmethod\b.*\breserved\b/i.test(message) ||
+    /\breserved\b.*\bmethod\b/i.test(message);
   const hasNegatedReservedPhrase =
+    /\bnot\s+reserved\b/i.test(message) ||
+    /\bmethod\b.*\bnot\s+reserved\b/i.test(message) ||
     /\bnot\s+a?\s*reserved method/i.test(message) ||
     /\bisn['’]?\s*t\s+a?\s*reserved method/i.test(message);
   return (
-    /reserved method/i.test(message) &&
+    hasReservedPhrase &&
     !hasNegatedReservedPhrase &&
     /\balarm\b/i.test(message)
   );

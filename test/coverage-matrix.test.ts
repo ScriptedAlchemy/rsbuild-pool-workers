@@ -5113,6 +5113,21 @@ export default defineConfig({
     ]);
   });
 
+  test("covers cloudflare helper variants in e2e suite", () => {
+    const titles = readTestTitles(path.join(process.cwd(), "test", "e2e-cli.test.ts"));
+    expectTitleCoverage(titles, [
+      "runs cloudflare:test through defineWorkersConfig end-to-end",
+      "supports SELF.scheduled through cloudflare:test",
+      "supports runInDurableObject for RPC-callable methods",
+      "supports cloudflare:test-internal runtime alias",
+      "keeps cloudflare:test env bindings read-only",
+      "surfaces actionable error when runInDurableObject state is accessed",
+      "surfaces actionable error when runDurableObjectAlarm is used with runtime stubs",
+      "lists Durable Object IDs via cloudflare:test helper",
+      "reports clear error for invalid listDurableObjectIds namespace"
+    ]);
+  });
+
   test("covers config utility and config type mapping suite variants", () => {
     const utilityTitles = readTestTitles(path.join(process.cwd(), "test", "config-utilities.test.ts"));
     expectTitleCoverage(utilityTitles, [

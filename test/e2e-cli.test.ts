@@ -1468,6 +1468,157 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("supports runInDurableObject websocket helpers on synthetic stubs", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-state-websocket-helpers.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-state-websocket-helpers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test";
+
+        test("callbacks can use exposed websocket helpers", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const websocket = {} as WebSocket;
+          const calls: string[] = [];
+
+          class WorkerRpc {
+            id: unknown;
+            ctx: unknown;
+            constructor(stubId: unknown, state: unknown) {
+              this.id = stubId;
+              this.ctx = state;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const stub = new WorkerRpc(id, {
+            storage: {},
+            acceptWebSocket(_ws: WebSocket, tags?: string[]) {
+              calls.push("acceptWebSocket:" + String(tags?.join(",")));
+            },
+            getWebSockets(tag?: string) {
+              calls.push("getWebSockets:" + String(tag));
+              return [websocket];
+            },
+            setWebSocketAutoResponse(pair?: unknown) {
+              calls.push("setWebSocketAutoResponse:" + String((pair as { request?: string } | undefined)?.request));
+            },
+            getWebSocketAutoResponse() {
+              calls.push("getWebSocketAutoResponse");
+              return { request: "ping", response: "pong" };
+            },
+            getWebSocketAutoResponseTimestamp() {
+              calls.push("getWebSocketAutoResponseTimestamp");
+              return new Date(123);
+            },
+            setHibernatableWebSocketEventTimeout(timeoutMs?: number) {
+              calls.push("setHibernatableWebSocketEventTimeout:" + String(timeoutMs));
+            },
+            getHibernatableWebSocketEventTimeout() {
+              calls.push("getHibernatableWebSocketEventTimeout");
+              return 25;
+            },
+            getTags() {
+              calls.push("getTags");
+              return ["alpha", "beta"];
+            },
+            abort(reason?: string) {
+              calls.push("abort:" + String(reason));
+            }
+          });
+
+          const result = await runInDurableObject(stub as any, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed state-like object");
+            }
+
+            receivedState.acceptWebSocket?.(websocket, ["alpha"]);
+            const sockets = receivedState.getWebSockets?.("alpha");
+            receivedState.setWebSocketAutoResponse?.({ request: "ping", response: "pong" });
+            const autoResponse = receivedState.getWebSocketAutoResponse?.();
+            const timestamp = receivedState.getWebSocketAutoResponseTimestamp?.(websocket);
+            receivedState.setHibernatableWebSocketEventTimeout?.(25);
+            const timeout = receivedState.getHibernatableWebSocketEventTimeout?.();
+            const tags = receivedState.getTags?.(websocket);
+            receivedState.abort?.("done");
+
+            return {
+              socketCount: sockets?.length ?? 0,
+              autoResponse,
+              timestamp: timestamp?.getTime(),
+              timeout,
+              tags
+            };
+          });
+
+          expect(result).toEqual({
+            socketCount: 1,
+            autoResponse: { request: "ping", response: "pong" },
+            timestamp: 123,
+            timeout: 25,
+            tags: ["alpha", "beta"]
+          });
+          expect(calls).toEqual([
+            "acceptWebSocket:alpha",
+            "getWebSockets:alpha",
+            "setWebSocketAutoResponse:ping",
+            "getWebSocketAutoResponse",
+            "getWebSocketAutoResponseTimestamp",
+            "setHibernatableWebSocketEventTimeout:25",
+            "getHibernatableWebSocketEventTimeout",
+            "getTags",
+            "abort:done"
+          ]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-state-websocket-helpers.test.ts");
+    });
+  });
+
   test("supports cloudflare:test-internal runtime alias", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
@@ -2077,6 +2228,157 @@ describe("rstest CLI integration", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain('"status": "pass"');
       expect(stdout).toContain("internal-do-state-props.test.ts");
+    });
+  });
+
+  test("supports cloudflare:test-internal websocket helpers on synthetic stubs", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./internal-do-state-websocket-helpers.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "internal-do-state-websocket-helpers.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runInDurableObject } from "cloudflare:test-internal";
+
+        test("internal alias callbacks can use exposed websocket helpers", async () => {
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+          };
+          const id = namespace.idFromName("singleton");
+          const websocket = {} as WebSocket;
+          const calls: string[] = [];
+
+          class WorkerRpc {
+            id: unknown;
+            state: unknown;
+            constructor(stubId: unknown, stubState: unknown) {
+              this.id = stubId;
+              this.state = stubState;
+            }
+            async fetch() {
+              return new Response("ok");
+            }
+          }
+
+          const stub = new WorkerRpc(id, {
+            storage: {},
+            acceptWebSocket(_ws: WebSocket, tags?: string[]) {
+              calls.push("acceptWebSocket:" + String(tags?.join(",")));
+            },
+            getWebSockets(tag?: string) {
+              calls.push("getWebSockets:" + String(tag));
+              return [websocket];
+            },
+            setWebSocketAutoResponse(pair?: unknown) {
+              calls.push("setWebSocketAutoResponse:" + String((pair as { request?: string } | undefined)?.request));
+            },
+            getWebSocketAutoResponse() {
+              calls.push("getWebSocketAutoResponse");
+              return { request: "ping", response: "pong" };
+            },
+            getWebSocketAutoResponseTimestamp() {
+              calls.push("getWebSocketAutoResponseTimestamp");
+              return new Date(321);
+            },
+            setHibernatableWebSocketEventTimeout(timeoutMs?: number) {
+              calls.push("setHibernatableWebSocketEventTimeout:" + String(timeoutMs));
+            },
+            getHibernatableWebSocketEventTimeout() {
+              calls.push("getHibernatableWebSocketEventTimeout");
+              return 50;
+            },
+            getTags() {
+              calls.push("getTags");
+              return ["internal"];
+            },
+            abort(reason?: string) {
+              calls.push("abort:" + String(reason));
+            }
+          });
+
+          const result = await runInDurableObject(stub as any, async (_instance, receivedState) => {
+            if ("__kind" in receivedState) {
+              throw new Error("expected exposed state-like object");
+            }
+
+            receivedState.acceptWebSocket?.(websocket, ["internal"]);
+            const sockets = receivedState.getWebSockets?.("internal");
+            receivedState.setWebSocketAutoResponse?.({ request: "ping", response: "pong" });
+            const autoResponse = receivedState.getWebSocketAutoResponse?.();
+            const timestamp = receivedState.getWebSocketAutoResponseTimestamp?.(websocket);
+            receivedState.setHibernatableWebSocketEventTimeout?.(50);
+            const timeout = receivedState.getHibernatableWebSocketEventTimeout?.();
+            const tags = receivedState.getTags?.(websocket);
+            receivedState.abort?.("internal-done");
+
+            return {
+              socketCount: sockets?.length ?? 0,
+              autoResponse,
+              timestamp: timestamp?.getTime(),
+              timeout,
+              tags
+            };
+          });
+
+          expect(result).toEqual({
+            socketCount: 1,
+            autoResponse: { request: "ping", response: "pong" },
+            timestamp: 321,
+            timeout: 50,
+            tags: ["internal"]
+          });
+          expect(calls).toEqual([
+            "acceptWebSocket:internal",
+            "getWebSockets:internal",
+            "setWebSocketAutoResponse:ping",
+            "getWebSocketAutoResponse",
+            "getWebSocketAutoResponseTimestamp",
+            "setHibernatableWebSocketEventTimeout:50",
+            "getHibernatableWebSocketEventTimeout",
+            "getTags",
+            "abort:internal-done"
+          ]);
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("internal-do-state-websocket-helpers.test.ts");
     });
   });
 

@@ -4149,6 +4149,160 @@ describe("rstest CLI integration", () => {
     });
   });
 
+  test("surfaces type errors for invalid Durable Object helper arguments", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-helper-type-errors.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-helper-type-errors.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+
+        test("durable object helper argument validation errors are explicit", async () => {
+          await expect(
+            runInDurableObject({} as any, async () => "ok")
+          ).rejects.toThrow(
+            "Failed to execute 'runInDurableObject': parameter 1 is not of type 'DurableObjectStub'."
+          );
+
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+            get(id: unknown): unknown;
+          };
+          const stub = namespace.get(namespace.idFromName("singleton"));
+
+          await expect(
+            runInDurableObject(stub as any, 123 as any)
+          ).rejects.toThrow(
+            "Failed to execute 'runInDurableObject': parameter 2 is not of type 'function'."
+          );
+
+          await expect(
+            runDurableObjectAlarm({} as any)
+          ).rejects.toThrow(
+            "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-helper-type-errors.test.ts");
+    });
+  });
+
+  test("surfaces type errors for invalid Durable Object helper arguments via cloudflare:test-internal", async () => {
+    const packageRoot = process.cwd();
+    const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");
+
+    const files: Record<string, string> = {
+      "rstest.config.ts": `
+        import { defineWorkersConfig } from ${JSON.stringify(configPathImport)};
+        export default defineWorkersConfig({
+          test: {
+            include: ["./do-helper-type-errors-internal.test.ts"],
+            poolOptions: {
+              workers: {
+                main: "./worker.ts",
+                miniflare: {
+                  durableObjects: {
+                    COUNTER: "Counter"
+                  }
+                }
+              }
+            }
+          }
+        });
+      `,
+      "worker.ts": `
+        import { DurableObject } from "cloudflare:workers";
+
+        export class Counter extends DurableObject {
+          async fetch() {
+            return new Response("ok");
+          }
+        }
+
+        export default {
+          fetch() {
+            return new Response("ok");
+          }
+        };
+      `,
+      "do-helper-type-errors-internal.test.ts": `
+        import { test, expect } from "@rstest/core";
+        import { env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test-internal";
+
+        test("internal durable object helper argument validation errors are explicit", async () => {
+          await expect(
+            runInDurableObject({} as any, async () => "ok")
+          ).rejects.toThrow(
+            "Failed to execute 'runInDurableObject': parameter 1 is not of type 'DurableObjectStub'."
+          );
+
+          const namespace = env.COUNTER as {
+            idFromName(name: string): unknown;
+            get(id: unknown): unknown;
+          };
+          const stub = namespace.get(namespace.idFromName("singleton"));
+
+          await expect(
+            runInDurableObject(stub as any, 123 as any)
+          ).rejects.toThrow(
+            "Failed to execute 'runInDurableObject': parameter 2 is not of type 'function'."
+          );
+
+          await expect(
+            runDurableObjectAlarm({} as any)
+          ).rejects.toThrow(
+            "Failed to execute 'runDurableObjectAlarm': parameter 1 is not of type 'DurableObjectStub'."
+          );
+        });
+      `
+    };
+
+    await runFixture(files, ({ stdout, stderr }) => {
+      expect(stderr).toBe("");
+      expect(stdout).toContain('"status": "pass"');
+      expect(stdout).toContain("do-helper-type-errors-internal.test.ts");
+    });
+  });
+
   test("surfaces actionable error when runInDurableObject state is accessed", async () => {
     const packageRoot = process.cwd();
     const configPathImport = path.join(packageRoot, "src", "config", "index.ts").replaceAll("\\", "/");

@@ -461,6 +461,36 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runInDurableObject ignores ctx values with throwing storage getters and falls back to stub.state", async () => {
+    const state = createDurableObjectState();
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("state-throwing-storage-fallback-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "state-throwing-storage-fallback-id"
+        ) as DurableObjectStubLike & {
+          ctx?: unknown;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = Object.create(null) as { storage?: unknown };
+        Object.defineProperty(stub.ctx as object, "storage", {
+          configurable: true,
+          get() {
+            throw new Error("ctx storage getter failed");
+          }
+        });
+        stub.state = state;
+
+        await expect(
+          runInDurableObject(stub, async (_instance, receivedState) => receivedState)
+        ).resolves.toBe(state);
+      }
+    );
+  });
+
   test("runInDurableObject falls back to state placeholder when ctx getter throws and no state fallback exists", async () => {
     await withRuntimeBindings(
       {
@@ -1090,6 +1120,44 @@ describe("unsupported cloudflare:test APIs", () => {
           state?: DurableObjectStateLike;
         };
         stub.ctx = { storage: null };
+        stub.state = state;
+
+        await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
+      }
+    );
+
+    expect(alarmCalls).toBe(1);
+  });
+
+  test("runDurableObjectAlarm ignores ctx values with throwing storage getters and uses stub.state alarm metadata", async () => {
+    let alarmCalls = 0;
+    const state = createDurableObjectState({
+      alarmValue: Date.now() + 45_000
+    });
+
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("alarm-throwing-storage-fallback-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub(
+          "alarm-throwing-storage-fallback-id",
+          {
+            async alarm() {
+              alarmCalls += 1;
+            }
+          }
+        ) as DurableObjectStubLike & {
+          ctx?: unknown;
+          state?: DurableObjectStateLike;
+        };
+        stub.ctx = Object.create(null) as { storage?: unknown };
+        Object.defineProperty(stub.ctx as object, "storage", {
+          configurable: true,
+          get() {
+            throw new Error("ctx storage getter failed");
+          }
+        });
         stub.state = state;
 
         await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);

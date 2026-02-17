@@ -751,6 +751,27 @@ describe("unsupported cloudflare:test APIs", () => {
     );
   });
 
+  test("runDurableObjectAlarm preserves non-reserved alarm accessor errors", async () => {
+    await withRuntimeBindings(
+      {
+        COUNTER: createNamespaceWithAcceptedId("non-reserved-alarm-id")
+      },
+      async () => {
+        const stub = createDurableObjectStub("non-reserved-alarm-id");
+        Object.defineProperty(stub, "alarm", {
+          configurable: true,
+          get() {
+            throw new Error("custom alarm accessor failure");
+          }
+        });
+
+        await expect(runDurableObjectAlarm(stub)).rejects.toThrow(
+          "custom alarm accessor failure"
+        );
+      }
+    );
+  });
+
   test("listDurableObjectIds validates namespace argument type", async () => {
     await withRuntimeBindings(
       {},
